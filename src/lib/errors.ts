@@ -74,6 +74,7 @@ const SEVERITY: Record<string, ErrorSeverity> = {
   EDGE_FUNCTION: "error",
   STORAGE: "warning",
   REQUIREMENTS: "info",
+  NOT_IMPLEMENTED: "info",
   UNKNOWN: "error",
 };
 
