@@ -216,10 +216,10 @@ export default function FacultyAdmin() {
         <TabsContent value="students" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Student Management</CardTitle>
+              <CardTitle>Student Roster</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Student roster and progress tracking coming soon</p>
+              <FacultyStudentRoster institutionId={activeInstitution?.id} />
             </CardContent>
           </Card>
         </TabsContent>
