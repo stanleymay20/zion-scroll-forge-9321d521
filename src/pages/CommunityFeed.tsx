@@ -128,15 +128,15 @@ export default function CommunityFeed() {
                 <p className="whitespace-pre-wrap">{post.content}</p>
 
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <Button variant="ghost" size="sm" onClick={() => toast({ title: "Coming soon", description: "This action is launching with the next release." })}>
+                  <Button variant="ghost" size="sm" disabled title="Launching with the next release">
                     <Heart className="mr-1 h-4 w-4" />
                     Like
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => toast({ title: "Coming soon", description: "This action is launching with the next release." })}>
+                  <Button variant="ghost" size="sm" disabled title="Launching with the next release">
                     <MessageCircle className="mr-1 h-4 w-4" />
                     {post.post_comments?.length || 0} Comments
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => toast({ title: "Coming soon", description: "This action is launching with the next release." })}>
+                  <Button variant="ghost" size="sm" disabled title="Launching with the next release">
                     <Share2 className="mr-1 h-4 w-4" />
                     Share
                   </Button>

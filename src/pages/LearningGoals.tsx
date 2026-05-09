@@ -103,7 +103,7 @@ export default function LearningGoals() {
               </div>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={() => toast({ title: "Coming soon", description: "This action is launching with the next release." })}>
+                  <Button>
                     <Plus className="h-4 w-4 mr-2" />
                     New Goal
                   </Button>

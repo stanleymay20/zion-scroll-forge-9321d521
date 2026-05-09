@@ -74,7 +74,7 @@ export default function Testimonies() {
         <div className="flex justify-end">
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => toast({ title: "Coming soon", description: "This action is launching with the next release." })}>
+              <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Share Your Testimony
               </Button>
@@ -145,11 +145,11 @@ export default function Testimonies() {
                   <p className="whitespace-pre-wrap leading-relaxed">{testimony.content}</p>
                   
                   <div className="flex items-center gap-4 pt-4 border-t">
-                    <Button variant="ghost" size="sm" onClick={() => toast({ title: "Coming soon", description: "This action is launching with the next release." })}>
+                    <Button variant="ghost" size="sm" disabled title="Launching with the next release">
                       <Heart className="mr-1 h-4 w-4" />
                       Encourage
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => toast({ title: "Coming soon", description: "This action is launching with the next release." })}>
+                    <Button variant="ghost" size="sm" disabled title="Launching with the next release">
                       <Share2 className="mr-1 h-4 w-4" />
                       Share
                     </Button>

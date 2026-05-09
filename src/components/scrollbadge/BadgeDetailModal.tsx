@@ -221,7 +221,7 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
                         <Share2 className="h-4 w-4 mr-2" />
                         {badge.isPublic ? 'Copy Share Link' : 'Sharing Unavailable'}
                       </Button>
-                      <Button variant="outline" size="sm" onClick={handleDownloadBadge}>
+                      <Button variant="outline" size="sm" onClick={handleDownloadBadge} disabled title="Launching with the next release">
                         <Download className="h-4 w-4 mr-2" />
                         Download
                       </Button>

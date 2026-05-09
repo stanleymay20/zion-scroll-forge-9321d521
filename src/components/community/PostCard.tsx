@@ -161,6 +161,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onUpdate, onDelete }) 
                   variant="ghost"
                   size="sm"
                   onClick={handleFollow}
+                  disabled
+                  title="Launching with the next release"
                   className="text-blue-600 hover:text-blue-700"
                 >
                   Follow
@@ -269,6 +271,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onUpdate, onDelete }) 
           variant={isLiked ? "default" : "ghost"}
           size="sm"
           onClick={handleLike}
+          disabled
+          title="Launching with the next release"
           className="flex-1"
         >
           <Heart className={`w-4 h-4 mr-2 ${isLiked ? 'fill-current' : ''}`} />

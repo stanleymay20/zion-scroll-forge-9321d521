@@ -101,6 +101,8 @@ export default function FellowshipRooms() {
                       variant="outline" 
                       className="flex-1"
                       onClick={() => handleJoinRoom(room.id)}
+                      disabled
+                      title="Launching with the next release"
                     >
                       <MessageCircle className="mr-2 h-4 w-4" />
                       Chat
@@ -108,7 +110,8 @@ export default function FellowshipRooms() {
                     <Button 
                       className="flex-1"
                       onClick={() => handleJoinRoom(room.id)}
-                      disabled={room.current_count >= (room.max_capacity || 100)}
+                      disabled
+                      title="Launching with the next release"
                     >
                       <Video className="mr-2 h-4 w-4" />
                       Join Room
