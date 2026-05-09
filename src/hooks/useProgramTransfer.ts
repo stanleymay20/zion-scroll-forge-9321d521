@@ -53,7 +53,7 @@ export function useMyTransferRequests() {
     setLoading(true);
     const { data } = await supabase
       .from("program_transfer_requests" as any)
-      .select("*, to_program:degree_programs!program_transfer_requests_to_program_id_fkey(name), from_program:degree_programs!program_transfer_requests_from_program_id_fkey(name)")
+      .select("*, to_program:degree_programs!program_transfer_requests_to_program_id_fkey(name:title), from_program:degree_programs!program_transfer_requests_from_program_id_fkey(name:title)")
       .eq("student_user_id", user.id)
       .order("submitted_at", { ascending: false });
     setRequests(((data as any[]) ?? []) as TransferRequest[]);
@@ -99,7 +99,7 @@ export function useTransferRequestsAdmin() {
     setLoading(true);
     const { data } = await supabase
       .from("program_transfer_requests" as any)
-      .select("*, to_program:degree_programs!program_transfer_requests_to_program_id_fkey(name), from_program:degree_programs!program_transfer_requests_from_program_id_fkey(name)")
+      .select("*, to_program:degree_programs!program_transfer_requests_to_program_id_fkey(name:title), from_program:degree_programs!program_transfer_requests_from_program_id_fkey(name:title)")
       .order("submitted_at", { ascending: false });
     setRequests(((data as any[]) ?? []) as TransferRequest[]);
     setLoading(false);
