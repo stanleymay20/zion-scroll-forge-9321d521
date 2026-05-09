@@ -75,6 +75,7 @@ const GenerationHistory = lazy(() => import("./pages/admin/GenerationHistory"));
 const ContentGenerationAdmin = lazy(() => import("./pages/ContentGenerationAdmin"));
 const IvyParityAdmin = lazy(() => import("./pages/admin/IvyParityAdmin"));
 const CoursePreviewsAdmin = lazy(() => import("./pages/admin/CoursePreviewsAdmin"));
+const TransferRequestsAdmin = lazy(() => import("./pages/admin/TransferRequestsAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
@@ -427,6 +428,7 @@ const App = () => (
               <Route path="admin/institutions" element={<RoleRoute allowedRoles={["admin","superadmin"]}><InstitutionsAdmin /></RoleRoute>} />
               <Route path="admin/ivy-parity" element={<RoleRoute allowedRoles={["admin","superadmin"]}><IvyParityAdmin /></RoleRoute>} />
               <Route path="admin/course-previews" element={<RoleRoute allowedRoles={["admin","superadmin"]}><CoursePreviewsAdmin /></RoleRoute>} />
+              <Route path="admin/transfers" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><TransferRequestsAdmin /></RoleRoute>} />
               <Route path="admin/super" element={<RoleRoute allowedRoles={["superadmin"]}><SuperAdmin /></RoleRoute>} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
