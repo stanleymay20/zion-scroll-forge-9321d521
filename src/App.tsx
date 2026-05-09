@@ -297,6 +297,9 @@ const App = () => (
             <Route path="/trust" element={<PublicLayout />}>
               <Route index element={<TrustCenter />} />
             </Route>
+            <Route path="/academic-trust" element={<PublicLayout />}>
+              <Route index element={<AcademicTrust />} />
+            </Route>
             <Route path="/academic-integrity" element={<PublicLayout />}>
               <Route index element={<AcademicIntegrity />} />
             </Route>
