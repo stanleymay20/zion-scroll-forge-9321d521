@@ -5,6 +5,7 @@
  */
 
 import React, { useState } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -113,7 +114,7 @@ export function PropheticCheckInQuestionnaire({
   const handleSubmit = async (): Promise<void> => {
     try {
       setLoading(true);
-      const response = await fetch('/api/prophetic-checkin', {
+      const response = await legacyApiCall('/api/prophetic-checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,7 +53,7 @@ const WalletSecurity: React.FC<WalletSecurityProps> = ({ walletAddress }) => {
     try {
       setLoading(true);
       // In production, fetch from API
-      // const response = await fetch('/api/scrollcoin/wallet/security');
+      // const response = await legacyApiCall('/api/scrollcoin/wallet/security');
       // const data = await response.json();
       // setSettings(data.data);
     } catch (error) {
@@ -69,7 +70,7 @@ const WalletSecurity: React.FC<WalletSecurityProps> = ({ walletAddress }) => {
       setSuccess(false);
 
       // In production, save to API
-      // const response = await fetch('/api/scrollcoin/wallet/security', {
+      // const response = await legacyApiCall('/api/scrollcoin/wallet/security', {
       //   method: 'PUT',
       //   headers: {
       //     'Content-Type': 'application/json',
@@ -101,7 +102,7 @@ const WalletSecurity: React.FC<WalletSecurityProps> = ({ walletAddress }) => {
       setError(null);
       setVerificationResult(null);
 
-      const response = await fetch('/api/scrollcoin/blockchain/verify', {
+      const response = await legacyApiCall('/api/scrollcoin/blockchain/verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

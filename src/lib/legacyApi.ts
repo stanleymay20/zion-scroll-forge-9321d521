@@ -1,3 +1,4 @@
+import { legacyApiCall } from "@/lib/legacyApi";
 /**
  * Legacy /api shim
  *
@@ -23,7 +24,7 @@ export class LegacyApiUnavailableError extends Error {
 }
 
 /**
- * Drop-in replacement for `fetch('/api/...', ...)`.
+ * Drop-in replacement for `legacyApiCall('/api/...', ...)`.
  * Always throws — never performs a network request.
  */
 export async function legacyApiCall(

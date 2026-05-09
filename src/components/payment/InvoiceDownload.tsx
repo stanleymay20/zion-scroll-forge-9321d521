@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +46,7 @@ export function InvoiceDownload({ userId }: InvoiceDownloadProps) {
   const fetchInvoices = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/payments/invoices', {
+      const response = await legacyApiCall('/api/payments/invoices', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },

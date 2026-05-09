@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Send, Bot, User, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface Message {
@@ -56,7 +57,7 @@ export const AIChatInterface: React.FC<AIChatInterfaceProps> = ({
     setError(null);
 
     try {
-      const response = await fetch('/api/ai-unified/chatbot/query', {
+      const response = await legacyApiCall('/api/ai-unified/chatbot/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

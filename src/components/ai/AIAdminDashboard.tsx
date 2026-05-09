@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import {
   Activity,
   DollarSign,
@@ -50,12 +51,12 @@ export const AIAdminDashboard: React.FC = () => {
   const fetchMetrics = async () => {
     try {
       const [metricsRes, servicesRes] = await Promise.all([
-        fetch('/api/ai-unified/metrics', {
+        legacyApiCall('/api/ai-unified/metrics', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         }),
-        fetch('/api/ai-unified/services', {
+        legacyApiCall('/api/ai-unified/services', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

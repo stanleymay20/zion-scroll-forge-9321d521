@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -68,7 +69,7 @@ export function RefundRequest({
 
     setProcessing(true);
     try {
-      const response = await fetch('/api/payments/refund-request', {
+      const response = await legacyApiCall('/api/payments/refund-request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

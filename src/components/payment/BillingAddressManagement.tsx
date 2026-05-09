@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,7 +54,7 @@ export function BillingAddressManagement({ userId, onUpdate }: BillingAddressMan
   const fetchBillingAddress = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/payments/billing-address', {
+      const response = await legacyApiCall('/api/payments/billing-address', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -78,7 +79,7 @@ export function BillingAddressManagement({ userId, onUpdate }: BillingAddressMan
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch('/api/payments/billing-address', {
+      const response = await legacyApiCall('/api/payments/billing-address', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

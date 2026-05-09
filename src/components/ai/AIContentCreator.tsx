@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import {
   BookOpen,
   FileText,
@@ -123,7 +124,7 @@ export const AIContentCreator: React.FC = () => {
     if (!generatedContent) return;
 
     try {
-      const response = await fetch('/api/ai-unified/content/save', {
+      const response = await legacyApiCall('/api/ai-unified/content/save', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,3 +1,4 @@
+import { legacyApiCall } from "@/lib/legacyApi";
 /**
  * CDN Integration Service
  * Manages static asset delivery through CDN
@@ -181,7 +182,7 @@ class CDNIntegration {
     if (!this.config.enabled) return;
 
     try {
-      await fetch('/api/cdn/purge', {
+      await legacyApiCall('/api/cdn/purge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paths }),
@@ -200,7 +201,7 @@ class CDNIntegration {
     cacheHitRate: number;
   }> {
     try {
-      const response = await fetch('/api/cdn/stats');
+      const response = await legacyApiCall('/api/cdn/stats');
       return await response.json();
     } catch (error) {
       console.error('Failed to get CDN stats:', error);

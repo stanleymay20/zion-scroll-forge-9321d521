@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -82,7 +83,7 @@ export const AIMonitoringDashboard: React.FC = () => {
 
   const fetchMetrics = async (): Promise<void> => {
     try {
-      const response = await fetch('/api/ai-monitoring/metrics', {
+      const response = await legacyApiCall('/api/ai-monitoring/metrics', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
