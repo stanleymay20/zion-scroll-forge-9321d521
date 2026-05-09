@@ -1,95 +1,95 @@
-# ScrollUniversity Catalog & Access Governance
+# Locked Academic Identity Model
 
-This is a large reorganization. Below is the plan broken into phases. I'll need your approval before starting (especially because phase 1 is a database migration).
+Move ScrollUniversity from a "course marketplace" UX to a governed academic identity model. Students cannot self-mutate faculty, degree, cohort, or SUYAS track. All changes flow through an auditable Program Transfer Request workflow.
 
-## Phase 1 — Database: Catalog hierarchy + access control
+## What's already in place (no rebuild needed)
+- Program-bound enrollment, matriculation, year gating, prereq enforcement, elective approvals, SUYAS audit logging.
+- `students.degree_program_id`, `cohort_label`, `current_year`, `student_academic_profiles` view, `AcademicAssignmentCard`.
+- `enforce_course_enrollment_gate` trigger and `admin_override_enrollment` RPC.
 
-Add governance columns and a centralized access function. Non-destructive (no course deletion, no reseeding).
+## What's missing (this plan adds it)
 
-**Schema additions:**
-- `faculties` — already exists (12 Supreme Scroll Faculties); add `slug`, `display_order` if missing.
-- `departments` — new table: `id, faculty_id, name, slug, description`.
-- `courses` — add columns:
-  - `faculty_id uuid` (FK)
-  - `department_id uuid` (FK, nullable)
-  - `level text` check in (`foundation,intermediate,advanced,capstone`)
-  - `visibility text` check in (`public_preview,enrolled_only,role_only,admin_only`) default `public_preview`
-  - `career_track text[]`
-  - `credits numeric` (if not already)
-  - `estimated_duration_hours int`
-- `degree_program_courses` — link table (if not already): `degree_program_id, course_id, sequence_order, is_required`.
-- `course_prerequisites` — `course_id, prerequisite_course_id` (if missing).
+### 1. Lock the academic identity at the database layer
+- Add a trigger `enforce_academic_identity_lock` on `public.students` that blocks any non-admin UPDATE to: `degree_program_id`, `faculty_id`, `suyas_track`, `cohort_label`, `current_year`, `academic_level`.
+- Only `service_role` or users with `admin`/`superadmin`/`registrar` role may change these — and only through approved transfer RPCs.
+- Mirror lock on `profiles.lifecycle_status` (already governed by `transition_student_status` — add explicit trigger to block direct UPDATE).
 
-**Access function (SECURITY DEFINER):**
+### 2. Program Transfer Request system (new)
+
+**Tables**
+- `program_transfer_requests`
+  - `student_user_id`, `from_program_id`, `to_program_id`, `from_faculty_id`, `to_faculty_id`
+  - `reason` (text, required), `academic_justification` (text), `supporting_docs` (jsonb)
+  - `status`: `submitted | advisor_review | faculty_review | registrar_review | approved | denied | withdrawn | archived`
+  - `submitted_at`, `decided_at`, `effective_term_id`
+- `transfer_review_notes` — append-only reviewer notes (advisor / faculty / registrar)
+- `transfer_decisions` — final immutable decision record with credit-remap snapshot
+
+**RPCs (SECURITY DEFINER, audit-logged)**
+- `submit_transfer_request(to_program_id, reason, justification)` — student-callable; one open request at a time.
+- `advance_transfer_request(request_id, next_status, note)` — role-gated by stage (advisor → faculty → registrar).
+- `decide_transfer_request(request_id, decision, credit_remap)` — registrar/admin only; on approve, atomically:
+  - snapshot old `students` row,
+  - update `students.degree_program_id` / faculty / track,
+  - mark transferable enrollments (`enrollments.transfer_status = 'transferred' | 'non_transferable'`),
+  - log `program_transfer` action in `suyas_audit_logs`.
+- `withdraw_transfer_request(request_id)` — student can withdraw while still pre-decision.
+
+**RLS**
+- Students: read own requests, insert via RPC only.
+- Advisors/faculty: read assigned-cohort requests, no direct write (RPC only).
+- Registrar/admin: full read, decisions via RPC only.
+
+### 3. Transcript integrity
+- Add `enrollments.transfer_status` (`active | transferred | non_transferable | archived`) and `transferred_from_program_id`.
+- Approval RPC takes a `credit_remap` JSON: `[{ enrollment_id, action: 'transfer'|'archive' }]`.
+- Old enrollments are never deleted — preserved for transcript history.
+
+### 4. UX shift (frontend)
+
+**Remove / demote**
+- "Browse all programs and enroll" framing on the student dashboard. Catalog stays accessible read-only as `/catalog` (already public_preview), but the dashboard stops surfacing cross-program enroll CTAs.
+
+**Promote (in `AcademicAssignmentCard` and a new `MyAcademicIdentity` page)**
+- Locked identity panel: Faculty / Degree / Cohort / SUYAS Track / Advisor / Year — all read-only with a lock icon.
+- "Recommended next course" + "Locked upcoming" (already wired via `get_assigned_next_course`).
+- "Request a Program Transfer" button → opens `TransferRequestDialog`.
+
+**New pages / components**
+- `src/pages/student/TransferRequest.tsx` — submit + view own request status timeline.
+- `src/pages/admin/TransferRequestsAdmin.tsx` — registrar queue with stage actions.
+- `src/components/identity/LockedIdentityPanel.tsx`
+- `src/components/transfer/TransferRequestDialog.tsx`
+- `src/components/transfer/TransferStatusTimeline.tsx`
+- `src/hooks/useProgramTransfer.ts`
+
+### 5. SUYAS audit coverage
+Every transition emits `log_suyas_action` with action types: `transfer_submitted`, `transfer_advanced`, `transfer_approved`, `transfer_denied`, `transfer_withdrawn`, `identity_lock_violation_attempt`.
+
+## Out of scope (call out, not built now)
+- Advisor assignment workflow (assumes `students.advisor_id` exists or is added later).
+- Email notifications for stage changes (queue infra exists; can wire after).
+- Cohort sequencing changes / leave-of-absence flows.
+
+## Technical summary
+
+```text
+Student ──submit──▶ program_transfer_requests (submitted)
+            │
+            ▼
+   advisor_review ──▶ faculty_review ──▶ registrar_review
+            │                                  │
+            ▼                                  ▼
+        denied/withdrawn               approved (atomic)
+                                        ├─ students.* updated (via RPC only)
+                                        ├─ enrollments remapped
+                                        ├─ transfer_decisions row
+                                        └─ suyas_audit_logs entry
+
+Direct UPDATE on students.degree_program_id by non-admin
+    └─▶ enforce_academic_identity_lock trigger raises exception
 ```
-public.can_access_course(_user_id uuid, _course_id uuid)
-  returns jsonb { access_level, allowed, reason, missing[] }
-```
-Checks: auth, student lifecycle status, enrollment, prerequisites, holds, course visibility, role override (admin/faculty).
 
-**RLS hardening:**
-- `course_modules`, `lessons`, `assignments`, `quizzes`, `assessments`, `module_progress`, `certificates`, `transcripts` → restrict SELECT to `can_access_course(...)` truthy or admin/faculty role.
-- `courses` SELECT remains public for catalog cards (only metadata columns).
-- Preview-allowed: first module + syllabus stays public.
+**Migration order:** (1) identity lock trigger, (2) transfer tables + RLS, (3) RPCs, (4) `enrollments.transfer_status` columns, (5) frontend.
 
-## Phase 2 — Frontend: Access primitives
-
-- `src/lib/accessControl.ts` — `canAccessCourse`, `getAccessLevel` calling the RPC.
-- `src/hooks/useCourseAccess.ts` — React hook wrapping it.
-- `src/components/access/LockedCourseCard.tsx` — locked-state UI (reason, prereqs, status, CTA).
-- `src/components/routing/` route guards:
-  - `PublicRoute`, `AuthenticatedRoute`, `RoleRoute`, `StudentStatusRoute`, `CourseAccessRoute`.
-  Each handles redirects per the spec (login/apply, orientation, locked page, access denied).
-
-## Phase 3 — Catalog UI
-
-- `src/pages/Catalog.tsx` (rework existing Courses page) — tabs:
-  - Browse by Faculty
-  - Browse by Degree Program
-  - Browse by Level
-  - Browse by Career Track
-  - Search & filter sidebar (faculty, level, credits, duration, visibility)
-- `src/components/catalog/CourseCard.tsx` — title, faculty, program, level, badges (preview / locked / enrolled), prereqs, duration, credits, Preview + Enroll/Apply buttons.
-- `src/components/catalog/FacultyGroup.tsx`, `DegreeProgramGroup.tsx`, `LevelGroup.tsx`, `TrackGroup.tsx`.
-
-## Phase 4 — Course detail & preview
-
-- `src/pages/CoursePreview.tsx` — public-allowed preview view (overview, syllabus, first lesson, outcomes, instructor summary, admission CTA).
-- Existing `CourseLearning` page wrapped in `<CourseAccessRoute accessLevel="enrolled">`. If locked → render `<LockedCoursePage>` with reasons from RPC.
-
-## Phase 5 — Route audit & gating
-
-Update `src/App.tsx` route table, applying the right guard per route group:
-
-| Audience | Guard | Routes |
-|---|---|---|
-| Public | `PublicRoute` | `/`, `/about`, `/programs`, `/courses`, `/course/:id/preview`, `/apply`, `/contact`, `/verify` |
-| Applicant | `StudentStatusRoute statuses=['applicant']` | `/application`, `/documents`, `/admissions-messages` |
-| Accepted | `StudentStatusRoute statuses=['admitted','enrolled']` | `/orientation`, `/matriculation`, `/identity`, `/admission-letter` |
-| Active | `StudentStatusRoute statuses=['active']` | `/dashboard`, `/courses/enrolled`, `/assignments`, `/ai-tutor`, `/progress`, `/certificates` |
-| Faculty | `RoleRoute roles=['faculty']` | `/faculty/*` |
-| Admissions admin | `RoleRoute roles=['admissions_admin','admin']` | `/admin/admissions/*` |
-| Academic admin | `RoleRoute roles=['academic_admin','admin']` | `/admin/curriculum/*` |
-| Platform admin | `RoleRoute roles=['admin','superadmin']` | `/admin/launchops`, `/admin/users`, `/admin/billing`, `/admin/system` |
-
-I will *not* invent new pages where none exist — for missing role areas (e.g. admissions review) I'll add a placeholder route that redirects or shows "Coming soon" so the guard infrastructure is in place.
-
-## Phase 6 — Degree path gating
-
-- `src/hooks/useDegreeProgress.ts` — already exists; extend with `getLockedCourses(programId)` returning unlock requirements.
-- `src/pages/DegreePath.tsx` — show full sequence with locked/unlocked states, "why locked", "next recommended".
-
-## Phase 7 — Test checklist (delivered as `TESTING_ACCESS_CONTROL.md`)
-
-Manual test checklist covering: anon visitor, applicant, accepted, active student with/without prereqs, faculty, each admin tier.
-
-## Technical details
-
-- All gating enforced **both** in DB (RLS + `can_access_course`) **and** UI guards. UI calls the RPC; RLS is the backstop.
-- Existing `useUserRoles` hook + `user_roles` table are reused (no role storage on profiles).
-- `lifecycle_status` already exists on `profiles` (`applicant/admitted/enrolled/active/...`) — used by `StudentStatusRoute`.
-- No course content is touched. No reseeding. Existing course rows get `faculty_id`/`level`/`visibility` backfilled via best-effort mapping (default `visibility='public_preview'`, `level='foundation'` where unknown — admins can adjust).
-
-## Scope confirmation
-
-Because this spans ~30+ files and a non-trivial migration, I want to confirm before executing. **Approve to proceed**, or tell me to narrow scope (e.g. "do phases 1+2+5 first, defer catalog UI redesign").
+Approve to proceed, or tell me which sections to trim/expand (e.g. skip advisor stage, ship registrar-only first).
