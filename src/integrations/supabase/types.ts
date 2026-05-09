@@ -889,6 +889,48 @@ export type Database = {
           },
         ]
       }
+      billing_addresses: {
+        Row: {
+          city: string
+          country: string
+          created_at: string
+          full_name: string
+          id: string
+          line1: string
+          line2: string | null
+          postal_code: string
+          state: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city: string
+          country?: string
+          created_at?: string
+          full_name: string
+          id?: string
+          line1: string
+          line2?: string | null
+          postal_code: string
+          state?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string
+          country?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          line1?: string
+          line2?: string | null
+          postal_code?: string
+          state?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       certificate_verifications: {
         Row: {
           cert_number: string
@@ -1037,24 +1079,39 @@ export type Database = {
       }
       community_posts: {
         Row: {
+          comments_count: number
           content: string
           created_at: string | null
           id: string
+          image_url: string | null
+          likes_count: number
+          tags: string[]
           title: string
+          updated_at: string
           user_id: string | null
         }
         Insert: {
+          comments_count?: number
           content: string
           created_at?: string | null
           id?: string
+          image_url?: string | null
+          likes_count?: number
+          tags?: string[]
           title: string
+          updated_at?: string
           user_id?: string | null
         }
         Update: {
+          comments_count?: number
           content?: string
           created_at?: string | null
           id?: string
+          image_url?: string | null
+          likes_count?: number
+          tags?: string[]
           title?: string
+          updated_at?: string
           user_id?: string | null
         }
         Relationships: []
@@ -3240,6 +3297,27 @@ export type Database = {
           },
         ]
       }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       founding_cohort_members: {
         Row: {
           cohort_label: string
@@ -5132,6 +5210,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          likes_count: number
           post_id: string | null
           user_id: string | null
         }
@@ -5139,6 +5218,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
+          likes_count?: number
           post_id?: string | null
           user_id?: string | null
         }
@@ -5146,12 +5226,86 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
+          likes_count?: number
           post_id?: string | null
           user_id?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          post_id: string
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          post_id: string
+          reason: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          post_id?: string
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_reports_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "community_posts"
@@ -6200,6 +6354,38 @@ export type Database = {
             columns: ["academic_year_id"]
             isOneToOne: false
             referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_endorsements: {
+        Row: {
+          comment: string | null
+          created_at: string
+          endorser_id: string
+          id: string
+          student_skill_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          endorser_id: string
+          id?: string
+          student_skill_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          endorser_id?: string
+          id?: string
+          student_skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_endorsements_student_skill_id_fkey"
+            columns: ["student_skill_id"]
+            isOneToOne: false
+            referencedRelation: "student_skills"
             referencedColumns: ["id"]
           },
         ]
