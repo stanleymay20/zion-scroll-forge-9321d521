@@ -167,8 +167,8 @@ function RowDialog({
     try {
       const payload = coerceForm(values, fields);
       const q = existing
-        ? supabase.from(table).update(payload).eq("id", existing.id)
-        : supabase.from(table).insert(payload);
+        ? supabase.from(table).update(payload as any).eq("id", existing.id)
+        : supabase.from(table).insert(payload as any);
       const { error } = await q;
       if (error) throw error;
       toast({ title: existing ? "Updated" : "Created" });
