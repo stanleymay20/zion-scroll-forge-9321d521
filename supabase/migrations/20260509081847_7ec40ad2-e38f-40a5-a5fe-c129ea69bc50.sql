@@ -1,0 +1,1 @@
+ALTER TABLE public.prophetic_checkins ADD COLUMN IF NOT EXISTS payload jsonb;
