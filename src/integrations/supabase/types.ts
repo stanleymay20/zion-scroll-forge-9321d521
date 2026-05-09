@@ -2313,18 +2313,24 @@ export type Database = {
           completed_at: string | null
           devotional_id: string
           id: string
+          note: string | null
+          rating: number | null
           user_id: string
         }
         Insert: {
           completed_at?: string | null
           devotional_id: string
           id?: string
+          note?: string | null
+          rating?: number | null
           user_id: string
         }
         Update: {
           completed_at?: string | null
           devotional_id?: string
           id?: string
+          note?: string | null
+          rating?: number | null
           user_id?: string
         }
         Relationships: [
