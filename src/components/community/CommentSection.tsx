@@ -103,36 +103,52 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommen
   };
 
   const handleLikeComment = async (commentId: string) => {
-    try {
-      const response = await legacyApiCall(`/api/community/comments/${commentId}/like`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+    if (!user) return;
+    const { supabase } = await import('@/integrations/supabase/client');
 
-      if (!response.ok) throw new Error('Failed to like comment');
+    // Find current state
+    let currentLiked = false;
+    const findInTree = (list: CommentWithAuthor[]): void => {
+      for (const c of list) {
+        if (c.id === commentId) currentLiked = !!c.isLiked;
+        if (c.replies) findInTree(c.replies);
+      }
+    };
+    findInTree(comments);
 
-      const data = await response.json();
-      
-      setComments(prev => prev.map(comment => {
-        if (comment.id === commentId) {
-          return { ...comment, isLiked: data.liked, likesCount: data.likesCount };
-        }
-        if (comment.replies) {
+    // Optimistic update
+    const updateTree = (list: CommentWithAuthor[]): CommentWithAuthor[] =>
+      list.map((c) => {
+        if (c.id === commentId) {
           return {
-            ...comment,
-            replies: comment.replies.map(reply =>
-              reply.id === commentId
-                ? { ...reply, isLiked: data.liked, likesCount: data.likesCount }
-                : reply
-            )
+            ...c,
+            isLiked: !currentLiked,
+            likesCount: Math.max(0, (c.likesCount || 0) + (currentLiked ? -1 : 1)),
           };
         }
-        return comment;
-      }));
+        if (c.replies) return { ...c, replies: updateTree(c.replies) };
+        return c;
+      });
+    setComments((prev) => updateTree(prev));
+
+    try {
+      if (currentLiked) {
+        const { error } = await supabase
+          .from('post_comment_likes')
+          .delete()
+          .eq('comment_id', commentId)
+          .eq('user_id', user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('post_comment_likes')
+          .insert({ comment_id: commentId, user_id: user.id });
+        if (error) throw error;
+      }
     } catch (error) {
       console.error('Error liking comment:', error);
+      // Rollback
+      setComments((prev) => updateTree(prev));
     }
   };
 
