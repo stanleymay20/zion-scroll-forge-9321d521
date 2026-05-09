@@ -26,7 +26,6 @@ export interface TransferRequest {
   to_program?: { name: string } | null;
   from_program?: { name: string } | null;
 }
-}
 
 export interface TransferNote {
   id: string;
