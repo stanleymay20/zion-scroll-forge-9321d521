@@ -9071,7 +9071,7 @@ export type Database = {
       waitlist_position: { Args: { p_student_id: string }; Returns: number }
     }
     Enums: {
-      app_role: "student" | "faculty" | "admin" | "superadmin"
+      app_role: "student" | "faculty" | "admin" | "superadmin" | "registrar"
       assessment_type:
         | "academic"
         | "prophetic"
@@ -9245,7 +9245,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["student", "faculty", "admin", "superadmin"],
+      app_role: ["student", "faculty", "admin", "superadmin", "registrar"],
       assessment_type: [
         "academic",
         "prophetic",
