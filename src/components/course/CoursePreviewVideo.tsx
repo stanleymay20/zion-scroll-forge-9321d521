@@ -123,7 +123,7 @@ export function CoursePreviewVideo({
             preload="metadata"
             playsInline
             controls
-            crossOrigin="anonymous"
+            
             onLoadedData={handleVideoLoad}
             onWaiting={handleVideoWaiting}
             onPlaying={() => { setIsLoading(false); setIsPlaying(true); }}
