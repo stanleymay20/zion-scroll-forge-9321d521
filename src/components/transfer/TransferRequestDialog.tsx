@@ -47,8 +47,9 @@ export function TransferRequestDialog({ currentProgramId, trigger }: Props) {
     (async () => {
       const { data } = await supabase
         .from("degree_programs")
-        .select("id,name")
-        .order("name");
+        .select("id, name:title")
+        .eq("is_active", true)
+        .order("title");
       setPrograms(((data as any[]) ?? []).filter(p => p.id !== currentProgramId) as Program[]);
     })();
   }, [open, currentProgramId]);
@@ -95,7 +96,7 @@ export function TransferRequestDialog({ currentProgramId, trigger }: Props) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif">Program Transfer Request</DialogTitle>
           <DialogDescription>
