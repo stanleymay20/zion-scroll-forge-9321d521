@@ -34,19 +34,66 @@ export const ModerationQueue: React.FC = () => {
     loadPosts();
   }, [activeTab]);
 
+  const statusToDb = (s: ModerationStatus): string => {
+    switch (s) {
+      case ModerationStatus.APPROVED: return 'dismissed';
+      case ModerationStatus.REJECTED: return 'removed';
+      case ModerationStatus.FLAGGED: return 'flagged';
+      default: return 'pending';
+    }
+  };
+
   const loadPosts = async () => {
     setLoading(true);
     try {
-      const response = await legacyApiCall(`/api/community/moderation/queue?status=${activeTab}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      const dbStatus = statusToDb(activeTab);
+      const { data: reports, error } = await supabase
+        .from('post_reports')
+        .select('id, post_id, reason, details, status, created_at')
+        .eq('status', dbStatus)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+
+      const postIds = Array.from(new Set((reports ?? []).map(r => r.post_id))).filter(Boolean);
+      if (postIds.length === 0) {
+        setPosts([]);
+        return;
+      }
+      const { data: postRows, error: postErr } = await supabase
+        .from('community_posts')
+        .select('id, content, image_url, created_at, user_id, profiles:user_id(full_name, email, avatar_url)')
+        .in('id', postIds);
+      if (postErr) throw postErr;
+
+      const reportByPost = new Map<string, any>();
+      (reports ?? []).forEach(r => {
+        if (!reportByPost.has(r.post_id)) reportByPost.set(r.post_id, r);
       });
 
-      if (!response.ok) throw new Error('Failed to load moderation queue');
+      const mapped: PostWithAuthor[] = (postRows ?? []).map((p: any) => {
+        const r = reportByPost.get(p.id);
+        const full = (p.profiles?.full_name || p.profiles?.email?.split('@')[0] || 'Member').trim();
+        const [first, ...rest] = full.split(' ');
+        return {
+          id: p.id,
+          content: p.content,
+          imageUrl: p.image_url ?? undefined,
+          createdAt: p.created_at,
+          flagged: dbStatus === 'flagged' || dbStatus === 'pending',
+          moderationStatus: activeTab,
+          moderationNotes: r?.details ?? null,
+          author: {
+            id: p.user_id,
+            firstName: first || 'Member',
+            lastName: rest.join(' '),
+            username: p.profiles?.email?.split('@')[0] ?? 'member',
+            avatarUrl: p.profiles?.avatar_url ?? undefined,
+          },
+        } as unknown as PostWithAuthor;
+      });
 
-      const data = await response.json();
-      setPosts(data.posts);
+      setPosts(mapped);
     } catch (error) {
       console.error('Error loading moderation queue:', error);
     } finally {
@@ -57,21 +104,31 @@ export const ModerationQueue: React.FC = () => {
   const handleModerate = async (postId: string, action: 'approve' | 'reject' | 'flag') => {
     setSubmitting(true);
     try {
-      const response = await legacyApiCall(`/api/community/moderation/posts/${postId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action,
-          notes: moderationNotes
-        })
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      const newStatus = action === 'approve' ? 'dismissed' : action === 'reject' ? 'removed' : 'flagged';
 
-      if (!response.ok) throw new Error('Failed to moderate post');
+      const updatePayload: Record<string, any> = {
+        status: newStatus,
+        reviewed_by: user?.id ?? null,
+        reviewed_at: new Date().toISOString(),
+      };
+      if (moderationNotes) updatePayload.details = moderationNotes;
 
-      // Remove post from queue
+      const { error: updateErr } = await supabase
+        .from('post_reports')
+        .update(updatePayload)
+        .eq('post_id', postId)
+        .eq('status', statusToDb(activeTab));
+      if (updateErr) throw updateErr;
+
+      if (action === 'reject') {
+        const { error: delErr } = await supabase
+          .from('community_posts')
+          .delete()
+          .eq('id', postId);
+        if (delErr) throw delErr;
+      }
+
       setPosts(prev => prev.filter(p => p.id !== postId));
       setSelectedPost(null);
       setModerationNotes('');
