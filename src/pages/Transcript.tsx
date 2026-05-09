@@ -55,11 +55,19 @@ export default function Transcript() {
 
       if (walletError && walletError.code !== 'PGRST116') throw walletError;
 
+      // Fetch academic identity (program, year, term, cohort, student id)
+      const { data: identity } = await supabase
+        .from('students')
+        .select('student_id_code, institutional_email, current_year, current_term, cohort_number, degree_program:degree_programs!students_degree_program_id_fkey(title, level)')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
       return {
         enrollments: enrollments || [],
         certificates: certificates || [],
         stats: stats || { total_xp: 0, courses_completed: 0 },
         scrollcoins: wallet?.balance || 0,
+        identity: identity as any,
       };
     },
     enabled: !!user?.id,
