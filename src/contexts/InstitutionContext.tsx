@@ -118,20 +118,25 @@ export const InstitutionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setActiveInstitutionState(active);
       setActiveRole(role);
 
-      // Final fallback: default ScrollUniversity institution (awaited so guards don't fire prematurely)
+      // Final fallback: ensure user is a member of the default ScrollUniversity
+      // institution. Uses a SECURITY DEFINER RPC so RLS can't block the lookup
+      // for users who haven't been added to any institution yet.
       if (!active) {
-        const { data: defaultInst } = await supabase
-          .from('institutions' as any)
-          .select('id, name, slug, short_name, description, logo_url, primary_color, accent_color, plan, is_active')
-          .eq('slug', 'scrolluniversity')
-          .maybeSingle();
-        if (defaultInst) {
-          setActiveInstitutionState(defaultInst as unknown as Institution);
-          setActiveRole((r) => r || 'student');
-          await supabase
-            .from('profiles' as any)
-            .update({ current_institution_id: (defaultInst as any).id } as any)
-            .eq('id', user.id);
+        const { data: instId, error: ensureErr } = await supabase
+          .rpc('ensure_default_institution_membership' as any);
+        if (ensureErr) {
+          console.error('ensure_default_institution_membership failed:', ensureErr);
+        }
+        if (instId) {
+          const { data: defaultInst } = await supabase
+            .from('institutions' as any)
+            .select('id, name, slug, short_name, description, logo_url, primary_color, accent_color, plan, is_active')
+            .eq('id', instId as any)
+            .maybeSingle();
+          if (defaultInst) {
+            setActiveInstitutionState(defaultInst as unknown as Institution);
+            setActiveRole((r) => r || 'student');
+          }
         }
       }
     } catch (error) {
