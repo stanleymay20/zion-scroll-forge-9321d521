@@ -16,20 +16,15 @@ export default function Transcript() {
     queryFn: async () => {
       if (!user?.id) return null;
 
-      // Fetch completed enrollments with course details
+      // Fetch ALL enrollments (active + archived/transferred) with course details + transfer status
       const { data: enrollments, error: enrollError } = await supabase
         .from('enrollments')
         .select(`
           *,
-          courses (
-            id,
-            title,
-            faculty,
-            level
-          )
+          courses ( id, title, faculty, level ),
+          transferred_from:degree_programs!enrollments_transferred_from_program_id_fkey ( title )
         `)
         .eq('user_id', user.id)
-        .eq('progress', 100)
         .order('updated_at', { ascending: false });
 
       if (enrollError) throw enrollError;
