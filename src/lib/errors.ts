@@ -56,6 +56,7 @@ const DEFAULT_MESSAGES: Record<string, string> = {
   EDGE_FUNCTION: "Something went wrong on our side. Please try again.",
   STORAGE: "We couldn't process that file. Please try again.",
   REQUIREMENTS: "You do not yet meet the requirements for this action.",
+  NOT_IMPLEMENTED: "This feature is not yet available.",
   UNKNOWN: "Something went wrong. Please try again.",
 };
 
