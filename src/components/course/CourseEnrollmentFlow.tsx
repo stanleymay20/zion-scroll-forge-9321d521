@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner';
 import { useEnrollInCourse } from '@/hooks/useCourses';
 import { getUserFriendlyError } from '@/lib/errors';
+import { spendScrollCoin } from '@/services/scrollcoin';
 
 interface CourseEnrollmentFlowProps {
   course: {
@@ -66,21 +67,25 @@ export function CourseEnrollmentFlow({
     mutationFn: async () => {
       setEnrollmentStep('processing');
 
+      if (paymentMethod === 'scrollcoin') {
+        const { data: wallet, error: walletError } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', user!.id)
+          .maybeSingle();
+
+        if (walletError) throw walletError;
+
+        if ((Number(wallet?.balance) || 0) < scrollCoinCost) {
+          throw new Error(`You need ${scrollCoinCost} ScrollGold but your wallet balance is ${Number(wallet?.balance) || 0}.`);
+        }
+      }
+
       const enrollmentResult = await enrollInCourse.mutateAsync(course.id);
 
       // Handle payment based on method
       if (paymentMethod === 'scrollcoin') {
-        // Deduct ScrollCoin
-        const { error: paymentError } = await supabase
-          .from('transactions')
-          .insert({
-            user_id: user!.id,
-            amount: -scrollCoinCost,
-            type: 'course_enrollment',
-            description: `Enrolled in ${course.title}`,
-          });
-
-        if (paymentError) throw paymentError;
+        await spendScrollCoin(user!.id, scrollCoinCost, `Enrolled in ${course.title}`);
       } else if (paymentMethod === 'credit_card') {
         // This would integrate with Stripe
         // For now, we'll simulate the payment
@@ -106,8 +111,9 @@ export function CourseEnrollmentFlow({
     },
     onError: (error: unknown) => {
       setEnrollmentStep('error');
+      const message = getUserFriendlyError(error, 'enroll_course');
       toast.error('Enrollment Failed', {
-        description: getUserFriendlyError(error, 'enroll_course'),
+        description: message,
       });
     },
   });
