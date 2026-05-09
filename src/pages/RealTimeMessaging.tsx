@@ -155,7 +155,10 @@ export default function RealTimeMessaging() {
                 {conversations?.map((conv: any) => {
                   const convo = conv.conversations;
                   const lastMessage = convo.messages?.[0];
-                  const unreadCount = 0; // TODO: Calculate unread
+                  const lastReadAt = conv.last_read_at ? new Date(conv.last_read_at).getTime() : 0;
+                  const unreadCount = (convo.messages || []).filter(
+                    (m: any) => new Date(m.created_at).getTime() > lastReadAt
+                  ).length;
 
                   return (
                     <button
