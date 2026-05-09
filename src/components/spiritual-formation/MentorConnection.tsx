@@ -5,7 +5,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -59,13 +60,36 @@ export function MentorConnection({ userId }: MentorConnectionProps): JSX.Element
     loadConnections();
   }, [userId]);
 
+  const profileToMentor = (p: any): SpiritualMentor => {
+    const sp = (p?.spiritual_profile ?? {}) as Record<string, unknown>;
+    const ap = (p?.academic_profile ?? {}) as Record<string, unknown>;
+    const fullName = (p?.full_name as string) || (p?.email as string) || 'Mentor';
+    const [firstName, ...rest] = fullName.split(' ');
+    return {
+      id: p.id,
+      firstName: firstName || 'Mentor',
+      lastName: rest.join(' ') || '',
+      avatarUrl: p?.avatar_url ?? undefined,
+      specialties: Array.isArray(sp.specialties) ? (sp.specialties as string[]) : ['Spiritual Formation'],
+      bio: (sp.bio as string) ?? (ap.bio as string) ?? 'Faculty mentor available to guide your spiritual journey.',
+      availability: (sp.availability as string) ?? 'By appointment',
+      matchScore: 85,
+      yearsExperience: (ap.years_experience as number) ?? 5,
+      studentsHelped: (sp.students_helped as number) ?? 0,
+    };
+  };
+
   const loadMentors = async (): Promise<void> => {
     try {
       setLoading(true);
-      const response = await legacyApiCall(`/api/spiritual-formation/mentors/recommended/${userId}`);
-      if (!response.ok) throw new Error('Failed to load mentors');
-      const data = await response.json();
-      setMentors(data.data);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, avatar_url, role, spiritual_profile, academic_profile')
+        .in('role', ['faculty', 'admin', 'superadmin'])
+        .neq('id', userId)
+        .limit(20);
+      if (error) throw error;
+      setMentors((data ?? []).map(profileToMentor));
     } catch (error) {
       console.error('Error loading mentors:', error);
     } finally {
@@ -75,10 +99,52 @@ export function MentorConnection({ userId }: MentorConnectionProps): JSX.Element
 
   const loadConnections = async (): Promise<void> => {
     try {
-      const response = await legacyApiCall(`/api/spiritual-formation/mentors/connections/${userId}`);
-      if (!response.ok) throw new Error('Failed to load connections');
-      const data = await response.json();
-      setConnections(data.data);
+      const { data: rels, error: relErr } = await supabase
+        .from('mentorship_relationships')
+        .select('id, mentor_id, status, start_date, total_sessions, updated_at')
+        .eq('mentee_id', userId);
+      if (relErr) throw relErr;
+
+      const { data: reqs, error: reqErr } = await supabase
+        .from('mentorship_requests')
+        .select('id, mentor_id, status, created_at')
+        .eq('student_id', userId)
+        .eq('status', 'pending');
+      if (reqErr) throw reqErr;
+
+      const mentorIds = Array.from(
+        new Set([...(rels ?? []).map(r => r.mentor_id), ...(reqs ?? []).map(r => r.mentor_id)].filter(Boolean) as string[])
+      );
+
+      const profilesById: Record<string, SpiritualMentor> = {};
+      if (mentorIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, avatar_url, spiritual_profile, academic_profile')
+          .in('id', mentorIds);
+        (profs ?? []).forEach(p => { profilesById[p.id] = profileToMentor(p); });
+      }
+
+      const fromRels: MentorConnection[] = (rels ?? []).map(r => ({
+        id: r.id,
+        mentorId: r.mentor_id,
+        mentor: profilesById[r.mentor_id] ?? profileToMentor({ id: r.mentor_id }),
+        status: (r.status === 'active' ? 'active' : r.status === 'completed' ? 'completed' : 'pending'),
+        startedAt: new Date(r.start_date ?? r.updated_at ?? Date.now()),
+        lastContact: r.updated_at ? new Date(r.updated_at) : undefined,
+        sessionsCompleted: r.total_sessions ?? 0,
+      }));
+
+      const fromReqs: MentorConnection[] = (reqs ?? []).map(r => ({
+        id: r.id,
+        mentorId: r.mentor_id as string,
+        mentor: profilesById[r.mentor_id as string] ?? profileToMentor({ id: r.mentor_id }),
+        status: 'pending',
+        startedAt: new Date(r.created_at ?? Date.now()),
+        sessionsCompleted: 0,
+      }));
+
+      setConnections([...fromRels, ...fromReqs]);
     } catch (error) {
       console.error('Error loading connections:', error);
     }
@@ -87,18 +153,30 @@ export function MentorConnection({ userId }: MentorConnectionProps): JSX.Element
   const handleConnect = async (mentorId: string): Promise<void> => {
     try {
       setLoading(true);
-      const response = await legacyApiCall('/api/spiritual-formation/mentors/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, mentorId })
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('current_institution_id')
+        .eq('id', userId)
+        .maybeSingle();
+      const institutionId = profile?.current_institution_id;
+      if (!institutionId) {
+        toast.error('Please join an institution before requesting a mentor');
+        return;
+      }
+      const { error } = await supabase.from('mentorship_requests').insert({
+        student_id: userId,
+        mentor_id: mentorId,
+        institution_id: institutionId,
+        status: 'pending',
+        message: 'Requesting spiritual mentorship',
       });
-
-      if (!response.ok) throw new Error('Failed to connect with mentor');
-      
+      if (error) throw error;
+      toast.success('Mentor request sent');
       await loadConnections();
       setSelectedMentor(null);
     } catch (error) {
       console.error('Error connecting with mentor:', error);
+      toast.error('Failed to send mentor request');
     } finally {
       setLoading(false);
     }
