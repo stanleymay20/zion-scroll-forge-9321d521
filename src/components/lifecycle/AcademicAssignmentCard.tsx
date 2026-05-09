@@ -65,9 +65,14 @@ export function AcademicAssignmentCard() {
   return (
     <Card className="border-primary/20">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-serif flex items-center gap-2">
-          <GraduationCap className="h-4 w-4 text-primary" />
-          Your Academic Assignment
+        <CardTitle className="text-base font-serif flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <GraduationCap className="h-4 w-4 text-primary" />
+            Your Academic Assignment
+          </span>
+          <Badge variant="outline" className="text-[10px] gap-1 font-normal">
+            <Lock className="h-3 w-3" /> Locked identity
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
@@ -78,9 +83,12 @@ export function AcademicAssignmentCard() {
           <Field icon={Sparkles} label="SUYAS Stage" value={profile.suyas_track ?? profile.academic_level ?? "—"} />
         </div>
         {profile.student_id_code && (
-          <div className="flex items-center gap-2 pt-1 border-t">
+          <div className="flex items-center gap-2 pt-1 border-t flex-wrap">
             <Badge variant="secondary" className="font-mono text-xs">{profile.student_id_code}</Badge>
             <Badge variant="outline" className="capitalize text-xs">{profile.academic_status ?? "—"}</Badge>
+            <div className="ml-auto">
+              <TransferRequestDialog currentProgramId={profile.program_id} />
+            </div>
           </div>
         )}
         {first && (
