@@ -3,14 +3,16 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, GraduationCap, Users, Sparkles, BookMarked, ArrowRight } from "lucide-react";
+import { Building2, GraduationCap, Users, Sparkles, BookMarked, ArrowRight, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { LockedCourseCard } from "./LockedCourseCard";
+import { TransferRequestDialog } from "@/components/transfer/TransferRequestDialog";
 
 interface SAP {
   faculty_name: string | null;
   program_name: string | null;
+  program_id: string | null;
   cohort_label: string | null;
   suyas_track: string | null;
   academic_level: string | null;
