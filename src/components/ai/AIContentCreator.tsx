@@ -81,7 +81,7 @@ export const AIContentCreator: React.FC = () => {
         ? '/api/ai-unified/content/assessment'
         : '/api/ai-unified/content/resources';
 
-      const response = await fetch(endpoint, {
+      const response = await legacyApiCall(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
