@@ -55,20 +55,45 @@ export function PaymentHistory({ userId }: PaymentHistoryProps) {
   const fetchPaymentHistory = async () => {
     setLoading(true);
     try {
-      const response = await legacyApiCall('/api/payments/history', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const { data: invs, error } = await supabase
+        .from('invoices')
+        .select('id, number, status, amount_cents, currency, description, pdf_url, issued_at, paid_at')
+        .eq('user_id', userId)
+        .order('issued_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch payment history');
+      const invoiceIds = (invs ?? []).map((i: any) => i.id);
+      let refundsByInvoice: Record<string, number> = {};
+      if (invoiceIds.length > 0) {
+        const { data: refs } = await supabase
+          .from('refund_requests')
+          .select('invoice_id, amount_cents, status')
+          .in('invoice_id', invoiceIds)
+          .in('status', ['approved', 'refunded']);
+        for (const r of refs ?? []) {
+          if (r.invoice_id) {
+            refundsByInvoice[r.invoice_id] = (refundsByInvoice[r.invoice_id] || 0) + (r.amount_cents || 0);
+          }
+        }
       }
 
-      setPayments(data.payments);
-      setHasMore(data.hasMore);
+      const mapped: PaymentHistoryItem[] = (invs ?? []).map((row: any) => {
+        const refunded = !!refundsByInvoice[row.id] || row.status === 'refunded';
+        return {
+          id: row.id,
+          amount: row.amount_cents,
+          currency: row.currency,
+          status: row.status === 'paid' ? 'succeeded' : row.status === 'open' || row.status === 'draft' ? 'pending' : row.status === 'void' || row.status === 'uncollectible' ? 'failed' : row.status,
+          description: row.description || row.number,
+          created: new Date(row.paid_at || row.issued_at),
+          receiptUrl: row.pdf_url || undefined,
+          refunded,
+          refundAmount: refundsByInvoice[row.id],
+        };
+      });
+      setPayments(mapped);
+      setHasMore(false);
     } catch (err: any) {
       toast({
         title: 'Error Loading Payment History',
@@ -80,9 +105,10 @@ export function PaymentHistory({ userId }: PaymentHistoryProps) {
     }
   };
 
-  useState(() => {
-    fetchPaymentHistory();
-  });
+  useEffect(() => {
+    if (userId) fetchPaymentHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const formatAmount = (cents: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
