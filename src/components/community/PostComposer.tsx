@@ -94,33 +94,10 @@ export const PostComposer: React.FC<PostComposerProps> = ({ onPostCreated, onCan
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('content', content);
-      formData.append('type', postType);
-      formData.append('visibility', visibility);
-      formData.append('isPrayerRequest', isPrayerRequest.toString());
-
-      // Add media files
-      mediaFiles.forEach((file, index) => {
-        formData.append('media', file);
-      });
-
-      const response = await legacyApiCall('/api/community/posts', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create post');
-      }
-
-      // Clean up preview URLs
-      mediaPreview.forEach(url => URL.revokeObjectURL(url));
-
+      // Extract hashtags from content
+      const hashtags = Array.from(content.matchAll(/#(\w+)/g)).map((m) => m[1]);
+      await createPost({ content, hashtags });
+      mediaPreview.forEach((url) => URL.revokeObjectURL(url));
       onPostCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create post');
