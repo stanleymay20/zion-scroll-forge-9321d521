@@ -1,5 +1,6 @@
 import { QRCodeSVG } from "qrcode.react";
 import { ShieldCheck } from "lucide-react";
+import chancellorSignature from "@/assets/chancellor-signature.jpeg";
 
 interface Props {
   certNumber: string;
