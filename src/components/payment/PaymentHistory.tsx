@@ -134,27 +134,24 @@ export function PaymentHistory({ userId }: PaymentHistoryProps) {
     );
   };
 
-  const handleDownloadReceipt = async (paymentIntentId: string) => {
+  const handleDownloadReceipt = async (invoiceId: string) => {
     try {
-      const response = await legacyApiCall(`/api/payments/receipt/${paymentIntentId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to generate receipt');
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('pdf_url, number')
+        .eq('id', invoiceId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data?.pdf_url) {
+        toast({
+          title: 'Receipt Unavailable',
+          description: 'No receipt PDF has been generated for this payment yet.',
+          variant: 'destructive',
+        });
+        return;
       }
-
-      // Open receipt URL in new tab
-      window.open(data.receiptUrl, '_blank');
-
-      toast({
-        title: '✝️ Receipt Downloaded',
-        description: 'Your receipt has been opened in a new tab.',
-      });
+      window.open(data.pdf_url, '_blank');
+      toast({ title: 'Receipt Opened', description: `Invoice ${data.number} opened in a new tab.` });
     } catch (err: any) {
       toast({
         title: 'Error Downloading Receipt',
