@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { CHANCELLOR_SIGNATURE_DATA_URI } from "./signature.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -125,11 +126,12 @@ function generateCertificateHTML(
     <div class="footer">
       <div class="signature-block">
         <div class="signature-line"></div>
-        <div class="signature-title">Dean of Faculty</div>
+        <div class="signature-title">Office of the Registrar</div>
       </div>
       <div class="signature-block">
+        <img src="${CHANCELLOR_SIGNATURE_DATA_URI}" alt="Founder & Chancellor signature" style="height:48px;display:block;margin:0 auto -8px;object-fit:contain;" />
         <div class="signature-line"></div>
-        <div class="signature-title">Academic Director</div>
+        <div class="signature-title">Founder &amp; Chancellor</div>
       </div>
     </div>
     <div class="cross">✝️ Jesus Christ is Lord</div>
