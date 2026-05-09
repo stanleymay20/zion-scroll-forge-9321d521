@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -69,28 +69,23 @@ export function RefundRequest({
 
     setProcessing(true);
     try {
-      const response = await legacyApiCall('/api/payments/refund-request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          paymentIntentId,
-          reason,
-          explanation,
-        }),
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id;
+      if (!userId) throw new Error('You must be signed in to request a refund.');
+
+      const { error } = await supabase.from('refund_requests').insert({
+        user_id: userId,
+        invoice_id: paymentIntentId,
+        amount_cents: amount,
+        reason,
+        details: explanation,
+        status: 'pending',
       });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to submit refund request');
-      }
+      if (error) throw error;
 
       setSuccess(true);
       toast({
-        title: '✝️ Refund Request Submitted',
+        title: 'Refund Request Submitted',
         description: 'Your refund request has been submitted and will be reviewed by our team.',
       });
 

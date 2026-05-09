@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,16 +54,21 @@ export function BillingAddressManagement({ userId, onUpdate }: BillingAddressMan
   const fetchBillingAddress = async () => {
     setLoading(true);
     try {
-      const response = await legacyApiCall('/api/payments/billing-address', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.address) {
-        setAddress(data.address);
+      const { data, error } = await supabase
+        .from('billing_addresses')
+        .select('line1, line2, city, state, postal_code, country')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error;
+      if (data) {
+        setAddress({
+          line1: data.line1 ?? '',
+          line2: data.line2 ?? '',
+          city: data.city ?? '',
+          state: data.state ?? '',
+          postalCode: data.postal_code ?? '',
+          country: data.country ?? 'US',
+        });
       }
     } catch (err: any) {
       toast({
@@ -79,23 +84,28 @@ export function BillingAddressManagement({ userId, onUpdate }: BillingAddressMan
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await legacyApiCall('/api/payments/billing-address', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(address),
-      });
+      const { data: auth } = await supabase.auth.getUser();
+      const authedId = auth?.user?.id;
+      if (!authedId) throw new Error('You must be signed in.');
 
-      const data = await response.json();
+      const payload = {
+        user_id: authedId,
+        full_name: auth?.user?.email ?? 'Account Holder',
+        line1: address.line1,
+        line2: address.line2 || null,
+        city: address.city,
+        state: address.state || null,
+        postal_code: address.postalCode,
+        country: address.country,
+      };
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to update billing address');
-      }
+      const { error } = await supabase
+        .from('billing_addresses')
+        .upsert(payload, { onConflict: 'user_id' });
+      if (error) throw error;
 
       toast({
-        title: '✝️ Billing Address Updated',
+        title: 'Billing Address Updated',
         description: 'Your billing address has been saved successfully.',
       });
 

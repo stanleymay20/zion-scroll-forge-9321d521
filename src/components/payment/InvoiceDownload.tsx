@@ -3,8 +3,8 @@
  * "We establish this invoice system not in the wisdom of Babylon, but by the breath of the Spirit"
  */
 
-import { useState } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,19 +46,27 @@ export function InvoiceDownload({ userId }: InvoiceDownloadProps) {
   const fetchInvoices = async () => {
     setLoading(true);
     try {
-      const response = await legacyApiCall('/api/payments/invoices', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('id, number, status, amount_cents, currency, description, pdf_url, issued_at, paid_at, created_at')
+        .eq('user_id', userId)
+        .order('issued_at', { ascending: false });
 
-      const data = await response.json();
+      if (error) throw error;
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch invoices');
-      }
-
-      setInvoices(data.invoices);
+      const mapped: Invoice[] = (data ?? []).map((row: any) => ({
+        id: row.id,
+        invoiceId: row.number,
+        invoiceUrl: row.pdf_url || '',
+        invoicePdf: row.pdf_url || '',
+        status: row.status,
+        amountDue: row.amount_cents,
+        currency: row.currency,
+        dueDate: row.paid_at ? new Date(row.paid_at) : undefined,
+        created: new Date(row.issued_at || row.created_at),
+        description: row.description || '',
+      }));
+      setInvoices(mapped);
     } catch (err: any) {
       toast({
         title: 'Error Loading Invoices',
@@ -70,9 +78,10 @@ export function InvoiceDownload({ userId }: InvoiceDownloadProps) {
     }
   };
 
-  useState(() => {
-    fetchInvoices();
-  });
+  useEffect(() => {
+    if (userId) fetchInvoices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const formatAmount = (cents: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {

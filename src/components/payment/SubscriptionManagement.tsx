@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,27 +54,21 @@ export function SubscriptionManagement({ subscription, onUpdate }: SubscriptionM
   };
 
   const handleCancelSubscription = async (immediate: boolean) => {
+    if (!subscription?.subscriptionId) return;
     setLoading(true);
     try {
-      const response = await legacyApiCall(`/api/payments/subscription/${subscription?.subscriptionId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          cancelImmediately: immediate,
-        }),
-      });
+      const update: any = immediate
+        ? { status: 'canceled', cancel_at_period_end: false }
+        : { cancel_at_period_end: true };
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to cancel subscription');
-      }
+      const { error } = await supabase
+        .from('subscriptions')
+        .update(update)
+        .eq('id', subscription.subscriptionId);
+      if (error) throw error;
 
       toast({
-        title: '✝️ Subscription Cancelled',
+        title: 'Subscription Cancelled',
         description: immediate
           ? 'Your subscription has been cancelled immediately.'
           : 'Your subscription will be cancelled at the end of the billing period.',
@@ -94,27 +88,17 @@ export function SubscriptionManagement({ subscription, onUpdate }: SubscriptionM
   };
 
   const handleReactivateSubscription = async () => {
+    if (!subscription?.subscriptionId) return;
     setLoading(true);
     try {
-      const response = await legacyApiCall(`/api/payments/subscription/${subscription?.subscriptionId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          cancelAtPeriodEnd: false,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to reactivate subscription');
-      }
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ cancel_at_period_end: false, status: 'active' })
+        .eq('id', subscription.subscriptionId);
+      if (error) throw error;
 
       toast({
-        title: '✝️ Subscription Reactivated',
+        title: 'Subscription Reactivated',
         description: 'Your subscription has been reactivated successfully.',
       });
 

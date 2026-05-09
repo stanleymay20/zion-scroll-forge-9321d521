@@ -3,8 +3,8 @@
  * "We establish this payment history not in the wisdom of Babylon, but by the breath of the Spirit"
  */
 
-import { useState } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -55,20 +55,45 @@ export function PaymentHistory({ userId }: PaymentHistoryProps) {
   const fetchPaymentHistory = async () => {
     setLoading(true);
     try {
-      const response = await legacyApiCall('/api/payments/history', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const { data: invs, error } = await supabase
+        .from('invoices')
+        .select('id, number, status, amount_cents, currency, description, pdf_url, issued_at, paid_at')
+        .eq('user_id', userId)
+        .order('issued_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch payment history');
+      const invoiceIds = (invs ?? []).map((i: any) => i.id);
+      let refundsByInvoice: Record<string, number> = {};
+      if (invoiceIds.length > 0) {
+        const { data: refs } = await supabase
+          .from('refund_requests')
+          .select('invoice_id, amount_cents, status')
+          .in('invoice_id', invoiceIds)
+          .in('status', ['approved', 'refunded']);
+        for (const r of refs ?? []) {
+          if (r.invoice_id) {
+            refundsByInvoice[r.invoice_id] = (refundsByInvoice[r.invoice_id] || 0) + (r.amount_cents || 0);
+          }
+        }
       }
 
-      setPayments(data.payments);
-      setHasMore(data.hasMore);
+      const mapped: PaymentHistoryItem[] = (invs ?? []).map((row: any) => {
+        const refunded = !!refundsByInvoice[row.id] || row.status === 'refunded';
+        return {
+          id: row.id,
+          amount: row.amount_cents,
+          currency: row.currency,
+          status: row.status === 'paid' ? 'succeeded' : row.status === 'open' || row.status === 'draft' ? 'pending' : row.status === 'void' || row.status === 'uncollectible' ? 'failed' : row.status,
+          description: row.description || row.number,
+          created: new Date(row.paid_at || row.issued_at),
+          receiptUrl: row.pdf_url || undefined,
+          refunded,
+          refundAmount: refundsByInvoice[row.id],
+        };
+      });
+      setPayments(mapped);
+      setHasMore(false);
     } catch (err: any) {
       toast({
         title: 'Error Loading Payment History',
@@ -80,9 +105,10 @@ export function PaymentHistory({ userId }: PaymentHistoryProps) {
     }
   };
 
-  useState(() => {
-    fetchPaymentHistory();
-  });
+  useEffect(() => {
+    if (userId) fetchPaymentHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const formatAmount = (cents: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -108,27 +134,24 @@ export function PaymentHistory({ userId }: PaymentHistoryProps) {
     );
   };
 
-  const handleDownloadReceipt = async (paymentIntentId: string) => {
+  const handleDownloadReceipt = async (invoiceId: string) => {
     try {
-      const response = await legacyApiCall(`/api/payments/receipt/${paymentIntentId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to generate receipt');
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('pdf_url, number')
+        .eq('id', invoiceId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data?.pdf_url) {
+        toast({
+          title: 'Receipt Unavailable',
+          description: 'No receipt PDF has been generated for this payment yet.',
+          variant: 'destructive',
+        });
+        return;
       }
-
-      // Open receipt URL in new tab
-      window.open(data.receiptUrl, '_blank');
-
-      toast({
-        title: '✝️ Receipt Downloaded',
-        description: 'Your receipt has been opened in a new tab.',
-      });
+      window.open(data.pdf_url, '_blank');
+      toast({ title: 'Receipt Opened', description: `Invoice ${data.number} opened in a new tab.` });
     } catch (err: any) {
       toast({
         title: 'Error Downloading Receipt',
