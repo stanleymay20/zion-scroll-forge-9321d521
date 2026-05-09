@@ -323,12 +323,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onUpdate, onDelete }) 
           variant={isLiked ? "default" : "ghost"}
           size="sm"
           onClick={handleLike}
-          disabled
-          title="Launching with the next release"
           className="flex-1"
         >
           <Heart className={`w-4 h-4 mr-2 ${isLiked ? 'fill-current' : ''}`} />
-          {isLiked ? 'Liked' : 'Like'}
+          {likesCount > 0 ? `${likesCount} ` : ''}{isLiked ? 'Liked' : 'Like'}
         </Button>
         <Button
           variant="ghost"
