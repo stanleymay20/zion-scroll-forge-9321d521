@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -55,7 +56,7 @@ export function SubscriptionManagement({ subscription, onUpdate }: SubscriptionM
   const handleCancelSubscription = async (immediate: boolean) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/payments/subscription/${subscription?.subscriptionId}`, {
+      const response = await legacyApiCall(`/api/payments/subscription/${subscription?.subscriptionId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -95,7 +96,7 @@ export function SubscriptionManagement({ subscription, onUpdate }: SubscriptionM
   const handleReactivateSubscription = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/payments/subscription/${subscription?.subscriptionId}`, {
+      const response = await legacyApiCall(`/api/payments/subscription/${subscription?.subscriptionId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +41,7 @@ const CourseHistoryList: React.FC<CourseHistoryListProps> = ({ studentId }) => {
     try {
       setLoading(true);
       const { data: session } = await supabase.auth.getSession();
-      const response = await fetch(`/api/profile/${studentId}/course-history`, {
+      const response = await legacyApiCall(`/api/profile/${studentId}/course-history`, {
         headers: {
           'Authorization': `Bearer ${session?.session?.access_token}`
         }

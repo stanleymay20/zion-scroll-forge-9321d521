@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { UserProfile } from '@/types/community';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,7 @@ export const SuggestedUsers: React.FC = () => {
 
   const loadSuggestedUsers = async () => {
     try {
-      const response = await fetch('/api/community/users/suggested?limit=5', {
+      const response = await legacyApiCall('/api/community/users/suggested?limit=5', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -39,7 +40,7 @@ export const SuggestedUsers: React.FC = () => {
 
   const handleFollow = async (userId: string) => {
     try {
-      const response = await fetch(`/api/community/users/${userId}/follow`, {
+      const response = await legacyApiCall(`/api/community/users/${userId}/follow`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

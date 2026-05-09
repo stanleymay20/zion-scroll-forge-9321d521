@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -61,7 +62,7 @@ export function MentorConnection({ userId }: MentorConnectionProps): JSX.Element
   const loadMentors = async (): Promise<void> => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/spiritual-formation/mentors/recommended/${userId}`);
+      const response = await legacyApiCall(`/api/spiritual-formation/mentors/recommended/${userId}`);
       if (!response.ok) throw new Error('Failed to load mentors');
       const data = await response.json();
       setMentors(data.data);
@@ -74,7 +75,7 @@ export function MentorConnection({ userId }: MentorConnectionProps): JSX.Element
 
   const loadConnections = async (): Promise<void> => {
     try {
-      const response = await fetch(`/api/spiritual-formation/mentors/connections/${userId}`);
+      const response = await legacyApiCall(`/api/spiritual-formation/mentors/connections/${userId}`);
       if (!response.ok) throw new Error('Failed to load connections');
       const data = await response.json();
       setConnections(data.data);
@@ -86,7 +87,7 @@ export function MentorConnection({ userId }: MentorConnectionProps): JSX.Element
   const handleConnect = async (mentorId: string): Promise<void> => {
     try {
       setLoading(true);
-      const response = await fetch('/api/spiritual-formation/mentors/connect', {
+      const response = await legacyApiCall('/api/spiritual-formation/mentors/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, mentorId })

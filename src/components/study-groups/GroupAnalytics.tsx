@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { BarChart3, TrendingUp, Users, FileText, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GroupAnalytics as GroupAnalyticsType } from '@/types/study-group';
@@ -25,7 +26,7 @@ export const GroupAnalytics: React.FC<GroupAnalyticsProps> = ({ groupId }) => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/study-groups/${groupId}/analytics`, {
+      const response = await legacyApiCall(`/api/study-groups/${groupId}/analytics`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

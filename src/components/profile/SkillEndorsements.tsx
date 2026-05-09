@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -74,7 +75,7 @@ const SkillEndorsements: React.FC<SkillEndorsementsProps> = ({
     try {
       setLoading(true);
       const { data: session } = await supabase.auth.getSession();
-      const response = await fetch(`/api/profile/${studentId}/skills`, {
+      const response = await legacyApiCall(`/api/profile/${studentId}/skills`, {
         headers: {
           'Authorization': `Bearer ${session?.session?.access_token}`
         }
@@ -113,7 +114,7 @@ const SkillEndorsements: React.FC<SkillEndorsementsProps> = ({
   const handleAddSkill = async () => {
     try {
       const { data: session } = await supabase.auth.getSession();
-      const response = await fetch(`/api/profile/${studentId}/skills`, {
+      const response = await legacyApiCall(`/api/profile/${studentId}/skills`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

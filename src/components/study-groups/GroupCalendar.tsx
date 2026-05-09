@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Calendar as CalendarIcon, Plus, Video, MapPin, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,7 +55,7 @@ export const GroupCalendar: React.FC<GroupCalendarProps> = ({ groupId }) => {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/study-groups/${groupId}/events`, {
+      const response = await legacyApiCall(`/api/study-groups/${groupId}/events`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -80,7 +81,7 @@ export const GroupCalendar: React.FC<GroupCalendarProps> = ({ groupId }) => {
     e.preventDefault();
 
     try {
-      const response = await fetch(`/api/study-groups/${groupId}/events`, {
+      const response = await legacyApiCall(`/api/study-groups/${groupId}/events`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -115,7 +116,7 @@ export const GroupCalendar: React.FC<GroupCalendarProps> = ({ groupId }) => {
 
   const handleUpdateAttendance = async (eventId: string, status: AttendanceStatus) => {
     try {
-      const response = await fetch(`/api/study-groups/events/${eventId}/attendance`, {
+      const response = await legacyApiCall(`/api/study-groups/events/${eventId}/attendance`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

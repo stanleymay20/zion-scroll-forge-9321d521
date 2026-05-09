@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Save, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,7 @@ export const GroupSettings: React.FC<GroupSettingsProps> = ({ group, onUpdate })
         duration: group.meetingSchedule?.duration || 60
       } : undefined;
 
-      const response = await fetch(`/api/study-groups/${group.id}`, {
+      const response = await legacyApiCall(`/api/study-groups/${group.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -94,7 +95,7 @@ export const GroupSettings: React.FC<GroupSettingsProps> = ({ group, onUpdate })
     }
 
     try {
-      const response = await fetch(`/api/study-groups/${group.id}`, {
+      const response = await legacyApiCall(`/api/study-groups/${group.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

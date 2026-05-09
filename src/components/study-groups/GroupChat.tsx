@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Send, Paperclip, Smile } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,7 +41,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ groupId }) => {
   const fetchMessages = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/chat/rooms/group-${groupId}/messages`, {
+      const response = await legacyApiCall(`/api/chat/rooms/group-${groupId}/messages`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -69,7 +70,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ groupId }) => {
     if (!newMessage.trim()) return;
 
     try {
-      const response = await fetch('/api/chat/messages', {
+      const response = await legacyApiCall('/api/chat/messages', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { useAuth } from '@/contexts/AuthContext';
 import { CommentWithAuthor } from '@/types/community';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -37,7 +38,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommen
 
   const loadComments = async () => {
     try {
-      const response = await fetch(`/api/community/posts/${postId}/comments`, {
+      const response = await legacyApiCall(`/api/community/posts/${postId}/comments`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -59,7 +60,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommen
 
     setSubmitting(true);
     try {
-      const response = await fetch(`/api/community/posts/${postId}/comments`, {
+      const response = await legacyApiCall(`/api/community/posts/${postId}/comments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -103,7 +104,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommen
 
   const handleLikeComment = async (commentId: string) => {
     try {
-      const response = await fetch(`/api/community/comments/${commentId}/like`, {
+      const response = await legacyApiCall(`/api/community/comments/${commentId}/like`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -139,7 +140,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommen
     if (!confirm('Are you sure you want to delete this comment?')) return;
 
     try {
-      const response = await fetch(`/api/community/comments/${commentId}`, {
+      const response = await legacyApiCall(`/api/community/comments/${commentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
