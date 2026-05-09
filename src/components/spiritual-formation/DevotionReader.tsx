@@ -5,7 +5,8 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -43,21 +44,25 @@ export function DevotionReader({ devotion, streak, userId }: DevotionReaderProps
   const handleComplete = async (): Promise<void> => {
     try {
       setLoading(true);
-      const response = await legacyApiCall('/api/devotions/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          devotionId: devotion.id,
-          notes,
-          rating: rating > 0 ? rating : undefined
-        })
-      });
+      const { error } = await supabase
+        .from('devotional_completions')
+        .upsert(
+          {
+            user_id: userId,
+            devotional_id: devotion.id,
+            note: notes || null,
+            rating: rating > 0 ? rating : null,
+            completed_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,devotional_id' }
+        );
 
-      if (!response.ok) throw new Error('Failed to complete devotion');
+      if (error) throw error;
+      toast.success('Devotion completed');
       setCompleted(true);
     } catch (error) {
       console.error('Error completing devotion:', error);
+      toast.error('Failed to mark devotion complete');
     } finally {
       setLoading(false);
     }
