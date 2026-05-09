@@ -934,6 +934,78 @@ export type Database = {
         }
         Relationships: []
       }
+      capstone_tracks: {
+        Row: {
+          created_at: string
+          description: string
+          duration_weeks: number
+          faculty_area: string
+          id: string
+          learning_outcomes: string[]
+          level: number
+          prerequisites: string[]
+          primary_source_reading_list: Json
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          duration_weeks?: number
+          faculty_area: string
+          id?: string
+          learning_outcomes?: string[]
+          level: number
+          prerequisites?: string[]
+          primary_source_reading_list?: Json
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          duration_weeks?: number
+          faculty_area?: string
+          id?: string
+          learning_outcomes?: string[]
+          level?: number
+          prerequisites?: string[]
+          primary_source_reading_list?: Json
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catalog_expansion_progress: {
+        Row: {
+          current_course_count: number
+          faculty_area: string
+          id: string
+          notes: string | null
+          target_course_count: number
+          updated_at: string
+        }
+        Insert: {
+          current_course_count?: number
+          faculty_area: string
+          id?: string
+          notes?: string | null
+          target_course_count?: number
+          updated_at?: string
+        }
+        Update: {
+          current_course_count?: number
+          faculty_area?: string
+          id?: string
+          notes?: string | null
+          target_course_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       certificate_verifications: {
         Row: {
           cert_number: string
@@ -5222,6 +5294,54 @@ export type Database = {
         }
         Relationships: []
       }
+      oral_defenses: {
+        Row: {
+          abstract: string | null
+          candidate_name: string
+          created_at: string
+          defense_date: string
+          degree_title: string
+          examiner_names: string[]
+          faculty_area: string
+          id: string
+          is_public: boolean
+          recording_url: string | null
+          scrollchain_hash: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          abstract?: string | null
+          candidate_name: string
+          created_at?: string
+          defense_date: string
+          degree_title: string
+          examiner_names?: string[]
+          faculty_area: string
+          id?: string
+          is_public?: boolean
+          recording_url?: string | null
+          scrollchain_hash?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          abstract?: string | null
+          candidate_name?: string
+          created_at?: string
+          defense_date?: string
+          degree_title?: string
+          examiner_names?: string[]
+          faculty_area?: string
+          id?: string
+          is_public?: boolean
+          recording_url?: string | null
+          scrollchain_hash?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orientation_progress: {
         Row: {
           completed_at: string
@@ -5498,6 +5618,48 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      primary_source_collections: {
+        Row: {
+          access_type: string
+          created_at: string
+          description: string
+          external_url: string | null
+          faculty_area: string
+          id: string
+          is_active: boolean
+          item_count: number
+          name: string
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          access_type?: string
+          created_at?: string
+          description: string
+          external_url?: string | null
+          faculty_area: string
+          id?: string
+          is_active?: boolean
+          item_count?: number
+          name: string
+          provider: string
+          updated_at?: string
+        }
+        Update: {
+          access_type?: string
+          created_at?: string
+          description?: string
+          external_url?: string | null
+          faculty_area?: string
+          id?: string
+          is_active?: boolean
+          item_count?: number
+          name?: string
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -6063,6 +6225,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      research_publications: {
+        Row: {
+          abstract: string | null
+          authors: string[]
+          created_at: string
+          doi: string | null
+          external_url: string | null
+          faculty_area: string
+          id: string
+          is_peer_reviewed: boolean
+          status: string
+          title: string
+          updated_at: string
+          venue: string
+          year: number
+        }
+        Insert: {
+          abstract?: string | null
+          authors?: string[]
+          created_at?: string
+          doi?: string | null
+          external_url?: string | null
+          faculty_area: string
+          id?: string
+          is_peer_reviewed?: boolean
+          status?: string
+          title: string
+          updated_at?: string
+          venue: string
+          year: number
+        }
+        Update: {
+          abstract?: string | null
+          authors?: string[]
+          created_at?: string
+          doi?: string | null
+          external_url?: string | null
+          faculty_area?: string
+          id?: string
+          is_peer_reviewed?: boolean
+          status?: string
+          title?: string
+          updated_at?: string
+          venue?: string
+          year?: number
+        }
+        Relationships: []
       }
       reward_ledger: {
         Row: {
