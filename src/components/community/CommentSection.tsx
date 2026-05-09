@@ -172,15 +172,11 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommen
     if (!confirm('Are you sure you want to delete this comment?')) return;
 
     try {
-      const response = await legacyApiCall(`/api/community/comments/${commentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to delete comment');
-
+      const { error } = await supabase
+        .from('post_comments')
+        .delete()
+        .eq('id', commentId);
+      if (error) throw error;
       setComments(prev => prev.filter(c => c.id !== commentId));
     } catch (error) {
       console.error('Error deleting comment:', error);
