@@ -121,18 +121,53 @@ export const MobileNavigation = () => {
       </div>
 
       {/* Bottom Tab Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t border-border/50 safe-bottom">
-        <div className="flex justify-around items-center h-14 px-1">
+      <nav
+        aria-label="Primary"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t border-border/50 safe-bottom"
+      >
+        <div className="flex justify-around items-stretch h-16 px-1">
           {bottomNavItems.map((item) => {
+            const active = !item.isMenu && isActive(item.href);
+            const baseClass = cn(
+              "relative flex-1 flex flex-col items-center justify-center gap-0.5 px-1 touch-target touch-feedback transition-colors",
+              active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+            );
+            const content = (
+              <>
+                {/* Active top indicator */}
+                <span
+                  className={cn(
+                    "absolute top-0 left-1/2 -translate-x-1/2 h-[3px] w-8 rounded-b-full transition-all",
+                    active ? "bg-primary opacity-100" : "opacity-0"
+                  )}
+                />
+                <item.icon
+                  className={cn(
+                    "h-[22px] w-[22px] transition-transform",
+                    active && "scale-110"
+                  )}
+                  strokeWidth={active ? 2.4 : 2}
+                />
+                <span
+                  className={cn(
+                    "text-[10px] leading-none font-sans",
+                    active && "font-semibold"
+                  )}
+                >
+                  {item.label}
+                </span>
+              </>
+            );
+
             if (item.isMenu) {
               return (
                 <button
                   key="menu"
                   onClick={() => setIsMenuOpen(true)}
-                  className="flex flex-col items-center justify-center py-1.5 px-2 text-muted-foreground"
+                  aria-label="Open menu"
+                  className={baseClass}
                 >
-                  <item.icon className="h-5 w-5 mb-0.5" />
-                  <span className="text-[10px] font-sans">{item.label}</span>
+                  {content}
                 </button>
               );
             }
@@ -141,23 +176,15 @@ export const MobileNavigation = () => {
               <Link
                 key={item.href}
                 to={item.href}
-                className={cn(
-                  "flex flex-col items-center justify-center py-1.5 px-2 transition-colors",
-                  isActive(item.href) ? "text-primary" : "text-muted-foreground"
-                )}
+                aria-current={active ? "page" : undefined}
+                className={baseClass}
               >
-                <item.icon className={cn("h-5 w-5 mb-0.5", isActive(item.href) && "text-primary")} />
-                <span className={cn(
-                  "text-[10px] font-sans",
-                  isActive(item.href) && "font-semibold"
-                )}>
-                  {item.label}
-                </span>
+                {content}
               </Link>
             );
           })}
         </div>
-      </div>
+      </nav>
     </div>
   );
 };

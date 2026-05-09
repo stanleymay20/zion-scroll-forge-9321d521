@@ -91,11 +91,14 @@ export const Breadcrumbs = () => {
   }
 
   return (
-    <nav className="flex items-center space-x-1 text-sm text-muted-foreground mb-6">
+    <nav
+      aria-label="Breadcrumb"
+      className="flex items-center text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-5 overflow-x-auto hide-scrollbar whitespace-nowrap"
+    >
       {breadcrumbs.map((crumb, index) => (
-        <div key={crumb.href} className="flex items-center">
-          {index > 0 && <ChevronRight className="h-4 w-4 mx-2" />}
-          {index === 0 && <Home className="h-4 w-4 mr-2" />}
+        <div key={crumb.href} className="flex items-center shrink-0">
+          {index > 0 && <ChevronRight className="h-3.5 w-3.5 mx-1.5 opacity-60" />}
+          {index === 0 && <Home className="h-3.5 w-3.5 mr-1.5" />}
           {index === breadcrumbs.length - 1 ? (
             <span className="text-foreground font-medium">{crumb.label}</span>
           ) : (

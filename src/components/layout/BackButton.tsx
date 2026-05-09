@@ -23,10 +23,10 @@ export const BackButton = ({
       variant="ghost"
       size="sm"
       onClick={handleClick}
-      className={`font-sans -ml-2 ${className}`}
+      className={`font-sans -ml-2 h-8 px-2 text-muted-foreground hover:text-foreground ${className}`}
     >
-      <ArrowLeft className="w-4 h-4 mr-2" />
-      {label}
+      <ArrowLeft className="w-4 h-4 mr-1.5" />
+      <span className="text-sm">{label}</span>
     </Button>
   );
 };
