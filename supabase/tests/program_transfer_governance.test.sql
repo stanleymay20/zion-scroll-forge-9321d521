@@ -77,9 +77,11 @@ BEGIN
     RAISE EXCEPTION 'FIXTURE: need at least 3 active degree programs';
   END IF;
 
-  -- Stash fixtures in a temp table for the test block
+  -- Stash fixtures in a session-scoped temp table (no ON COMMIT DROP because
+  -- this DO runs in its own implicit transaction).
+  DROP TABLE IF EXISTS _fx;
   CREATE TEMP TABLE _fx(student uuid, other_student uuid, reviewer uuid,
-                        from_program uuid, to_program uuid, alt_program uuid) ON COMMIT DROP;
+                        from_program uuid, to_program uuid, alt_program uuid);
   INSERT INTO _fx VALUES (v_student, v_other_student, v_admin, v_from_program, v_to_program, v_alt_program);
 END$$;
 
