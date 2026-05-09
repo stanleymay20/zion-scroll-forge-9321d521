@@ -22,7 +22,7 @@ export default function CommunityFeed() {
   const [commentText, setCommentText] = useState<Record<string, string>>({});
 
   const { data: posts, isLoading } = useQuery({
-    queryKey: ["community-posts", activeInstitution?.id],
+    queryKey: ["community-posts", activeInstitution?.id, user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("community_posts")
@@ -32,12 +32,17 @@ export default function CommunityFeed() {
           post_comments(
             *,
             profiles:user_id(email)
-          )
+          ),
+          post_likes(user_id)
         `)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      return data;
+      return (data || []).map((p: any) => ({
+        ...p,
+        likes_total: p.post_likes?.length || 0,
+        liked_by_me: !!p.post_likes?.some((l: any) => l.user_id === user?.id),
+      }));
     },
     enabled: !!activeInstitution,
   });
@@ -69,6 +74,43 @@ export default function CommunityFeed() {
       toast({ title: "💬 Comment added!" });
     },
   });
+
+  const toggleLike = useMutation({
+    mutationFn: async ({ postId, liked }: { postId: string; liked: boolean }) => {
+      if (!user) throw new Error("Sign in required");
+      if (liked) {
+        const { error } = await supabase
+          .from("post_likes")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("post_likes")
+          .insert({ post_id: postId, user_id: user.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["community-posts"] });
+    },
+    onError: (err: any) => toast({ title: "Could not update like", description: err?.message, variant: "destructive" }),
+  });
+
+  const sharePost = async (postId: string) => {
+    const url = `${window.location.origin}/community/posts/${postId}`;
+    try {
+      if ((navigator as any).share) {
+        await (navigator as any).share({ title: "ScrollUniversity", url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Link copied" });
+    } catch {
+      toast({ title: "Could not share", variant: "destructive" });
+    }
+  };
 
   return (
     <PageTemplate title="Community Feed" description="Connect with fellow learners">
@@ -128,15 +170,21 @@ export default function CommunityFeed() {
                 <p className="whitespace-pre-wrap">{post.content}</p>
 
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <Button variant="ghost" size="sm" disabled title="Launching with the next release">
-                    <Heart className="mr-1 h-4 w-4" />
-                    Like
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleLike.mutate({ postId: post.id, liked: post.liked_by_me })}
+                    disabled={!user || toggleLike.isPending}
+                    className={post.liked_by_me ? "text-primary" : ""}
+                  >
+                    <Heart className={`mr-1 h-4 w-4 ${post.liked_by_me ? "fill-current" : ""}`} />
+                    {post.likes_total > 0 ? `${post.likes_total} ` : ""}Like
                   </Button>
-                  <Button variant="ghost" size="sm" disabled title="Launching with the next release">
+                  <Button variant="ghost" size="sm">
                     <MessageCircle className="mr-1 h-4 w-4" />
                     {post.post_comments?.length || 0} Comments
                   </Button>
-                  <Button variant="ghost" size="sm" disabled title="Launching with the next release">
+                  <Button variant="ghost" size="sm" onClick={() => sharePost(post.id)}>
                     <Share2 className="mr-1 h-4 w-4" />
                     Share
                   </Button>
