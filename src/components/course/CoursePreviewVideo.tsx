@@ -27,14 +27,23 @@ export function CoursePreviewVideo({
   const [isLoading, setIsLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const handlePlayPause = () => {
-    if (videoRef.current) {
+  const handlePlayPause = async () => {
+    const v = videoRef.current;
+    if (!v) return;
+    try {
       if (isPlaying) {
-        videoRef.current.pause();
+        v.pause();
+        setIsPlaying(false);
       } else {
-        videoRef.current.play();
+        setIsLoading(true);
+        await v.play();
+        setIsPlaying(true);
       }
-      setIsPlaying(!isPlaying);
+    } catch (err) {
+      console.error('Preview video play failed', err);
+      setIsPlaying(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
