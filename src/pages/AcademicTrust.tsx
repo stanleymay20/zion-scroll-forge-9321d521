@@ -216,7 +216,7 @@ export default function AcademicTrust() {
           </p>
           <div className="flex flex-wrap justify-center gap-3 pt-2">
             <Button asChild>
-              <Link to="/faculty-directory">
+              <Link to="/faculty-registry">
                 Faculty Registry <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -317,7 +317,7 @@ export default function AcademicTrust() {
 
           <div className="text-center">
             <Button asChild variant="outline">
-              <Link to="/faculty-directory">
+              <Link to="/faculty-registry">
                 Browse the Faculty Registry <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>

@@ -5743,6 +5743,75 @@ export type Database = {
           },
         ]
       }
+      public_faculty: {
+        Row: {
+          affiliation: string | null
+          bio: string | null
+          category: Database["public"]["Enums"]["faculty_category"]
+          contribution: string | null
+          created_at: string
+          credentials: string | null
+          display_order: number
+          full_name: string
+          google_scholar_url: string | null
+          id: string
+          is_active: boolean
+          linkedin_url: string | null
+          orcid_id: string | null
+          personal_url: string | null
+          photo_url: string | null
+          publications: Json
+          research_areas: string[]
+          title: string | null
+          updated_at: string
+          verification_status: Database["public"]["Enums"]["faculty_verification_status"]
+        }
+        Insert: {
+          affiliation?: string | null
+          bio?: string | null
+          category: Database["public"]["Enums"]["faculty_category"]
+          contribution?: string | null
+          created_at?: string
+          credentials?: string | null
+          display_order?: number
+          full_name: string
+          google_scholar_url?: string | null
+          id?: string
+          is_active?: boolean
+          linkedin_url?: string | null
+          orcid_id?: string | null
+          personal_url?: string | null
+          photo_url?: string | null
+          publications?: Json
+          research_areas?: string[]
+          title?: string | null
+          updated_at?: string
+          verification_status?: Database["public"]["Enums"]["faculty_verification_status"]
+        }
+        Update: {
+          affiliation?: string | null
+          bio?: string | null
+          category?: Database["public"]["Enums"]["faculty_category"]
+          contribution?: string | null
+          created_at?: string
+          credentials?: string | null
+          display_order?: number
+          full_name?: string
+          google_scholar_url?: string | null
+          id?: string
+          is_active?: boolean
+          linkedin_url?: string | null
+          orcid_id?: string | null
+          personal_url?: string | null
+          photo_url?: string | null
+          publications?: Json
+          research_areas?: string[]
+          title?: string | null
+          updated_at?: string
+          verification_status?: Database["public"]["Enums"]["faculty_verification_status"]
+        }
+        Relationships: []
+      }
       quality_audit_logs: {
         Row: {
           action_type: string
@@ -8804,6 +8873,13 @@ export type Database = {
         | "active_public"
         | "pilot_private"
         | "internal_development"
+      faculty_category:
+        | "founding_faculty"
+        | "visiting_scholar"
+        | "research_fellow"
+        | "advisory_faculty"
+        | "seminar_faculty"
+      faculty_verification_status: "pending" | "verified" | "retired"
       mentorship_session_type:
         | "initial_consultation"
         | "progress_review"
@@ -8973,6 +9049,14 @@ export const Constants = {
         "pilot_private",
         "internal_development",
       ],
+      faculty_category: [
+        "founding_faculty",
+        "visiting_scholar",
+        "research_fellow",
+        "advisory_faculty",
+        "seminar_faculty",
+      ],
+      faculty_verification_status: ["pending", "verified", "retired"],
       mentorship_session_type: [
         "initial_consultation",
         "progress_review",
