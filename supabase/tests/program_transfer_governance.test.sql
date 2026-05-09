@@ -56,8 +56,8 @@ BEGIN
     RAISE EXCEPTION 'FIXTURE: no accepted+enrolled student available — seed required';
   END IF;
 
-  -- Pick any other authenticated user as a non-owner (fallback to a privileged one if needed)
-  SELECT id INTO v_other_student FROM auth.users WHERE id <> v_student LIMIT 1;
+  -- Pick another existing profile as the non-owner (avoids querying auth schema)
+  SELECT id INTO v_other_student FROM public.profiles WHERE id <> v_student LIMIT 1;
 
   -- Pick an admin/registrar to act as reviewer
   SELECT user_id INTO v_admin FROM public.user_roles
