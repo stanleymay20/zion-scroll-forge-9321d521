@@ -224,6 +224,9 @@ export default function AcademicTrust() {
               <Link to="/outcomes">Graduate Outcomes</Link>
             </Button>
             <Button asChild variant="outline">
+              <Link to="/ivy-parity">Ivy Parity Initiative</Link>
+            </Button>
+            <Button asChild variant="outline">
               <Link to="/trust">Legal & Disclosures</Link>
             </Button>
           </div>

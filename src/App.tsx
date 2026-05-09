@@ -135,6 +135,12 @@ const SUYASAdmin = lazy(() => import("./pages/SUYASAdmin"));
 const TrustCenter = lazy(() => import("./pages/TrustCenter"));
 const AcademicTrust = lazy(() => import("./pages/AcademicTrust"));
 const FacultyRegistry = lazy(() => import("./pages/FacultyRegistry"));
+const IvyParity = lazy(() => import("./pages/IvyParity"));
+const CapstoneTracks = lazy(() => import("./pages/CapstoneTracks"));
+const ResearchPublications = lazy(() => import("./pages/ResearchPublications"));
+const OralDefenses = lazy(() => import("./pages/OralDefenses"));
+const PrimarySources = lazy(() => import("./pages/PrimarySources"));
+const CatalogExpansion = lazy(() => import("./pages/CatalogExpansion"));
 const AcademicIntegrity = lazy(() => import("./pages/AcademicIntegrity"));
 const TermsOfService = lazy(() => import("./pages/legal/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
@@ -303,6 +309,24 @@ const App = () => (
             </Route>
             <Route path="/faculty-registry" element={<PublicLayout />}>
               <Route index element={<FacultyRegistry />} />
+            </Route>
+            <Route path="/ivy-parity" element={<PublicLayout />}>
+              <Route index element={<IvyParity />} />
+            </Route>
+            <Route path="/capstone-tracks" element={<PublicLayout />}>
+              <Route index element={<CapstoneTracks />} />
+            </Route>
+            <Route path="/research-publications" element={<PublicLayout />}>
+              <Route index element={<ResearchPublications />} />
+            </Route>
+            <Route path="/oral-defenses" element={<PublicLayout />}>
+              <Route index element={<OralDefenses />} />
+            </Route>
+            <Route path="/primary-sources" element={<PublicLayout />}>
+              <Route index element={<PrimarySources />} />
+            </Route>
+            <Route path="/catalog-expansion" element={<PublicLayout />}>
+              <Route index element={<CatalogExpansion />} />
             </Route>
             <Route path="/academic-integrity" element={<PublicLayout />}>
               <Route index element={<AcademicIntegrity />} />
