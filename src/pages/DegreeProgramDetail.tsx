@@ -145,9 +145,12 @@ export default function DegreeProgramDetail() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  Curriculum details coming soon
-                </p>
+                <div className="text-center py-8 space-y-2">
+                  <p className="text-sm font-medium text-foreground">Curriculum being finalized</p>
+                  <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                    The Faculty Council is finalizing the course sequence for this program. Published modules and course mappings will appear here once the academic year is approved.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>

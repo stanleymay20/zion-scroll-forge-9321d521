@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { BookOpen, Users, FileText, BarChart, CheckCircle, Clock } from "lucide-react";
+import { FacultyStudentRoster } from "@/components/faculty/FacultyStudentRoster";
 
 console.info("✝️ Faculty Admin — Christ governs teaching");
 
@@ -216,10 +217,10 @@ export default function FacultyAdmin() {
         <TabsContent value="students" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Student Management</CardTitle>
+              <CardTitle>Student Roster</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Student roster and progress tracking coming soon</p>
+              <FacultyStudentRoster institutionId={activeInstitution?.id} />
             </CardContent>
           </Card>
         </TabsContent>

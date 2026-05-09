@@ -136,7 +136,7 @@ export default function AITutorOfficeHours() {
       tutor_id: selectedSlot.tutor_id,
       topic: topic.trim(),
       notes: notes.trim(),
-      meeting_url: `https://meet.scrolluniversity.edu/${selectedSlot.id}` // Placeholder
+      meeting_url: `https://meet.jit.si/scrolluniversity-officehours-${selectedSlot.id}`
     });
 
     if (error) {

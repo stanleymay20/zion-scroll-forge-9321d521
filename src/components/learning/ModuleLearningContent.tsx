@@ -184,7 +184,7 @@ export const ModuleLearningContent = ({
                       )
                     }}
                   >
-                    {module.content_md || 'Content coming soon...'}
+                    {module.content_md || 'This module is being prepared by the Faculty Council. Lecture material, readings, and reflection prompts will appear here once published. In the meantime, review the learning objectives above and engage your assigned AI Tutor for foundational concepts.'}
                   </ReactMarkdown>
                 </div>
                 

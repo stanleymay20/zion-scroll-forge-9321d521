@@ -384,9 +384,14 @@ export default function CourseLearningPage() {
               />
             ) : (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">AI Tutor coming soon</p>
+                <CardContent className="py-12 text-center space-y-4">
+                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <p className="text-muted-foreground">
+                    No AI Tutor is assigned to this course yet. You can still get help from any of our specialized AI Tutors.
+                  </p>
+                  <Button asChild variant="outline">
+                    <a href="/ai-tutors">Browse AI Tutors</a>
+                  </Button>
                 </CardContent>
               </Card>
             )}
