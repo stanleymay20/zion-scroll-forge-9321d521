@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from "@/integrations/supabase/client";
 import { ReportReason } from '@/types/community';
 import {
   Dialog,
