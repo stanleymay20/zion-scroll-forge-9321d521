@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { fetchFeed } from "@/services/community";
 import { useAuth } from '@/contexts/AuthContext';
 import { PostCard } from './PostCard';
 import { PostWithAuthor, FeedFilters as FeedFiltersType } from '@/types/community';
@@ -30,44 +30,13 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ filters, refreshTr
 
   const loadPosts = useCallback(async (isLoadMore = false) => {
     try {
-      if (isLoadMore) {
-        setLoadingMore(true);
-      } else {
-        setLoading(true);
-        setOffset(0);
-      }
-
+      if (isLoadMore) setLoadingMore(true);
+      else { setLoading(true); setOffset(0); }
       const currentOffset = isLoadMore ? offset : 0;
-      const queryParams = new URLSearchParams({
-        limit: limit.toString(),
-        offset: currentOffset.toString(),
-        ...(filters.type && { type: filters.type }),
-        ...(filters.sortBy && { sortBy: filters.sortBy }),
-        ...(filters.hashtag && { hashtag: filters.hashtag }),
-        ...(filters.visibility && { visibility: filters.visibility }),
-        ...(filters.userId && { userId: filters.userId })
-      });
-
-      const response = await legacyApiCall(`/api/community/feed?${queryParams}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load posts');
-      }
-
-      const data = await response.json();
-
-      if (isLoadMore) {
-        setPosts(prev => [...prev, ...data.posts]);
-      } else {
-        setPosts(data.posts);
-      }
-
-      setHasMore(data.hasMore);
-      setOffset(currentOffset + data.posts.length);
+      const { posts: newPosts, hasMore: more } = await fetchFeed(filters, limit, currentOffset);
+      setPosts((prev) => isLoadMore ? [...prev, ...newPosts] : newPosts);
+      setHasMore(more);
+      setOffset(currentOffset + newPosts.length);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load posts');
