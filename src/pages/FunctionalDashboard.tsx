@@ -30,8 +30,8 @@ const FunctionalDashboard = () => {
 
   const calculateOverallProgress = () => {
     if (enrollments.length === 0) return 0;
-    // This would be calculated properly with course progress data
-    return 67; // Placeholder
+    const total = enrollments.reduce((sum: number, e: any) => sum + (Number(e.progress) || 0), 0);
+    return Math.round(total / enrollments.length);
   };
 
   return (
