@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from 'react-router-dom';
 import { PostWithAuthor, UserProfile } from '@/types/community';
 import { Input } from '@/components/ui/input';
@@ -42,32 +42,56 @@ export const CommunitySearch: React.FC = () => {
 
       setLoading(true);
       try {
-        const [postsResponse, usersResponse] = await Promise.all([
-          legacyApiCall(`/api/community/search/posts?query=${encodeURIComponent(searchQuery)}&limit=5`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-          }),
-          legacyApiCall(`/api/community/search/users?query=${encodeURIComponent(searchQuery)}&limit=5`, {
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-          })
+        const like = `%${searchQuery.trim()}%`;
+        const [{ data: postRows }, { data: userRows }] = await Promise.all([
+          supabase
+            .from('community_posts')
+            .select('id, content, image_url, created_at, user_id, profiles:user_id(full_name, email, avatar_url)')
+            .or(`content.ilike.${like},title.ilike.${like}`)
+            .order('created_at', { ascending: false })
+            .limit(5),
+          supabase
+            .from('profiles')
+            .select('id, full_name, email, avatar_url')
+            .or(`full_name.ilike.${like},email.ilike.${like}`)
+            .limit(5),
         ]);
 
-        if (!postsResponse.ok || !usersResponse.ok) {
-          throw new Error('Search failed');
-        }
+        const mapName = (full?: string | null, email?: string | null) => {
+          const base = (full || email?.split('@')[0] || 'Member').trim();
+          const [first, ...rest] = base.split(' ');
+          return { first: first || 'Member', last: rest.join(' ') };
+        };
 
-        const [postsData, usersData] = await Promise.all([
-          postsResponse.json(),
-          usersResponse.json()
-        ]);
-
-        setResults({
-          posts: postsData.posts,
-          users: usersData.users
+        const users: UserProfile[] = (userRows ?? []).map((u: any) => {
+          const n = mapName(u.full_name, u.email);
+          return {
+            id: u.id,
+            firstName: n.first,
+            lastName: n.last,
+            username: u.email?.split('@')[0] ?? 'member',
+            avatarUrl: u.avatar_url ?? undefined,
+          } as UserProfile;
         });
+
+        const posts: PostWithAuthor[] = (postRows ?? []).map((p: any) => {
+          const n = mapName(p.profiles?.full_name, p.profiles?.email);
+          return {
+            id: p.id,
+            content: p.content,
+            imageUrl: p.image_url ?? undefined,
+            createdAt: p.created_at,
+            author: {
+              id: p.user_id,
+              firstName: n.first,
+              lastName: n.last,
+              username: p.profiles?.email?.split('@')[0] ?? 'member',
+              avatarUrl: p.profiles?.avatar_url ?? undefined,
+            },
+          } as unknown as PostWithAuthor;
+        });
+
+        setResults({ posts, users });
         setShowResults(true);
       } catch (error) {
         console.error('Error searching:', error);
