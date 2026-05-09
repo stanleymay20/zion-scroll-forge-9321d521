@@ -4,7 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from '@/integrations/supabase/client';
+import { ModerationStatus } from '@/types/community';
 import { useAuth } from '@/contexts/AuthContext';
 import { CommentWithAuthor } from '@/types/community';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -36,18 +37,57 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommen
     loadComments();
   }, [postId]);
 
+  const mapRow = (row: any, likedIds: Set<string>): CommentWithAuthor => {
+    const profile = row.profiles || {};
+    const fullName: string = profile.full_name || profile.email || 'User';
+    const parts = fullName.trim().split(/\s+/);
+    return {
+      id: row.id,
+      postId: row.post_id,
+      authorId: row.user_id,
+      content: row.content,
+      isEdited: false,
+      likesCount: row.likes_count || 0,
+      flagged: false,
+      moderationStatus: ModerationStatus.APPROVED,
+      createdAt: row.created_at,
+      updatedAt: row.created_at,
+      isLiked: likedIds.has(row.id),
+      author: {
+        id: row.user_id,
+        username: profile.email?.split('@')[0] || 'user',
+        firstName: parts[0] || 'U',
+        lastName: parts[1] || '',
+        avatarUrl: profile.avatar_url,
+        role: 'student',
+        followersCount: 0,
+        followingCount: 0,
+        postsCount: 0,
+      },
+      replies: [],
+    };
+  };
+
   const loadComments = async () => {
     try {
-      const response = await legacyApiCall(`/api/community/posts/${postId}/comments`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const { data, error } = await supabase
+        .from('post_comments')
+        .select('*, profiles:user_id(email, full_name, avatar_url)')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
 
-      if (!response.ok) throw new Error('Failed to load comments');
-
-      const data = await response.json();
-      setComments(data.comments);
+      let likedIds = new Set<string>();
+      if (user && data && data.length > 0) {
+        const ids = data.map((c: any) => c.id);
+        const { data: likes } = await supabase
+          .from('post_comment_likes')
+          .select('comment_id')
+          .eq('user_id', user.id)
+          .in('comment_id', ids);
+        likedIds = new Set((likes || []).map((l: any) => l.comment_id));
+      }
+      setComments((data || []).map((r: any) => mapRow(r, likedIds)));
     } catch (error) {
       console.error('Error loading comments:', error);
     } finally {
@@ -56,42 +96,18 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommen
   };
 
   const handleSubmitComment = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !user) return;
 
     setSubmitting(true);
     try {
-      const response = await legacyApiCall(`/api/community/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          content: newComment,
-          parentCommentId: replyingTo
-        })
-      });
+      const { data, error } = await supabase
+        .from('post_comments')
+        .insert({ post_id: postId, user_id: user.id, content: newComment })
+        .select('*, profiles:user_id(email, full_name, avatar_url)')
+        .single();
+      if (error) throw error;
 
-      if (!response.ok) throw new Error('Failed to post comment');
-
-      const data = await response.json();
-      
-      if (replyingTo) {
-        // Add reply to parent comment
-        setComments(prev => prev.map(comment => {
-          if (comment.id === replyingTo) {
-            return {
-              ...comment,
-              replies: [...(comment.replies || []), data.comment]
-            };
-          }
-          return comment;
-        }));
-      } else {
-        // Add new top-level comment
-        setComments(prev => [data.comment, ...prev]);
-      }
-
+      setComments((prev) => [...prev, mapRow(data, new Set())]);
       setNewComment('');
       setReplyingTo(null);
       onCommentAdded();
@@ -156,15 +172,11 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommen
     if (!confirm('Are you sure you want to delete this comment?')) return;
 
     try {
-      const response = await legacyApiCall(`/api/community/comments/${commentId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) throw new Error('Failed to delete comment');
-
+      const { error } = await supabase
+        .from('post_comments')
+        .delete()
+        .eq('id', commentId);
+      if (error) throw error;
       setComments(prev => prev.filter(c => c.id !== commentId));
     } catch (error) {
       console.error('Error deleting comment:', error);
