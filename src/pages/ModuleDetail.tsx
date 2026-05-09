@@ -140,7 +140,7 @@ export default function ModuleDetail() {
                       </div>
                     </div>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => toast({ title: "Coming soon", description: "This action is launching with the next release." })}>
+                  <Button size="sm" variant="ghost">
                     <Download className="h-4 w-4" />
                   </Button>
                 </a>

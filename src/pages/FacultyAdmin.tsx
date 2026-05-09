@@ -166,7 +166,7 @@ export default function FacultyAdmin() {
                       <h3 className="font-semibold">{course.title}</h3>
                       <p className="text-sm text-muted-foreground">{course.description}</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => toast({ title: "Coming soon", description: "This action is launching with the next release." })}>
+                    <Button variant="outline" size="sm" disabled title="Launching with the next release">
                       Manage Course
                     </Button>
                   </div>
