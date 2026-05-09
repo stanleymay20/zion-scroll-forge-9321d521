@@ -3,7 +3,7 @@
  * Handles the complete enrollment process including payment options
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner';
 import { useEnrollInCourse } from '@/hooks/useCourses';
 import { getUserFriendlyError } from '@/lib/errors';
+import { spendScrollCoin } from '@/services/scrollcoin';
 
 interface CourseEnrollmentFlowProps {
   course: {
@@ -56,31 +57,53 @@ export function CourseEnrollmentFlow({
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const enrollInCourse = useEnrollInCourse();
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('scrollcoin');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit_card');
   const [enrollmentStep, setEnrollmentStep] = useState<'payment' | 'processing' | 'success' | 'error'>('payment');
+  const [walletBalance, setWalletBalance] = useState(0);
 
   const scrollCoinCost = course.scrollCoinCost || Math.round((course.price_cents || 0) / 100);
   const usdPrice = ((course.price_cents || 0) / 100).toFixed(2);
+  const hasEnoughScrollGold = walletBalance >= scrollCoinCost;
+
+  useEffect(() => {
+    if (!isOpen || !user?.id) return;
+
+    (async () => {
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const balance = Number(wallet?.balance) || 0;
+      setWalletBalance(balance);
+      setPaymentMethod(balance >= scrollCoinCost ? 'scrollcoin' : 'credit_card');
+    })();
+  }, [isOpen, user?.id, scrollCoinCost]);
 
   const enrollMutation = useMutation({
     mutationFn: async () => {
       setEnrollmentStep('processing');
 
+      if (paymentMethod === 'scrollcoin') {
+        const { data: wallet, error: walletError } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', user!.id)
+          .maybeSingle();
+
+        if (walletError) throw walletError;
+
+        if ((Number(wallet?.balance) || 0) < scrollCoinCost) {
+          throw new Error(`You need ${scrollCoinCost} ScrollGold but your wallet balance is ${Number(wallet?.balance) || 0}.`);
+        }
+      }
+
       const enrollmentResult = await enrollInCourse.mutateAsync(course.id);
 
       // Handle payment based on method
       if (paymentMethod === 'scrollcoin') {
-        // Deduct ScrollCoin
-        const { error: paymentError } = await supabase
-          .from('transactions')
-          .insert({
-            user_id: user!.id,
-            amount: -scrollCoinCost,
-            type: 'course_enrollment',
-            description: `Enrolled in ${course.title}`,
-          });
-
-        if (paymentError) throw paymentError;
+        await spendScrollCoin(user!.id, scrollCoinCost, `Enrolled in ${course.title}`);
       } else if (paymentMethod === 'credit_card') {
         // This would integrate with Stripe
         // For now, we'll simulate the payment
@@ -106,8 +129,9 @@ export function CourseEnrollmentFlow({
     },
     onError: (error: unknown) => {
       setEnrollmentStep('error');
+      const message = getUserFriendlyError(error, 'enroll_course');
       toast.error('Enrollment Failed', {
-        description: getUserFriendlyError(error, 'enroll_course'),
+        description: message,
       });
     },
   });
@@ -162,17 +186,17 @@ export function CourseEnrollmentFlow({
               <Label className="text-base font-medium">Select Payment Method</Label>
               <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}>
                 {/* ScrollCoin Payment */}
-                <div className="flex items-center space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                  <RadioGroupItem value="scrollcoin" id="scrollcoin" />
+                 <div className="flex items-center space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors data-[disabled=true]:cursor-not-allowed data-[disabled=true]:opacity-60" data-disabled={!hasEnoughScrollGold}>
+                   <RadioGroupItem value="scrollcoin" id="scrollcoin" disabled={!hasEnoughScrollGold} />
                   <Label htmlFor="scrollcoin" className="flex-1 cursor-pointer">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-primary/10 rounded-full">
                         <Coins className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium">ScrollCoin</p>
+                         <p className="font-medium">ScrollCoin</p>
                         <p className="text-sm text-muted-foreground">
-                          Pay with your ScrollCoin balance
+                           Pay with your ScrollCoin balance {hasEnoughScrollGold ? `(balance: ${walletBalance})` : `(need ${scrollCoinCost}, have ${walletBalance})`}
                         </p>
                       </div>
                       <Badge variant="secondary">{scrollCoinCost} SC</Badge>

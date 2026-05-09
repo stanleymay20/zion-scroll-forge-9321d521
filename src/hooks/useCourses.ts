@@ -52,15 +52,37 @@ export const useEnrollInCourse = () => {
   return useMutation({
     mutationFn: async (courseId: string) => {
       console.info('✝️ Jesus Christ is Lord over this operation');
+
+      const promoteIfMatriculated = async () => {
+        const { data: matriculationRecord } = await supabase
+          .from('matriculation_records' as any)
+          .select('user_id')
+          .eq('user_id', user!.id)
+          .maybeSingle();
+
+        if (!matriculationRecord) return false;
+
+        const { error: transitionError } = await supabase.rpc('transition_student_status', {
+          p_user_id: user!.id,
+          p_new_status: 'enrolled',
+          p_reason: 'Recovered stale lifecycle status from completed matriculation during course enrollment',
+        } as any);
+
+        return !transitionError;
+      };
       
       // Get user's current institution
       const { data: profile }: any = await supabase
         .from('profiles' as any)
-        .select('current_institution_id')
+        .select('current_institution_id,lifecycle_status')
         .eq('id', user!.id)
         .single();
       
       let institutionId = profile?.current_institution_id;
+
+      if (profile?.lifecycle_status === 'admitted') {
+        await promoteIfMatriculated();
+      }
 
       // If user has no institution, get the default ScrollUniversity institution
       if (!institutionId) {
@@ -111,6 +133,25 @@ export const useEnrollInCourse = () => {
         if ((error as any).code === '23505') {
           return { success: true, alreadyEnrolled: true };
         }
+
+        const rawMsg = (error as any)?.message || '';
+        if (/matriculation/i.test(rawMsg) && await promoteIfMatriculated()) {
+          const { error: retryError } = await supabase
+            .from('enrollments' as any)
+            .insert({
+              user_id: user!.id,
+              course_id: courseId,
+              progress: 0,
+              institution_id: institutionId
+            });
+
+          if (!retryError || (retryError as any)?.code === '23505') {
+            return { success: true, alreadyEnrolled: (retryError as any)?.code === '23505' };
+          }
+
+          throw retryError;
+        }
+
         throw error;
       }
       return { success: true };
