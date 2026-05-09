@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserProfile, PostWithAuthor } from '@/types/community';
@@ -45,7 +46,7 @@ export const UserProfilePage: React.FC = () => {
 
   const loadProfile = async () => {
     try {
-      const response = await fetch(`/api/community/users/${userId}/profile`, {
+      const response = await legacyApiCall(`/api/community/users/${userId}/profile`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -67,7 +68,7 @@ export const UserProfilePage: React.FC = () => {
 
   const handleFollow = async () => {
     try {
-      const response = await fetch(`/api/community/users/${userId}/follow`, {
+      const response = await legacyApiCall(`/api/community/users/${userId}/follow`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -210,7 +211,7 @@ const FollowersList: React.FC<{ userId: string }> = ({ userId }) => {
 
   const loadFollowers = async () => {
     try {
-      const response = await fetch(`/api/community/users/${userId}/followers`, {
+      const response = await legacyApiCall(`/api/community/users/${userId}/followers`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -263,7 +264,7 @@ const FollowingList: React.FC<{ userId: string }> = ({ userId }) => {
 
   const loadFollowing = async () => {
     try {
-      const response = await fetch(`/api/community/users/${userId}/following`, {
+      const response = await legacyApiCall(`/api/community/users/${userId}/following`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

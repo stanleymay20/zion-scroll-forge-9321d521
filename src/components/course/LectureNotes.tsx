@@ -4,6 +4,7 @@
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Button } from '@/components/ui/button';
 import { Download, FileText, Printer } from 'lucide-react';
 import { toast } from 'sonner';
@@ -24,7 +25,7 @@ export function LectureNotes({ lectureId, title, content }: LectureNotesProps) {
 
       // In production, this would call the backend PDF generation service
       // For now, we'll simulate the download
-      const response = await fetch(`/api/lectures/${lectureId}/notes/pdf`, {
+      const response = await legacyApiCall(`/api/lectures/${lectureId}/notes/pdf`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/pdf',

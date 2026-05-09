@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { supabase } from '@/integrations/supabase/client';
 import type {
   ChatRoom,
@@ -57,7 +58,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
       setError(null);
 
       const token = await getAuthToken();
-      const response = await fetch('/api/chat/rooms', {
+      const response = await legacyApiCall('/api/chat/rooms', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -84,7 +85,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
       setError(null);
 
       const token = await getAuthToken();
-      const response = await fetch(`/api/chat/rooms/${roomId}/messages?limit=${limit}`, {
+      const response = await legacyApiCall(`/api/chat/rooms/${roomId}/messages?limit=${limit}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -114,7 +115,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
       setError(null);
 
       const token = await getAuthToken();
-      const response = await fetch(`/api/chat/direct-messages/${userId}?limit=${limit}`, {
+      const response = await legacyApiCall(`/api/chat/direct-messages/${userId}?limit=${limit}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -154,7 +155,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
         });
       }
 
-      const response = await fetch('/api/chat/messages', {
+      const response = await legacyApiCall('/api/chat/messages', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -198,7 +199,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
         });
       }
 
-      const response = await fetch('/api/chat/direct-messages', {
+      const response = await legacyApiCall('/api/chat/direct-messages', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -230,7 +231,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
   const createRoom = useCallback(async (request: CreateRoomRequest): Promise<ChatRoom> => {
     try {
       const token = await getAuthToken();
-      const response = await fetch('/api/chat/rooms', {
+      const response = await legacyApiCall('/api/chat/rooms', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -260,7 +261,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
   const joinRoom = useCallback(async (roomId: string) => {
     try {
       const token = await getAuthToken();
-      const response = await fetch(`/api/chat/rooms/${roomId}/join`, {
+      const response = await legacyApiCall(`/api/chat/rooms/${roomId}/join`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -283,7 +284,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
   const leaveRoom = useCallback(async (roomId: string) => {
     try {
       const token = await getAuthToken();
-      const response = await fetch(`/api/chat/rooms/${roomId}/leave`, {
+      const response = await legacyApiCall(`/api/chat/rooms/${roomId}/leave`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -315,7 +316,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
         ...(request.limit && { limit: request.limit.toString() })
       });
 
-      const response = await fetch(`/api/chat/messages/search?${params}`, {
+      const response = await legacyApiCall(`/api/chat/messages/search?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -337,7 +338,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
   const updateMessage = useCallback(async (messageId: string, content: string) => {
     try {
       const token = await getAuthToken();
-      const response = await fetch(`/api/chat/messages/${messageId}`, {
+      const response = await legacyApiCall(`/api/chat/messages/${messageId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -373,7 +374,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
   const deleteMessage = useCallback(async (messageId: string) => {
     try {
       const token = await getAuthToken();
-      const response = await fetch(`/api/chat/messages/${messageId}`, {
+      const response = await legacyApiCall(`/api/chat/messages/${messageId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

@@ -57,9 +57,9 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({
   };
 
   const getBadgeImage = (): string => {
-    // Generate badge image URL based on credential type
-    // In production, this would come from IPFS or CDN
-    return badge.metadataUri || `/api/scrollbadge/image/${badge.tokenId}`;
+    // Use IPFS/CDN-backed metadataUri when available; otherwise fall back
+    // to a local placeholder. No legacy /api badge image route exists.
+    return badge.metadataUri || '/placeholder.svg';
   };
 
   if (viewMode === 'list') {

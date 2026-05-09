@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import {
   BookOpen,
   Calendar,
@@ -62,12 +63,12 @@ export const AICourseRecommendations: React.FC = () => {
   const fetchData = async () => {
     try {
       const [recommendationsRes, planRes] = await Promise.all([
-        fetch('/api/ai-unified/course-recommendation/recommendations', {
+        legacyApiCall('/api/ai-unified/course-recommendation/recommendations', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         }),
-        fetch('/api/ai-unified/course-recommendation/degree-plan', {
+        legacyApiCall('/api/ai-unified/course-recommendation/degree-plan', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -105,7 +106,7 @@ export const AICourseRecommendations: React.FC = () => {
     if (selectedCourses.size === 0) return;
 
     try {
-      const response = await fetch('/api/ai-unified/course-recommendation/enroll', {
+      const response = await legacyApiCall('/api/ai-unified/course-recommendation/enroll', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

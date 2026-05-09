@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useRef } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,7 +43,7 @@ export function DevotionReader({ devotion, streak, userId }: DevotionReaderProps
   const handleComplete = async (): Promise<void> => {
     try {
       setLoading(true);
-      const response = await fetch('/api/devotions/complete', {
+      const response = await legacyApiCall('/api/devotions/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

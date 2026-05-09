@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { useAuth } from '@/contexts/AuthContext';
 import { PostType, PostVisibility, ScriptureReference } from '@/types/community';
 import { Card } from '@/components/ui/card';
@@ -104,7 +105,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ onPostCreated, onCan
         formData.append('media', file);
       });
 
-      const response = await fetch('/api/community/posts', {
+      const response = await legacyApiCall('/api/community/posts', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import {
   Search,
   FileText,
@@ -56,7 +57,7 @@ export const AIResearchAssistant: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/ai-unified/research/literature-review', {
+      const response = await legacyApiCall('/api/ai-unified/research/literature-review', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,7 +90,7 @@ export const AIResearchAssistant: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/ai-unified/research/format-citations', {
+      const response = await legacyApiCall('/api/ai-unified/research/format-citations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

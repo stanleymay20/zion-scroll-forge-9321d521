@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +40,7 @@ const DegreeAuditViewer: React.FC<DegreeAuditViewerProps> = ({ studentId }) => {
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`/api/profile/${studentId}/degree-audit`, {
+      const response = await legacyApiCall(`/api/profile/${studentId}/degree-audit`, {
         headers: {
           'Authorization': `Bearer ${session?.access_token}`
         }

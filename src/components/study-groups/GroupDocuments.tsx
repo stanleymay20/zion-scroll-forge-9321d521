@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { FileText, Plus, Lock, Unlock, Edit, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,7 @@ export const GroupDocuments: React.FC<GroupDocumentsProps> = ({ groupId }) => {
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/study-groups/${groupId}/documents`, {
+      const response = await legacyApiCall(`/api/study-groups/${groupId}/documents`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -74,7 +75,7 @@ export const GroupDocuments: React.FC<GroupDocumentsProps> = ({ groupId }) => {
     }
 
     try {
-      const response = await fetch(`/api/study-groups/${groupId}/documents`, {
+      const response = await legacyApiCall(`/api/study-groups/${groupId}/documents`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -116,7 +117,7 @@ export const GroupDocuments: React.FC<GroupDocumentsProps> = ({ groupId }) => {
     if (!selectedDoc) return;
 
     try {
-      const response = await fetch(`/api/study-groups/documents/${selectedDoc.id}`, {
+      const response = await legacyApiCall(`/api/study-groups/documents/${selectedDoc.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -151,7 +152,7 @@ export const GroupDocuments: React.FC<GroupDocumentsProps> = ({ groupId }) => {
     if (!confirm('Are you sure you want to delete this document?')) return;
 
     try {
-      const response = await fetch(`/api/study-groups/documents/${docId}`, {
+      const response = await legacyApiCall(`/api/study-groups/documents/${docId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

@@ -75,7 +75,9 @@ export function getConnectionStatus(): ConnectionStatus {
 /**
  * Test actual connectivity by pinging a server
  */
-export async function testConnectivity(url: string = '/api/health'): Promise<boolean> {
+export async function testConnectivity(
+  url: string = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/auth/v1/health`,
+): Promise<boolean> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);

@@ -152,15 +152,10 @@ class PerformanceMonitor {
 
   private sendToAnalytics(metric: PerformanceMetric) {
     // Send to backend analytics endpoint
-    if (navigator.sendBeacon) {
-      const data = JSON.stringify({
-        type: 'performance',
-        metric,
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-      });
-      navigator.sendBeacon('/api/analytics/performance', data);
-    }
+    // Performance metrics are kept in-memory only.
+    // No legacy /api/analytics endpoint exists in Lovable Cloud; remote
+    // reporting is intentionally disabled to avoid 404 beacons.
+    void metric;
   }
 
   getMetrics(): PerformanceMetric[] {

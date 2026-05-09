@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +34,7 @@ const AcademicTranscript: React.FC<AcademicTranscriptProps> = ({ studentId }) =>
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`/api/profile/${studentId}/transcript`, {
+      const response = await legacyApiCall(`/api/profile/${studentId}/transcript`, {
         headers: {
           'Authorization': `Bearer ${session?.access_token}`
         }
@@ -54,8 +55,7 @@ const AcademicTranscript: React.FC<AcademicTranscriptProps> = ({ studentId }) =>
     try {
       setDownloading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(
-        `/api/profile/${studentId}/transcript/download?format=${format}`,
+      const response = await legacyApiCall(`/api/profile/${studentId}/transcript/download?format=${format}`,
         {
           headers: {
             'Authorization': `Bearer ${session?.access_token}`

@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import {
   Send,
   Mic,
@@ -155,7 +156,7 @@ export const AITutorInterface: React.FC = () => {
 
   const loadTutorTypes = async () => {
     try {
-      const response = await fetch('/api/ai-tutor/tutor-types', {
+      const response = await legacyApiCall('/api/ai-tutor/tutor-types', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -175,7 +176,7 @@ export const AITutorInterface: React.FC = () => {
     setError(null);
     
     try {
-      const response = await fetch('/api/ai-tutor/sessions/start', {
+      const response = await legacyApiCall('/api/ai-tutor/sessions/start', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -233,7 +234,7 @@ export const AITutorInterface: React.FC = () => {
     setError(null);
     
     try {
-      const response = await fetch(`/api/ai-tutor/sessions/${session.id}/message`, {
+      const response = await legacyApiCall(`/api/ai-tutor/sessions/${session.id}/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -296,7 +297,7 @@ export const AITutorInterface: React.FC = () => {
     setMessages(prev => [...prev, streamingMessage]);
     
     try {
-      const response = await fetch(`/api/ai-tutor/sessions/${session.id}/message/stream`, {
+      const response = await legacyApiCall(`/api/ai-tutor/sessions/${session.id}/message/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -409,7 +410,7 @@ export const AITutorInterface: React.FC = () => {
     if (!session) return;
     
     try {
-      const response = await fetch(`/api/ai-tutor/sessions/${session.id}/end`, {
+      const response = await legacyApiCall(`/api/ai-tutor/sessions/${session.id}/end`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -437,7 +438,7 @@ export const AITutorInterface: React.FC = () => {
   
   const loadSessionHistory = async () => {
     try {
-      const response = await fetch('/api/ai-tutor/analytics', {
+      const response = await legacyApiCall('/api/ai-tutor/analytics', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { useNavigate } from 'react-router-dom';
 import { PostWithAuthor, UserProfile } from '@/types/community';
 import { Input } from '@/components/ui/input';
@@ -42,12 +43,12 @@ export const CommunitySearch: React.FC = () => {
       setLoading(true);
       try {
         const [postsResponse, usersResponse] = await Promise.all([
-          fetch(`/api/community/search/posts?query=${encodeURIComponent(searchQuery)}&limit=5`, {
+          legacyApiCall(`/api/community/search/posts?query=${encodeURIComponent(searchQuery)}&limit=5`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
           }),
-          fetch(`/api/community/search/users?query=${encodeURIComponent(searchQuery)}&limit=5`, {
+          legacyApiCall(`/api/community/search/users?query=${encodeURIComponent(searchQuery)}&limit=5`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
             }

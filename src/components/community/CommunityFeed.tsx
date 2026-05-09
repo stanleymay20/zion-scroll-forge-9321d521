@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { useAuth } from '@/contexts/AuthContext';
 import { PostCard } from './PostCard';
 import { PostWithAuthor, FeedFilters as FeedFiltersType } from '@/types/community';
@@ -47,7 +48,7 @@ export const CommunityFeed: React.FC<CommunityFeedProps> = ({ filters, refreshTr
         ...(filters.userId && { userId: filters.userId })
       });
 
-      const response = await fetch(`/api/community/feed?${queryParams}`, {
+      const response = await legacyApiCall(`/api/community/feed?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { FileText, Plus, Upload, CheckCircle, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,7 +51,7 @@ export const GroupAssignments: React.FC<GroupAssignmentsProps> = ({
   const fetchAssignments = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/study-groups/${groupId}/assignments`, {
+      const response = await legacyApiCall(`/api/study-groups/${groupId}/assignments`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -76,7 +77,7 @@ export const GroupAssignments: React.FC<GroupAssignmentsProps> = ({
     e.preventDefault();
 
     try {
-      const response = await fetch(`/api/study-groups/${groupId}/assignments`, {
+      const response = await legacyApiCall(`/api/study-groups/${groupId}/assignments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -114,8 +115,7 @@ export const GroupAssignments: React.FC<GroupAssignmentsProps> = ({
     if (!selectedAssignment) return;
 
     try {
-      const response = await fetch(
-        `/api/study-groups/assignments/${selectedAssignment.id}/submit`,
+      const response = await legacyApiCall(`/api/study-groups/assignments/${selectedAssignment.id}/submit`,
         {
           method: 'POST',
           headers: {

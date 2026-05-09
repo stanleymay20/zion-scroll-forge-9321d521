@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,7 +55,7 @@ export function PaymentHistory({ userId }: PaymentHistoryProps) {
   const fetchPaymentHistory = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/payments/history', {
+      const response = await legacyApiCall('/api/payments/history', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -109,7 +110,7 @@ export function PaymentHistory({ userId }: PaymentHistoryProps) {
 
   const handleDownloadReceipt = async (paymentIntentId: string) => {
     try {
-      const response = await fetch(`/api/payments/receipt/${paymentIntentId}`, {
+      const response = await legacyApiCall(`/api/payments/receipt/${paymentIntentId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },

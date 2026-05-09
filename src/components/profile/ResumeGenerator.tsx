@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
+import { toast } from "sonner";
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,7 +46,7 @@ const ResumeGenerator: React.FC<ResumeGeneratorProps> = ({ profile }) => {
     try {
       setLoading(true);
       const { data: session } = await supabase.auth.getSession();
-      const response = await fetch(`/api/profile/${profile.userId}/resume-data`, {
+      const response = await legacyApiCall(`/api/profile/${profile.userId}/resume-data`, {
         headers: {
           'Authorization': `Bearer ${session?.session?.access_token}`
         }
@@ -65,7 +67,7 @@ const ResumeGenerator: React.FC<ResumeGeneratorProps> = ({ profile }) => {
     try {
       setGenerating(true);
       const { data: session } = await supabase.auth.getSession();
-      const response = await fetch(`/api/profile/${profile.userId}/resume/generate`, {
+      const response = await legacyApiCall(`/api/profile/${profile.userId}/resume/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +98,7 @@ const ResumeGenerator: React.FC<ResumeGeneratorProps> = ({ profile }) => {
   };
 
   const handlePreview = () => {
-    window.open(`/api/profile/${profile.userId}/resume/preview?template=${template}`, '_blank');
+    toast.info('Resume preview is not yet available.');
   };
 
   if (loading) {

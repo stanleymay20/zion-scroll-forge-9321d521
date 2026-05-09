@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { X } from 'lucide-react';
 import {
   Dialog,
@@ -79,7 +80,7 @@ export const CreateStudyGroupDialog: React.FC<CreateStudyGroupDialogProps> = ({
         duration: 60
       } : undefined;
 
-      const response = await fetch('/api/study-groups', {
+      const response = await legacyApiCall('/api/study-groups', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

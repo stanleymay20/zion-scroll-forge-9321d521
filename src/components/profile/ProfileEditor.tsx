@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -134,7 +135,7 @@ const ProfileEditor: React.FC<ProfileEditorProps> = ({ profile, onSave, onCancel
         formData.append('avatar', avatarFile);
         const { data: session } = await supabase.auth.getSession();
         
-        const uploadResponse = await fetch('/api/profile/avatar', {
+        const uploadResponse = await legacyApiCall('/api/profile/avatar', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${session?.session?.access_token}`

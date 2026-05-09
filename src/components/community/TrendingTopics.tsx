@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { TrendingTopic } from '@/types/community';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Loader2 } from 'lucide-react';
@@ -22,7 +23,7 @@ export const TrendingTopics: React.FC<TrendingTopicsProps> = ({ onHashtagClick }
 
   const loadTrendingTopics = async () => {
     try {
-      const response = await fetch('/api/community/trending?limit=10', {
+      const response = await legacyApiCall('/api/community/trending?limit=10', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

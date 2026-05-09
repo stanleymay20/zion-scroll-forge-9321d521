@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,7 +71,7 @@ const TransactionHistory: React.FC = () => {
       if (typeFilter !== 'all') params.append('type', typeFilter);
       if (statusFilter !== 'all') params.append('status', statusFilter);
 
-      const response = await fetch(`/api/scrollcoin/transactions?${params}`, {
+      const response = await legacyApiCall(`/api/scrollcoin/transactions?${params}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

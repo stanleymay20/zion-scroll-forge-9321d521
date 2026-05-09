@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import {
   Users,
   MessageSquare,
@@ -49,7 +50,7 @@ export const StudyGroupDetail: React.FC<StudyGroupDetailProps> = ({
   const fetchGroupDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/study-groups/${groupId}`, {
+      const response = await legacyApiCall(`/api/study-groups/${groupId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -73,7 +74,7 @@ export const StudyGroupDetail: React.FC<StudyGroupDetailProps> = ({
 
   const handleStartVideoCall = async () => {
     try {
-      const response = await fetch(`/api/study-groups/${groupId}/video-conference/start`, {
+      const response = await legacyApiCall(`/api/study-groups/${groupId}/video-conference/start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -102,7 +103,7 @@ export const StudyGroupDetail: React.FC<StudyGroupDetailProps> = ({
     if (!confirm('Are you sure you want to leave this group?')) return;
 
     try {
-      const response = await fetch(`/api/study-groups/${groupId}/leave`, {
+      const response = await legacyApiCall(`/api/study-groups/${groupId}/leave`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

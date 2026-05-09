@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { ReportReason } from '@/types/community';
 import {
   Dialog,
@@ -48,7 +49,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(`/api/community/posts/${postId}/report`, {
+      const response = await legacyApiCall(`/api/community/posts/${postId}/report`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

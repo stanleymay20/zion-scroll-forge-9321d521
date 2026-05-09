@@ -56,6 +56,7 @@ const DEFAULT_MESSAGES: Record<string, string> = {
   EDGE_FUNCTION: "Something went wrong on our side. Please try again.",
   STORAGE: "We couldn't process that file. Please try again.",
   REQUIREMENTS: "You do not yet meet the requirements for this action.",
+  NOT_IMPLEMENTED: "This feature is not yet available.",
   UNKNOWN: "Something went wrong. Please try again.",
 };
 
@@ -73,6 +74,7 @@ const SEVERITY: Record<string, ErrorSeverity> = {
   EDGE_FUNCTION: "error",
   STORAGE: "warning",
   REQUIREMENTS: "info",
+  NOT_IMPLEMENTED: "info",
   UNKNOWN: "error",
 };
 
@@ -86,6 +88,11 @@ export function parseAppError(error: unknown, context?: string): AppError {
   const e = error as any;
   const raw: string =
     e?.message || e?.error_description || e?.error?.message || String(e);
+
+  // Legacy /api shim — feature has no backend route
+  if (e?.code === "NOT_IMPLEMENTED" || e?.name === "LegacyApiUnavailableError") {
+    return build("NOT_IMPLEMENTED", raw, context, error);
+  }
 
   // Edge function structured response: { ok:false, error: { code, message } }
   if (e?.error && typeof e.error === "object" && e.error.code) {

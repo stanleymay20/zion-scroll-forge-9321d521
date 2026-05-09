@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { PostWithAuthor, ModerationStatus } from '@/types/community';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,7 @@ export const ModerationQueue: React.FC = () => {
   const loadPosts = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/community/moderation/queue?status=${activeTab}`, {
+      const response = await legacyApiCall(`/api/community/moderation/queue?status=${activeTab}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -56,7 +57,7 @@ export const ModerationQueue: React.FC = () => {
   const handleModerate = async (postId: string, action: 'approve' | 'reject' | 'flag') => {
     setSubmitting(true);
     try {
-      const response = await fetch(`/api/community/moderation/posts/${postId}`, {
+      const response = await legacyApiCall(`/api/community/moderation/posts/${postId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
