@@ -55,6 +55,17 @@ export default function CourseDetail() {
     [enrollments, courseId]
   );
 
+  const previewVideoUrl = useMemo(() => {
+    const course: any = courseData?.course;
+    const modules: any[] = courseData?.modules || [];
+    if (!course) return undefined;
+    if (course.preview_video_url) return course.preview_video_url;
+    const firstVideo = modules
+      .flatMap((m: any) => m.learning_materials || [])
+      .find((mat: any) => (mat.kind || '').toLowerCase() === 'video' && mat.url);
+    return firstVideo?.url as string | undefined;
+  }, [courseData]);
+
   const handleEnroll = () => {
     setShowEnrollmentFlow(true);
   };
