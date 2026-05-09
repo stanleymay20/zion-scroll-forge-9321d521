@@ -55,8 +55,7 @@ const AcademicTranscript: React.FC<AcademicTranscriptProps> = ({ studentId }) =>
     try {
       setDownloading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(
-        `/api/profile/${studentId}/transcript/download?format=${format}`,
+      const response = await legacyApiCall(`/api/profile/${studentId}/transcript/download?format=${format}`,
         {
           headers: {
             'Authorization': `Bearer ${session?.access_token}`

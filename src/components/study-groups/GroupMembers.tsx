@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { legacyApiCall } from "@/lib/legacyApi";
 import { Crown, Shield, User, MoreVertical } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -36,8 +37,7 @@ export const GroupMembers: React.FC<GroupMembersProps> = ({
 
   const handleUpdateRole = async (userId: string, newRole: GroupMemberRole) => {
     try {
-      const response = await fetch(
-        `/api/study-groups/${groupId}/members/${userId}/role`,
+      const response = await legacyApiCall(`/api/study-groups/${groupId}/members/${userId}/role`,
         {
           method: 'PUT',
           headers: {
@@ -70,8 +70,7 @@ export const GroupMembers: React.FC<GroupMembersProps> = ({
     if (!confirm('Are you sure you want to remove this member?')) return;
 
     try {
-      const response = await fetch(
-        `/api/study-groups/${groupId}/members/${userId}`,
+      const response = await legacyApiCall(`/api/study-groups/${groupId}/members/${userId}`,
         {
           method: 'DELETE',
           headers: {

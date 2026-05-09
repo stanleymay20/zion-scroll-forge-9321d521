@@ -115,8 +115,7 @@ export const GroupAssignments: React.FC<GroupAssignmentsProps> = ({
     if (!selectedAssignment) return;
 
     try {
-      const response = await fetch(
-        `/api/study-groups/assignments/${selectedAssignment.id}/submit`,
+      const response = await legacyApiCall(`/api/study-groups/assignments/${selectedAssignment.id}/submit`,
         {
           method: 'POST',
           headers: {

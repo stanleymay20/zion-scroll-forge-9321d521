@@ -142,8 +142,7 @@ const SkillEndorsements: React.FC<SkillEndorsementsProps> = ({
     if (!selectedSkill) return;
     
     try {
-      const response = await fetch(
-        `/api/profile/${studentId}/skills/${selectedSkill.id}/endorse`,
+      const response = await legacyApiCall(`/api/profile/${studentId}/skills/${selectedSkill.id}/endorse`,
         {
       method: 'POST',
       headers: {
