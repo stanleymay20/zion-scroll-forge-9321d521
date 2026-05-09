@@ -26,9 +26,6 @@ export interface TransferRequest {
   to_program?: { name: string } | null;
   from_program?: { name: string } | null;
 }
-// (kept name alias above for component compatibility — server returns title aliased as name)
-declare global {
-  interface _NoOp { _: never; }
 }
 
 export interface TransferNote {
