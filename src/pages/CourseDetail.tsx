@@ -59,10 +59,15 @@ export default function CourseDetail() {
     const course: any = courseData?.course;
     const modules: any[] = courseData?.modules || [];
     if (!course) return undefined;
+    // 1) Course-specific uploaded preview
     if (course.preview_video_url) return course.preview_video_url;
-    const firstVideo = modules
-      .flatMap((m: any) => m.learning_materials || [])
-      .find((mat: any) => (mat.kind || '').toLowerCase() === 'video' && mat.url);
+    // 2) Fallback: first video of THIS course's first module (course-related, never random)
+    const firstModule = [...modules].sort(
+      (a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0)
+    )[0];
+    const firstVideo = (firstModule?.learning_materials || []).find(
+      (mat: any) => (mat.kind || '').toLowerCase() === 'video' && mat.url
+    );
     return firstVideo?.url as string | undefined;
   }, [courseData]);
 

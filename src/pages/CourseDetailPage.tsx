@@ -101,9 +101,13 @@ export default function CourseDetailPage() {
     );
   }
 
-  const previewVideoUrl =
-    course.preview_video_url ||
-    course.course_modules?.flatMap((m: any) => m.learning_materials || []).find((mat: any) => (mat.kind || '').toLowerCase() === 'video' && mat.url)?.url;
+  const sortedModules = [...(course.course_modules || [])].sort(
+    (a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0)
+  );
+  const firstModuleVideo = (sortedModules[0]?.learning_materials || []).find(
+    (mat: any) => (mat.kind || '').toLowerCase() === 'video' && mat.url
+  );
+  const previewVideoUrl = course.preview_video_url || firstModuleVideo?.url;
 
   return (
     <div className="min-h-screen bg-background">
