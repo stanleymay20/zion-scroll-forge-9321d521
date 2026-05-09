@@ -98,7 +98,7 @@ const ResumeGenerator: React.FC<ResumeGeneratorProps> = ({ profile }) => {
   };
 
   const handlePreview = () => {
-    toast.info?.('Resume preview is not yet available.');
+    toast.info('Resume preview is not yet available.');
   };
 
   if (loading) {
