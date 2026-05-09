@@ -76,6 +76,16 @@ export default function Matriculation() {
 
     setSubmitting(true);
     try {
+      // Ensure user is at least 'admitted' before issuing matriculation cert
+      const { data: prof } = await supabase.from("profiles").select("lifecycle_status").eq("id", user.id).maybeSingle();
+      if (prof?.lifecycle_status === "applicant") {
+        await supabase.rpc("transition_student_status", {
+          p_user_id: user.id,
+          p_new_status: "admitted",
+          p_reason: "Auto-admitted on matriculation oath",
+        });
+      }
+
       const cert = await issueCertificate({
         userId: user.id,
         certType: "matriculation",
