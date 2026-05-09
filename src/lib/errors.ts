@@ -89,6 +89,11 @@ export function parseAppError(error: unknown, context?: string): AppError {
   const raw: string =
     e?.message || e?.error_description || e?.error?.message || String(e);
 
+  // Legacy /api shim — feature has no backend route
+  if (e?.code === "NOT_IMPLEMENTED" || e?.name === "LegacyApiUnavailableError") {
+    return build("NOT_IMPLEMENTED", raw, context, error);
+  }
+
   // Edge function structured response: { ok:false, error: { code, message } }
   if (e?.error && typeof e.error === "object" && e.error.code) {
     const code = String(e.error.code).toUpperCase();
