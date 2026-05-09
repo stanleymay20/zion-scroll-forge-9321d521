@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { createPost } from "@/services/community";
 import { useAuth } from '@/contexts/AuthContext';
 import { PostType, PostVisibility, ScriptureReference } from '@/types/community';
 import { Card } from '@/components/ui/card';
