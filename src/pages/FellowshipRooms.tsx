@@ -36,11 +36,10 @@ export default function FellowshipRooms() {
     enabled: !!user?.id
   });
 
-  const handleJoinRoom = async (roomId: string) => {
-    toast.info('Joining room...', {
-      description: 'Connecting you to the fellowship room'
+  const handleJoinRoom = async (_roomId: string) => {
+    toast.info('Fellowship rooms are coming soon', {
+      description: 'Live room joining is not yet available.'
     });
-    // TODO: Implement actual room joining logic
   };
 
   if (isLoading) {
