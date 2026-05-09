@@ -215,8 +215,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onUpdate, onDelete }) 
                   variant="ghost"
                   size="sm"
                   onClick={handleFollow}
-                  disabled
-                  title="Launching with the next release"
                   className="text-blue-600 hover:text-blue-700"
                 >
                   Follow
