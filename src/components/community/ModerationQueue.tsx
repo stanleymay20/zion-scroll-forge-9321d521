@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from "@/integrations/supabase/client";
 import { PostWithAuthor, ModerationStatus } from '@/types/community';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
