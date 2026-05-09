@@ -1,5 +1,6 @@
 import { QRCodeSVG } from "qrcode.react";
 import { ShieldCheck } from "lucide-react";
+import chancellorSignature from "@/assets/chancellor-signature.jpeg";
 
 interface Props {
   certNumber: string;
@@ -120,16 +121,18 @@ export function CertificateView({
           </div>
         </div>
 
-        {/* Secondary: Chancellor signature */}
+        {/* Secondary: Chancellor signature (real handwritten) */}
         <div className="mt-3 flex justify-end">
           <div className="text-right text-[10px] sm:text-xs w-1/3">
-            <p
-              className="text-[#5C1F2A] text-base sm:text-lg leading-none pb-0.5"
-              style={{ fontFamily: '"Brush Script MT", "Snell Roundhand", cursive' }}
-            >
+            <img
+              src={chancellorSignature}
+              alt="Founder & Chancellor signature"
+              className="h-10 sm:h-12 ml-auto object-contain mix-blend-multiply"
+              style={{ filter: "brightness(0) saturate(100%) invert(13%) sepia(40%) saturate(2000%) hue-rotate(330deg)" }}
+            />
+            <p className="border-t border-[#5C1F2A] pt-1 font-serif text-[#5C1F2A]">
               {chancellorName}
             </p>
-            <p className="border-t border-[#5C1F2A] pt-1 font-serif">Founder &amp; Chancellor</p>
           </div>
         </div>
       </div>
