@@ -5,7 +5,8 @@
  */
 
 import React, { useState } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,21 +115,20 @@ export function PropheticCheckInQuestionnaire({
   const handleSubmit = async (): Promise<void> => {
     try {
       setLoading(true);
-      const response = await legacyApiCall('/api/prophetic-checkin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          ...formData,
-          timestamp: new Date()
-        })
+      const { error } = await supabase.from('prophetic_checkins').insert({
+        user_id: userId,
+        note: formData.godsVoice || formData.mood || null,
+        acknowledged_lordship: true,
+        payload: { ...formData, timestamp: new Date().toISOString() } as any,
       });
 
-      if (!response.ok) throw new Error('Failed to submit check-in');
-      
+      if (error) throw error;
+
+      toast.success('Check-in recorded');
       setCompleted(true);
     } catch (error) {
       console.error('Error submitting check-in:', error);
+      toast.error('Failed to submit check-in');
     } finally {
       setLoading(false);
     }
