@@ -126,10 +126,23 @@ export const useEnrollInCourse = () => {
       });
     },
     onError: (error: unknown) => {
+      const rawMsg = (error as any)?.message || "";
+      // Surface matriculation gate clearly with CTA
+      if (/matriculation/i.test(rawMsg)) {
+        toast({
+          title: "Matriculation required",
+          description: "Please complete matriculation before enrolling. Opening matriculation now…",
+          variant: "default",
+        });
+        if (typeof window !== "undefined") {
+          setTimeout(() => { window.location.href = "/matriculation"; }, 800);
+        }
+        return;
+      }
       const parsed = logError(error, { context: "enroll_course", action: "enrollInCourse" });
       toast({
         title: parsed.severity === "info" ? "Already enrolled" : "Enrollment Failed",
-        description: parsed.userMessage,
+        description: parsed.severity === "info" ? parsed.userMessage : (rawMsg || parsed.userMessage),
         variant: parsed.severity === "info" ? "default" : "destructive",
       });
     },
