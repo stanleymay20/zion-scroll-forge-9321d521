@@ -96,7 +96,7 @@ export function TransferRequestDialog({ currentProgramId, trigger }: Props) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-serif">Program Transfer Request</DialogTitle>
           <DialogDescription>
