@@ -52,10 +52,38 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onUpdate, onDelete }) 
   const isOwnPost = user?.id === post.authorId;
 
   const handleLike = async () => {
+    if (!user) {
+      const { toast } = await import('sonner');
+      toast.error('Sign in required', { description: 'Please sign in to like posts.' });
+      return;
+    }
+    const { supabase } = await import('@/integrations/supabase/client');
     const { toast } = await import('sonner');
-    toast.info('Likes are coming soon', {
-      description: 'Community reactions will be enabled in an upcoming release.',
-    });
+    const wasLiked = isLiked;
+    // optimistic
+    setIsLiked(!wasLiked);
+    setLikesCount((c) => c + (wasLiked ? -1 : 1));
+    try {
+      if (wasLiked) {
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', post.id)
+          .eq('user_id', user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('post_likes')
+          .insert({ post_id: post.id, user_id: user.id });
+        if (error) throw error;
+      }
+    } catch (err: any) {
+      // rollback
+      setIsLiked(wasLiked);
+      setLikesCount((c) => c + (wasLiked ? 1 : -1));
+      console.error('Like failed:', err);
+      toast.error('Could not update like', { description: err?.message });
+    }
   };
 
   const handleShare = async () => {
@@ -81,10 +109,36 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onUpdate, onDelete }) 
   };
 
   const handleFollow = async () => {
+    if (!user) {
+      const { toast } = await import('sonner');
+      toast.error('Sign in required', { description: 'Please sign in to follow authors.' });
+      return;
+    }
+    const { supabase } = await import('@/integrations/supabase/client');
     const { toast } = await import('sonner');
-    toast.info('Follow is coming soon', {
-      description: 'Following authors will be available in an upcoming release.',
-    });
+    const wasFollowing = isFollowing;
+    setIsFollowing(!wasFollowing);
+    try {
+      if (wasFollowing) {
+        const { error } = await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', post.authorId);
+        if (error) throw error;
+        toast.success('Unfollowed');
+      } else {
+        const { error } = await supabase
+          .from('follows')
+          .insert({ follower_id: user.id, following_id: post.authorId });
+        if (error) throw error;
+        toast.success('Following');
+      }
+    } catch (err: any) {
+      setIsFollowing(wasFollowing);
+      console.error('Follow failed:', err);
+      toast.error('Could not update follow', { description: err?.message });
+    }
   };
 
   const handleDelete = async () => {
