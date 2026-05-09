@@ -8223,6 +8223,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      ensure_default_institution_membership: { Args: never; Returns: string }
       generate_student_identity: {
         Args: { p_student_id: string }
         Returns: Json
