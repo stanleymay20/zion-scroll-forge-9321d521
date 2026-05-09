@@ -7713,6 +7713,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          category: string | null
           content: string
           created_at: string | null
           id: string
@@ -7724,6 +7725,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          category?: string | null
           content: string
           created_at?: string | null
           id?: string
@@ -7735,6 +7737,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          category?: string | null
           content?: string
           created_at?: string | null
           id?: string
@@ -7749,6 +7752,35 @@ export type Database = {
             columns: ["institution_id"]
             isOneToOne: false
             referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      testimony_encouragements: {
+        Row: {
+          created_at: string
+          id: string
+          testimony_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          testimony_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          testimony_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "testimony_encouragements_testimony_id_fkey"
+            columns: ["testimony_id"]
+            isOneToOne: false
+            referencedRelation: "testimonies"
             referencedColumns: ["id"]
           },
         ]

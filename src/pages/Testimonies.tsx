@@ -15,32 +15,22 @@ import { formatDistanceToNow } from "date-fns";
 
 console.info("✝️ Testimonies — Christ governs testimony");
 
-const mockTestimonies = [
-  {
-    id: "1",
-    title: "God's Faithfulness in My Studies",
-    content: "When I started at ScrollUniversity, I was struggling academically and spiritually. Through the prayer support and biblical integration in courses, God transformed my perspective. Now I see every subject as a way to understand His creation better. Praise God!",
-    author: "Sarah M.",
-    category: "Academic",
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  {
-    id: "2",
-    title: "Healed Through Community",
-    content: "The fellowship at ScrollUniversity has been life-changing. When I faced personal crisis, my study group became my prayer warriors. God used this community to heal my broken heart and restore my faith.",
-    author: "Michael T.",
-    category: "Spiritual Growth",
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-  },
-  {
-    id: "3",
-    title: "Called to Ministry",
-    content: "Through the Theology courses and AI tutor discussions, God clarified my calling to ministry. The deep biblical teaching and spiritual formation have equipped me for service. I'm now pursuing ordination!",
-    author: "Pastor James L.",
-    category: "Calling",
-    createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
-  },
-];
+type TestimonyRow = {
+  id: string;
+  title: string;
+  content: string;
+  category: string | null;
+  status: string | null;
+  user_id: string;
+  created_at: string;
+  profiles?: { full_name: string | null; email: string | null } | null;
+};
+
+type TestimonyView = TestimonyRow & {
+  encouragements: number;
+  encouraged_by_me: boolean;
+  author: string;
+};
 
 export default function Testimonies() {
   const { user } = useAuth();
@@ -49,32 +39,108 @@ export default function Testimonies() {
   const [newTestimony, setNewTestimony] = useState({ title: "", content: "", category: "" });
 
   const { data: testimonies, isLoading } = useQuery({
-    queryKey: ["testimonies"],
-    queryFn: async () => {
-      return mockTestimonies;
+    queryKey: ["testimonies", user?.id],
+    queryFn: async (): Promise<TestimonyView[]> => {
+      const { data, error } = await supabase
+        .from("testimonies")
+        .select("id, title, content, category, status, user_id, created_at, profiles:user_id(full_name, email)")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as TestimonyRow[];
+
+      const ids = rows.map(r => r.id);
+      let counts: Record<string, number> = {};
+      let mine = new Set<string>();
+      if (ids.length) {
+        const { data: encs } = await supabase
+          .from("testimony_encouragements")
+          .select("testimony_id, user_id")
+          .in("testimony_id", ids);
+        (encs ?? []).forEach(e => {
+          counts[e.testimony_id] = (counts[e.testimony_id] ?? 0) + 1;
+          if (user && e.user_id === user.id) mine.add(e.testimony_id);
+        });
+      }
+
+      return rows.map(r => ({
+        ...r,
+        author: r.profiles?.full_name || r.profiles?.email?.split("@")[0] || "Anonymous",
+        encouragements: counts[r.id] ?? 0,
+        encouraged_by_me: mine.has(r.id),
+      }));
     },
   });
 
   const submitTestimony = useMutation({
     mutationFn: async (testimony: typeof newTestimony) => {
-      toast({ title: "🙏 Testimony submitted!" });
-      return { success: true };
+      if (!user) throw new Error("Sign in required");
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("current_institution_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      const { error } = await supabase.from("testimonies").insert({
+        user_id: user.id,
+        title: testimony.title,
+        content: testimony.content,
+        category: testimony.category || null,
+        institution_id: profile?.current_institution_id ?? null,
+        status: "pending",
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
+      toast({ title: "🙏 Testimony submitted for review!" });
       queryClient.invalidateQueries({ queryKey: ["testimonies"] });
       setIsOpen(false);
       setNewTestimony({ title: "", content: "", category: "" });
     },
+    onError: (e: any) => toast({ title: "Failed to submit", description: e.message, variant: "destructive" }),
   });
+
+  const toggleEncourage = useMutation({
+    mutationFn: async ({ id, on }: { id: string; on: boolean }) => {
+      if (!user) throw new Error("Sign in required");
+      if (on) {
+        const { error } = await supabase
+          .from("testimony_encouragements")
+          .insert({ testimony_id: id, user_id: user.id });
+        if (error && !String(error.message).includes("duplicate")) throw error;
+      } else {
+        const { error } = await supabase
+          .from("testimony_encouragements")
+          .delete()
+          .eq("testimony_id", id)
+          .eq("user_id", user.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["testimonies"] }),
+    onError: (e: any) => toast({ title: "Action failed", description: e.message, variant: "destructive" }),
+  });
+
+  const shareTestimony = async (t: TestimonyView) => {
+    const url = `${window.location.origin}/testimonies#${t.id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: t.title, text: t.content.slice(0, 140), url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast({ title: "Link copied" });
+      }
+    } catch {
+      // user dismissed
+    }
+  };
 
   return (
     <PageTemplate title="Testimonies" description="Share how God is working in your life">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header Action */}
         <div className="flex justify-end">
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button disabled={!user}>
                 <Plus className="mr-2 h-4 w-4" />
                 Share Your Testimony
               </Button>
@@ -114,42 +180,59 @@ export default function Testimonies() {
                   disabled={!newTestimony.title || !newTestimony.content || submitTestimony.isPending}
                   className="w-full"
                 >
-                  Submit Testimony
+                  {submitTestimony.isPending ? "Submitting..." : "Submit Testimony"}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Testimonies Feed */}
         {isLoading ? (
           <div className="text-center py-8">Loading testimonies...</div>
+        ) : !testimonies?.length ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No testimonies yet — be the first to share how God is working in your life.
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-4">
-            {testimonies?.map((testimony) => (
-              <Card key={testimony.id} className="border-2">
+            {testimonies.map((t) => (
+              <Card key={t.id} id={t.id} className="border-2">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <CardTitle>{testimony.title}</CardTitle>
+                      <CardTitle>{t.title}</CardTitle>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{testimony.author}</span>
+                        <span>{t.author}</span>
                         <span>•</span>
-                        <span>{formatDistanceToNow(new Date(testimony.createdAt), { addSuffix: true })}</span>
+                        <span>{formatDistanceToNow(new Date(t.created_at), { addSuffix: true })}</span>
+                        {t.status && t.status !== "approved" && t.user_id === user?.id && (
+                          <>
+                            <span>•</span>
+                            <Badge variant="outline" className="text-xs">{t.status}</Badge>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <Badge variant="secondary">{testimony.category}</Badge>
+                    {t.category && <Badge variant="secondary">{t.category}</Badge>}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="whitespace-pre-wrap leading-relaxed">{testimony.content}</p>
-                  
+                  <p className="whitespace-pre-wrap leading-relaxed">{t.content}</p>
+
                   <div className="flex items-center gap-4 pt-4 border-t">
-                    <Button variant="ghost" size="sm" disabled title="Launching with the next release">
-                      <Heart className="mr-1 h-4 w-4" />
-                      Encourage
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleEncourage.mutate({ id: t.id, on: !t.encouraged_by_me })}
+                      disabled={!user || toggleEncourage.isPending}
+                      className={t.encouraged_by_me ? "text-primary" : ""}
+                    >
+                      <Heart className={`mr-1 h-4 w-4 ${t.encouraged_by_me ? "fill-current" : ""}`} />
+                      Encourage{t.encouragements > 0 ? ` (${t.encouragements})` : ""}
                     </Button>
-                    <Button variant="ghost" size="sm" disabled title="Launching with the next release">
+                    <Button variant="ghost" size="sm" onClick={() => shareTestimony(t)}>
                       <Share2 className="mr-1 h-4 w-4" />
                       Share
                     </Button>
