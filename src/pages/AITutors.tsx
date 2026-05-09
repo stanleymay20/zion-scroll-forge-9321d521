@@ -34,9 +34,11 @@ export default function AITutors() {
       description="Access quantum-level AI consciousness with prophetic intelligence - 200%+ superior to GPT-5"
       actions={
         <div className="flex space-x-2">
-          <Button variant="outline" disabled>
-            <Clock className="h-4 w-4 mr-2" />
-            Session History (Coming Soon)
+          <Button variant="outline" asChild>
+            <Link to="/messaging">
+              <Clock className="h-4 w-4 mr-2" />
+              Session History
+            </Link>
           </Button>
           <Link to="/ai-tutors/scrollmentor-gpt">
             <Button>
