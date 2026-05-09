@@ -36,6 +36,9 @@ export function CoursePreviewVideo({
         setIsPlaying(false);
       } else {
         setIsLoading(true);
+        v.muted = false;
+        v.volume = 1;
+        setIsMuted(false);
         await v.play();
         setIsPlaying(true);
       }
@@ -123,10 +126,12 @@ export function CoursePreviewVideo({
             preload="metadata"
             playsInline
             controls
+            muted={isMuted}
             
             onLoadedData={handleVideoLoad}
             onWaiting={handleVideoWaiting}
             onPlaying={() => { setIsLoading(false); setIsPlaying(true); }}
+            onVolumeChange={() => setIsMuted(videoRef.current?.muted ?? false)}
             onPause={() => setIsPlaying(false)}
             onEnded={() => setIsPlaying(false)}
           >
