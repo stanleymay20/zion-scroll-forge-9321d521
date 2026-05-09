@@ -1,4 +1,3 @@
-import { legacyApiCall } from "@/lib/legacyApi";
 /**
  * Legacy /api shim
  *
@@ -24,15 +23,15 @@ export class LegacyApiUnavailableError extends Error {
 }
 
 /**
- * Drop-in replacement for `legacyApiCall('/api/...', ...)`.
- * Always throws — never performs a network request.
+ * Drop-in replacement for legacy fetch calls to `/api/...` routes.
+ * Always throws a LegacyApiUnavailableError — never performs a network request.
  */
 export async function legacyApiCall(
   path: string,
   _init?: RequestInit,
 ): Promise<Response> {
-  // eslint-disable-next-line no-console
   if (import.meta.env?.DEV) {
+    // eslint-disable-next-line no-console
     console.warn("[legacyApiCall] blocked legacy /api call:", path);
   }
   throw new LegacyApiUnavailableError(path);
