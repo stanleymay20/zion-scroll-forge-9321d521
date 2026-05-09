@@ -49,18 +49,17 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
     setError(null);
 
     try {
-      const response = await legacyApiCall(`/api/community/posts/${postId}/report`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ reason, description })
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('You must be signed in to report content');
 
-      if (!response.ok) {
-        throw new Error('Failed to submit report');
-      }
+      const { error: insertError } = await supabase.from('post_reports').insert({
+        post_id: postId,
+        user_id: user.id,
+        reason: String(reason),
+        details: description,
+        status: 'pending',
+      });
+      if (insertError) throw insertError;
 
       onReportSubmitted();
       onClose();
