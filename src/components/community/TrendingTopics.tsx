@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from "@/integrations/supabase/client";
 import { TrendingTopic } from '@/types/community';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Loader2 } from 'lucide-react';
