@@ -133,6 +133,7 @@ const AcademicTermAdmin = lazy(() => import("./pages/AcademicTermAdmin"));
 const StudentGraduation = lazy(() => import("./pages/StudentGraduation"));
 const SUYASAdmin = lazy(() => import("./pages/SUYASAdmin"));
 const TrustCenter = lazy(() => import("./pages/TrustCenter"));
+const AcademicTrust = lazy(() => import("./pages/AcademicTrust"));
 const AcademicIntegrity = lazy(() => import("./pages/AcademicIntegrity"));
 const TermsOfService = lazy(() => import("./pages/legal/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
@@ -295,6 +296,9 @@ const App = () => (
             </Route>
             <Route path="/trust" element={<PublicLayout />}>
               <Route index element={<TrustCenter />} />
+            </Route>
+            <Route path="/academic-trust" element={<PublicLayout />}>
+              <Route index element={<AcademicTrust />} />
             </Route>
             <Route path="/academic-integrity" element={<PublicLayout />}>
               <Route index element={<AcademicIntegrity />} />
