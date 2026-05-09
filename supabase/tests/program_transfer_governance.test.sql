@@ -13,6 +13,7 @@
 \pset pager off
 
 -- Helpers -------------------------------------------------------------------
+DROP TABLE IF EXISTS _suite_results;
 CREATE TEMP TABLE _suite_results(test_no int, name text, status text, detail text);
 
 CREATE OR REPLACE FUNCTION pg_temp.record(p_no int, p_name text, p_ok boolean, p_detail text DEFAULT '')
