@@ -125,16 +125,6 @@ export default function CourseDetail() {
 
   const { course, modules } = courseData;
 
-  const previewVideoUrl = useMemo(() => {
-    if (course.preview_video_url) return course.preview_video_url;
-
-    const firstVideo = (modules || [])
-      .flatMap((m: any) => m.learning_materials || [])
-      .find((mat: any) => (mat.kind || '').toLowerCase() === 'video' && mat.url);
-
-    return firstVideo?.url as string | undefined;
-  }, [course.preview_video_url, modules]);
-
   console.info('✝️ ScrollUniversity: Course materials loaded — Christ is Lord over every scroll');
 
   return (
