@@ -130,9 +130,8 @@ export function CertificateView({
               className="h-10 sm:h-12 ml-auto object-contain mix-blend-multiply"
               style={{ filter: "brightness(0) saturate(100%) invert(13%) sepia(40%) saturate(2000%) hue-rotate(330deg)" }}
             />
-            <p className="border-t border-[#5C1F2A] pt-1 font-serif">{chancellorName}</p>
-            <p className="text-[#7a4146] uppercase tracking-wider text-[9px] sm:text-[10px]">
-              Founder &amp; Chancellor
+            <p className="border-t border-[#5C1F2A] pt-1 font-serif text-[#5C1F2A]">
+              {chancellorName}
             </p>
           </div>
         </div>
