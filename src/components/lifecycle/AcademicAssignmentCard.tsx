@@ -3,14 +3,16 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Building2, GraduationCap, Users, Sparkles, BookMarked, ArrowRight } from "lucide-react";
+import { Building2, GraduationCap, Users, Sparkles, BookMarked, ArrowRight, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { LockedCourseCard } from "./LockedCourseCard";
+import { TransferRequestDialog } from "@/components/transfer/TransferRequestDialog";
 
 interface SAP {
   faculty_name: string | null;
   program_name: string | null;
+  program_id: string | null;
   cohort_label: string | null;
   suyas_track: string | null;
   academic_level: string | null;
@@ -42,12 +44,13 @@ export function AcademicAssignmentCard() {
       const [{ data: sap }, { data: nc }] = await Promise.all([
         supabase
           .from("student_academic_profiles" as any)
-          .select("faculty_name,program_name,cohort_label,suyas_track,academic_level,academic_status,matriculated,student_id_code")
+          .select("faculty_name,program_name,degree_program_id,cohort_label,suyas_track,academic_level,academic_status,matriculated,student_id_code")
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase.rpc("get_assigned_next_course", { p_user_id: user.id }),
       ]);
-      setProfile((sap as unknown as SAP | null) ?? null);
+      const row = sap as any;
+      setProfile(row ? { ...row, program_id: row.degree_program_id } as SAP : null);
       setNext(((nc as any[]) ?? []) as NextCourse[]);
       setLoading(false);
     })();
@@ -62,9 +65,14 @@ export function AcademicAssignmentCard() {
   return (
     <Card className="border-primary/20">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-serif flex items-center gap-2">
-          <GraduationCap className="h-4 w-4 text-primary" />
-          Your Academic Assignment
+        <CardTitle className="text-base font-serif flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <GraduationCap className="h-4 w-4 text-primary" />
+            Your Academic Assignment
+          </span>
+          <Badge variant="outline" className="text-[10px] gap-1 font-normal">
+            <Lock className="h-3 w-3" /> Locked identity
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
@@ -75,9 +83,12 @@ export function AcademicAssignmentCard() {
           <Field icon={Sparkles} label="SUYAS Stage" value={profile.suyas_track ?? profile.academic_level ?? "—"} />
         </div>
         {profile.student_id_code && (
-          <div className="flex items-center gap-2 pt-1 border-t">
+          <div className="flex items-center gap-2 pt-1 border-t flex-wrap">
             <Badge variant="secondary" className="font-mono text-xs">{profile.student_id_code}</Badge>
             <Badge variant="outline" className="capitalize text-xs">{profile.academic_status ?? "—"}</Badge>
+            <div className="ml-auto">
+              <TransferRequestDialog currentProgramId={profile.program_id} />
+            </div>
           </div>
         )}
         {first && (

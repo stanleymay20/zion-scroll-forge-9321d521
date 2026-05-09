@@ -2944,6 +2944,8 @@ export type Database = {
           id: string
           institution_id: string
           progress: number | null
+          transfer_status: string
+          transferred_from_program_id: string | null
           updated_at: string | null
           user_id: string | null
         }
@@ -2953,6 +2955,8 @@ export type Database = {
           id?: string
           institution_id: string
           progress?: number | null
+          transfer_status?: string
+          transferred_from_program_id?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -2962,6 +2966,8 @@ export type Database = {
           id?: string
           institution_id?: string
           progress?: number | null
+          transfer_status?: string
+          transferred_from_program_id?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -2985,6 +2991,13 @@ export type Database = {
             columns: ["institution_id"]
             isOneToOne: false
             referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_transferred_from_program_id_fkey"
+            columns: ["transferred_from_program_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
           {
@@ -5789,6 +5802,69 @@ export type Database = {
         }
         Relationships: []
       }
+      program_transfer_requests: {
+        Row: {
+          academic_justification: string | null
+          created_at: string
+          decided_at: string | null
+          effective_term: string | null
+          from_program_id: string | null
+          id: string
+          reason: string
+          status: string
+          student_user_id: string
+          submitted_at: string
+          supporting_docs: Json
+          to_program_id: string
+          updated_at: string
+        }
+        Insert: {
+          academic_justification?: string | null
+          created_at?: string
+          decided_at?: string | null
+          effective_term?: string | null
+          from_program_id?: string | null
+          id?: string
+          reason: string
+          status?: string
+          student_user_id: string
+          submitted_at?: string
+          supporting_docs?: Json
+          to_program_id: string
+          updated_at?: string
+        }
+        Update: {
+          academic_justification?: string | null
+          created_at?: string
+          decided_at?: string | null
+          effective_term?: string | null
+          from_program_id?: string | null
+          id?: string
+          reason?: string
+          status?: string
+          student_user_id?: string
+          submitted_at?: string
+          supporting_docs?: Json
+          to_program_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_transfer_requests_from_program_id_fkey"
+            columns: ["from_program_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_transfer_requests_to_program_id_fkey"
+            columns: ["to_program_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prophetic_assessments: {
         Row: {
           assessed_by: string | null
@@ -8380,6 +8456,91 @@ export type Database = {
           },
         ]
       }
+      transfer_decisions: {
+        Row: {
+          credit_remap: Json
+          decided_at: string
+          decided_by: string
+          decision: string
+          id: string
+          new_program_id: string | null
+          prior_program_id: string | null
+          prior_student_snapshot: Json
+          rationale: string | null
+          request_id: string
+        }
+        Insert: {
+          credit_remap?: Json
+          decided_at?: string
+          decided_by: string
+          decision: string
+          id?: string
+          new_program_id?: string | null
+          prior_program_id?: string | null
+          prior_student_snapshot: Json
+          rationale?: string | null
+          request_id: string
+        }
+        Update: {
+          credit_remap?: Json
+          decided_at?: string
+          decided_by?: string
+          decision?: string
+          id?: string
+          new_program_id?: string | null
+          prior_program_id?: string | null
+          prior_student_snapshot?: Json
+          rationale?: string | null
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transfer_decisions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "program_transfer_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transfer_review_notes: {
+        Row: {
+          created_at: string
+          id: string
+          note: string
+          request_id: string
+          reviewer_id: string
+          reviewer_role: string
+          stage: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note: string
+          request_id: string
+          reviewer_id: string
+          reviewer_role: string
+          stage: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string
+          request_id?: string
+          reviewer_id?: string
+          reviewer_role?: string
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transfer_review_notes_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "program_transfer_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tuition_billing_cycles: {
         Row: {
           amount_due: number
@@ -8874,6 +9035,10 @@ export type Database = {
         Args: { p_new_program_id: string; p_reason?: string; p_user_id: string }
         Returns: Json
       }
+      advance_transfer_request: {
+        Args: { p_next_status: string; p_note?: string; p_request_id: string }
+        Returns: boolean
+      }
       archive_academic_year: { Args: { p_year_id: string }; Returns: boolean }
       award_by_rule: {
         Args: {
@@ -8926,6 +9091,15 @@ export type Database = {
           p_user_id: string
         }
         Returns: string
+      }
+      decide_transfer_request: {
+        Args: {
+          p_credit_remap?: Json
+          p_decision: string
+          p_rationale?: string
+          p_request_id: string
+        }
+        Returns: Json
       }
       decrement_post_likes: { Args: { post_id: string }; Returns: undefined }
       delete_email: {
@@ -9048,6 +9222,16 @@ export type Database = {
         Args: { p_amount: number; p_desc: string; p_user_id: string }
         Returns: undefined
       }
+      submit_transfer_request: {
+        Args: {
+          p_academic_justification?: string
+          p_effective_term?: string
+          p_reason: string
+          p_supporting_docs?: Json
+          p_to_program_id: string
+        }
+        Returns: string
+      }
       track_common_question: {
         Args: { p_category: string; p_question: string }
         Returns: undefined
@@ -9069,9 +9253,13 @@ export type Database = {
         Returns: boolean
       }
       waitlist_position: { Args: { p_student_id: string }; Returns: number }
+      withdraw_transfer_request: {
+        Args: { p_request_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      app_role: "student" | "faculty" | "admin" | "superadmin"
+      app_role: "student" | "faculty" | "admin" | "superadmin" | "registrar"
       assessment_type:
         | "academic"
         | "prophetic"
@@ -9245,7 +9433,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["student", "faculty", "admin", "superadmin"],
+      app_role: ["student", "faculty", "admin", "superadmin", "registrar"],
       assessment_type: [
         "academic",
         "prophetic",
