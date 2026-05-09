@@ -247,7 +247,7 @@ const SendReceiveInterface: React.FC<SendReceiveInterfaceProps> = ({
                   <p className="text-sm text-muted-foreground mb-4">
                     QR code for easy scanning
                   </p>
-                  <Button variant="outline" onClick={generateQRCode}>
+                  <Button variant="outline" onClick={generateQRCode} disabled title="Launching with the next release">
                     Generate QR Code
                   </Button>
                 </div>
