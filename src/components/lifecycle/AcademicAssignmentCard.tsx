@@ -44,12 +44,13 @@ export function AcademicAssignmentCard() {
       const [{ data: sap }, { data: nc }] = await Promise.all([
         supabase
           .from("student_academic_profiles" as any)
-          .select("faculty_name,program_name,cohort_label,suyas_track,academic_level,academic_status,matriculated,student_id_code")
+          .select("faculty_name,program_name,degree_program_id,cohort_label,suyas_track,academic_level,academic_status,matriculated,student_id_code")
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase.rpc("get_assigned_next_course", { p_user_id: user.id }),
       ]);
-      setProfile((sap as unknown as SAP | null) ?? null);
+      const row = sap as any;
+      setProfile(row ? { ...row, program_id: row.degree_program_id } as SAP : null);
       setNext(((nc as any[]) ?? []) as NextCourse[]);
       setLoading(false);
     })();
