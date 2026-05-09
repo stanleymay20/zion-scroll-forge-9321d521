@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from '@/types/community';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -21,16 +21,38 @@ export const SuggestedUsers: React.FC = () => {
 
   const loadSuggestedUsers = async () => {
     try {
-      const response = await legacyApiCall('/api/community/users/suggested?limit=5', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const { data: { user: me } } = await supabase.auth.getUser();
+      if (!me) { setLoading(false); return; }
 
-      if (!response.ok) throw new Error('Failed to load suggested users');
+      const { data: existing } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', me.id);
+      const followedIds = new Set((existing ?? []).map(f => f.following_id));
 
-      const data = await response.json();
-      setUsers(data.users);
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, avatar_url')
+        .neq('id', me.id)
+        .limit(20);
+      if (error) throw error;
+
+      const mapped: UserProfile[] = (profiles ?? [])
+        .filter(p => !followedIds.has(p.id))
+        .slice(0, 5)
+        .map(p => {
+          const full = (p.full_name || p.email?.split('@')[0] || 'Member').trim();
+          const [first, ...rest] = full.split(' ');
+          return {
+            id: p.id,
+            firstName: first || 'Member',
+            lastName: rest.join(' ') || '',
+            username: (p.email?.split('@')[0] || 'member') as string,
+            avatarUrl: p.avatar_url ?? undefined,
+          } as UserProfile;
+        });
+      setUsers(mapped);
+      setFollowingIds(followedIds);
     } catch (error) {
       console.error('Error loading suggested users:', error);
     } finally {
@@ -40,25 +62,24 @@ export const SuggestedUsers: React.FC = () => {
 
   const handleFollow = async (userId: string) => {
     try {
-      const response = await legacyApiCall(`/api/community/users/${userId}/follow`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const { data: { user: me } } = await supabase.auth.getUser();
+      if (!me) return;
 
-      if (!response.ok) throw new Error('Failed to follow user');
-
-      const data = await response.json();
-      
-      if (data.following) {
-        setFollowingIds(prev => new Set(prev).add(userId));
+      const isFollowing = followingIds.has(userId);
+      if (isFollowing) {
+        const { error } = await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', me.id)
+          .eq('following_id', userId);
+        if (error) throw error;
+        setFollowingIds(prev => { const s = new Set(prev); s.delete(userId); return s; });
       } else {
-        setFollowingIds(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(userId);
-          return newSet;
-        });
+        const { error } = await supabase
+          .from('follows')
+          .insert({ follower_id: me.id, following_id: userId });
+        if (error) throw error;
+        setFollowingIds(prev => new Set(prev).add(userId));
       }
     } catch (error) {
       console.error('Error following user:', error);

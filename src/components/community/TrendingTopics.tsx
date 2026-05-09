@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { legacyApiCall } from "@/lib/legacyApi";
+import { supabase } from "@/integrations/supabase/client";
 import { TrendingTopic } from '@/types/community';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Loader2 } from 'lucide-react';
@@ -23,16 +23,37 @@ export const TrendingTopics: React.FC<TrendingTopicsProps> = ({ onHashtagClick }
 
   const loadTrendingTopics = async () => {
     try {
-      const response = await legacyApiCall('/api/community/trending?limit=10', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('community_posts')
+        .select('id, content, tags, created_at')
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (error) throw error;
+
+      const counts = new Map<string, number>();
+      const HASHTAG_RE = /#([\p{L}\p{N}_]+)/gu;
+      (data ?? []).forEach((row: any) => {
+        const fromTags: string[] = Array.isArray(row.tags) ? row.tags.filter(Boolean) : [];
+        const fromContent = String(row.content ?? '').match(HASHTAG_RE)?.map(t => t.slice(1)) ?? [];
+        [...fromTags, ...fromContent].forEach(raw => {
+          const tag = String(raw).replace(/^#/, '').toLowerCase();
+          if (!tag) return;
+          counts.set(tag, (counts.get(tag) ?? 0) + 1);
+        });
       });
 
-      if (!response.ok) throw new Error('Failed to load trending topics');
+      const sorted: TrendingTopic[] = Array.from(counts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([hashtag, postCount], i) => ({
+          id: `trend-${i}-${hashtag}`,
+          hashtag,
+          postCount,
+        } as unknown as TrendingTopic));
 
-      const data = await response.json();
-      setTopics(data.topics);
+      setTopics(sorted);
     } catch (error) {
       console.error('Error loading trending topics:', error);
     } finally {
