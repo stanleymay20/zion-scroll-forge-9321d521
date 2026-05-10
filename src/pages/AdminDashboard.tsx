@@ -58,7 +58,7 @@ export const AdminDashboard: React.FC = () => {
       .from('academic_integrity_alerts' as any)
       .select('severity, status')
       .eq('status', 'open');
-    const rows = (data ?? []) as Array<{ severity: string }>;
+    const rows = (data ?? []) as unknown as Array<{ severity: string }>;
     setOpenIntegrityAlerts({
       total: rows.length,
       critical: rows.filter(r => r.severity === 'critical').length,
