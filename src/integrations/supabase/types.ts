@@ -2521,6 +2521,51 @@ export type Database = {
           },
         ]
       }
+      degree_templates: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          duration_years: number
+          id: string
+          is_active: boolean
+          level: string
+          max_credits: number | null
+          min_courses: number
+          min_credits: number
+          name: string
+          slot_specs: Json
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          duration_years: number
+          id?: string
+          is_active?: boolean
+          level: string
+          max_credits?: number | null
+          min_courses: number
+          min_credits: number
+          name: string
+          slot_specs: Json
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          duration_years?: number
+          id?: string
+          is_active?: boolean
+          level?: string
+          max_credits?: number | null
+          min_courses?: number
+          min_credits?: number
+          name?: string
+          slot_specs?: Json
+        }
+        Relationships: []
+      }
       departments: {
         Row: {
           created_at: string
@@ -6056,6 +6101,46 @@ export type Database = {
         }
         Relationships: []
       }
+      program_scroll_distinctions: {
+        Row: {
+          created_at: string
+          distinction_id: string
+          program_id: string
+        }
+        Insert: {
+          created_at?: string
+          distinction_id: string
+          program_id: string
+        }
+        Update: {
+          created_at?: string
+          distinction_id?: string
+          program_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_scroll_distinctions_distinction_id_fkey"
+            columns: ["distinction_id"]
+            isOneToOne: false
+            referencedRelation: "scroll_distinctions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_scroll_distinctions_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_scroll_distinctions_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       program_transfer_requests: {
         Row: {
           academic_justification: string | null
@@ -6858,6 +6943,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scroll_distinctions: {
+        Row: {
+          code: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          theme: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          name: string
+          theme?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          theme?: string | null
+        }
+        Relationships: []
       }
       scroll_integrity_logs: {
         Row: {
@@ -9495,6 +9610,15 @@ export type Database = {
         Returns: boolean
       }
       increment_post_likes: { Args: { post_id: string }; Returns: undefined }
+      instantiate_program_from_template: {
+        Args: {
+          p_distinction_codes?: string[]
+          p_faculty: string
+          p_template_code: string
+          p_title: string
+        }
+        Returns: string
+      }
       is_course_valid_for_program: {
         Args: { p_course_id: string; p_program_id: string }
         Returns: boolean
