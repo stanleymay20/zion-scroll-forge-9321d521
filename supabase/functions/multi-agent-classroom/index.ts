@@ -27,8 +27,18 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // Require authenticated user
+    const { error: authError } = await extractAuthenticatedUser(
+      req,
+      supabase,
+      corsHeaders,
+    );
+    if (authError) return authError;
+
     const body = (await req.json().catch(() => ({}))) as Body;
-    if (!body?.moduleId) return json({ error: "moduleId required" }, 400);
+    if (!body?.moduleId || !/^[0-9a-f-]{36}$/i.test(body.moduleId)) {
+      return json({ error: "valid moduleId required" }, 400);
+    }
     const rounds = Math.min(Math.max(body.rounds ?? 3, 1), 5);
 
     const { data: mod, error } = await supabase
