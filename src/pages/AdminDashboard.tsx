@@ -6,6 +6,8 @@
 import React, { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
   Users,
@@ -15,9 +17,9 @@ import {
   FileText,
   Database,
   Activity,
-  TrendingUp,
-  AlertCircle,
+  ShieldAlert,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { SystemHealthOverview } from '@/components/admin/SystemHealthOverview';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { CourseApprovalWorkflow } from '@/components/admin/CourseApprovalWorkflow';
@@ -31,10 +33,12 @@ import type { AdminDashboardStats } from '@/types/admin';
 export const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openIntegrityAlerts, setOpenIntegrityAlerts] = useState<{ total: number; critical: number }>({ total: 0, critical: 0 });
 
   useEffect(() => {
     loadDashboardStats();
-    const interval = setInterval(loadDashboardStats, 60000); // Refresh every minute
+    loadIntegrityAlerts();
+    const interval = setInterval(() => { loadDashboardStats(); loadIntegrityAlerts(); }, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -49,6 +53,18 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const loadIntegrityAlerts = async () => {
+    const { data } = await supabase
+      .from('academic_integrity_alerts' as any)
+      .select('severity, status')
+      .eq('status', 'open');
+    const rows = (data ?? []) as unknown as Array<{ severity: string }>;
+    setOpenIntegrityAlerts({
+      total: rows.length,
+      critical: rows.filter(r => r.severity === 'critical').length,
+    });
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
@@ -61,6 +77,25 @@ export const AdminDashboard: React.FC = () => {
           System administration and management console
         </p>
       </div>
+
+      {openIntegrityAlerts.total > 0 && (
+        <Card className={openIntegrityAlerts.critical > 0 ? 'border-destructive' : ''}>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className={`h-6 w-6 ${openIntegrityAlerts.critical > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
+              <div>
+                <CardTitle className="text-base">Academic Integrity Alerts</CardTitle>
+                <CardDescription>
+                  {openIntegrityAlerts.total} open ({openIntegrityAlerts.critical} critical) — review governance drift
+                </CardDescription>
+              </div>
+            </div>
+            <Button asChild size="sm" variant={openIntegrityAlerts.critical > 0 ? 'destructive' : 'outline'}>
+              <Link to="/admin/integrity-alerts">Review</Link>
+            </Button>
+          </CardHeader>
+        </Card>
+      )}
 
       {/* Quick Stats */}
       {!loading && stats && (
