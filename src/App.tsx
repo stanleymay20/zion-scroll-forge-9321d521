@@ -431,6 +431,7 @@ const App = () => (
               <Route path="admin/course-previews" element={<RoleRoute allowedRoles={["admin","superadmin"]}><CoursePreviewsAdmin /></RoleRoute>} />
               <Route path="admin/transfers" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><TransferRequestsAdmin /></RoleRoute>} />
               <Route path="admin/super" element={<RoleRoute allowedRoles={["superadmin"]}><SuperAdmin /></RoleRoute>} />
+              <Route path="admin/integrity-alerts" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><AcademicIntegrityAlerts /></RoleRoute>} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
               <Route path="courses-detail/:courseId" element={<CourseDetailPage />} />
