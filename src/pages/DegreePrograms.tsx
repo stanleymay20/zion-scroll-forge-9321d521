@@ -108,19 +108,25 @@ export default function DegreePrograms() {
                       <span className="font-medium">{(program as any).total_credits}</span>
                     </div>
                   </div>
-                  <Button
-                    variant={(program as any).is_enrolled ? "outline" : "default"}
-                    className="w-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!(program as any).is_enrolled) {
-                        handleEnroll(program.id);
-                      }
-                    }}
-                    disabled={(program as any).is_enrolled}
-                  >
-                    {(program as any).is_enrolled ? "Enrolled" : "Enroll Now"}
-                  </Button>
+                  {(program as any).program_status === "curriculum_pending" ? (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                      Curriculum being finalized — not yet open for enrollment.
+                    </div>
+                  ) : (
+                    <Button
+                      variant={(program as any).is_enrolled ? "outline" : "default"}
+                      className="w-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!(program as any).is_enrolled) {
+                          handleEnroll(program.id);
+                        }
+                      }}
+                      disabled={(program as any).is_enrolled}
+                    >
+                      {(program as any).is_enrolled ? "Enrolled" : "Enroll Now"}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}
