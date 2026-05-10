@@ -2053,6 +2053,13 @@ export type Database = {
             foreignKeyName: "degree_applications_degree_id_fkey"
             columns: ["degree_id"]
             isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "degree_applications_degree_id_fkey"
+            columns: ["degree_id"]
+            isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
@@ -2103,6 +2110,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_course_gradebook"
             referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "degree_course_requirements_degree_id_fkey"
+            columns: ["degree_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "degree_course_requirements_degree_id_fkey"
@@ -2231,6 +2245,13 @@ export type Database = {
             foreignKeyName: "degree_program_courses_degree_program_id_fkey"
             columns: ["degree_program_id"]
             isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "degree_program_courses_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
@@ -2238,6 +2259,9 @@ export type Database = {
       }
       degree_programs: {
         Row: {
+          accreditation_checked_at: string | null
+          accreditation_metrics: Json
+          accreditation_status: string
           career_paths: string[] | null
           created_at: string | null
           credit_hour_equivalence: Json | null
@@ -2262,6 +2286,9 @@ export type Database = {
           total_credits: number | null
         }
         Insert: {
+          accreditation_checked_at?: string | null
+          accreditation_metrics?: Json
+          accreditation_status?: string
           career_paths?: string[] | null
           created_at?: string | null
           credit_hour_equivalence?: Json | null
@@ -2286,6 +2313,9 @@ export type Database = {
           total_credits?: number | null
         }
         Update: {
+          accreditation_checked_at?: string | null
+          accreditation_metrics?: Json
+          accreditation_status?: string
           career_paths?: string[] | null
           created_at?: string | null
           credit_hour_equivalence?: Json | null
@@ -3066,6 +3096,13 @@ export type Database = {
             foreignKeyName: "enrollments_transferred_from_program_id_fkey"
             columns: ["transferred_from_program_id"]
             isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_transferred_from_program_id_fkey"
+            columns: ["transferred_from_program_id"]
+            isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
@@ -3694,6 +3731,13 @@ export type Database = {
             columns: ["academic_year_id"]
             isOneToOne: false
             referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "graduation_candidates_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
             referencedColumns: ["id"]
           },
           {
@@ -5868,6 +5912,13 @@ export type Database = {
             foreignKeyName: "program_assignment_confirmations_requested_program_id_fkey"
             columns: ["requested_program_id"]
             isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_assignment_confirmations_requested_program_id_fkey"
+            columns: ["requested_program_id"]
+            isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
@@ -5969,7 +6020,21 @@ export type Database = {
             foreignKeyName: "program_transfer_requests_from_program_id_fkey"
             columns: ["from_program_id"]
             isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_transfer_requests_from_program_id_fkey"
+            columns: ["from_program_id"]
+            isOneToOne: false
             referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_transfer_requests_to_program_id_fkey"
+            columns: ["to_program_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
             referencedColumns: ["id"]
           },
           {
@@ -7411,6 +7476,13 @@ export type Database = {
             foreignKeyName: "student_degree_enrollments_degree_id_fkey"
             columns: ["degree_id"]
             isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_degree_enrollments_degree_id_fkey"
+            columns: ["degree_id"]
+            isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
@@ -7655,6 +7727,13 @@ export type Database = {
             foreignKeyName: "student_qualifications_scroll_degree_id_fkey"
             columns: ["scroll_degree_id"]
             isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_qualifications_scroll_degree_id_fkey"
+            columns: ["scroll_degree_id"]
+            isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
@@ -7799,6 +7878,13 @@ export type Database = {
           waitlisted_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "students_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "students_degree_program_id_fkey"
             columns: ["degree_program_id"]
@@ -8916,6 +9002,36 @@ export type Database = {
       }
     }
     Views: {
+      accreditation_baseline_report: {
+        Row: {
+          accreditation_checked_at: string | null
+          accreditation_metrics: Json | null
+          accreditation_status: string | null
+          faculty: string | null
+          id: string | null
+          level: string | null
+          title: string | null
+        }
+        Insert: {
+          accreditation_checked_at?: string | null
+          accreditation_metrics?: Json | null
+          accreditation_status?: string | null
+          faculty?: string | null
+          id?: string | null
+          level?: string | null
+          title?: string | null
+        }
+        Update: {
+          accreditation_checked_at?: string | null
+          accreditation_metrics?: Json | null
+          accreditation_status?: string | null
+          faculty?: string | null
+          id?: string | null
+          level?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       ai_tutor_analytics: {
         Row: {
           avg_duration: number | null
@@ -8985,6 +9101,13 @@ export type Database = {
           user_id: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "students_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "students_degree_program_id_fkey"
             columns: ["degree_program_id"]
@@ -9337,6 +9460,19 @@ export type Database = {
           message: Json
           msg_id: number
           read_ct: number
+        }[]
+      }
+      recompute_program_accreditation_status: {
+        Args: never
+        Returns: {
+          course_count: number
+          credits: number
+          level: string
+          missing: string[]
+          new_status: string
+          old_status: string
+          program_id: string
+          title: string
         }[]
       }
       registrar_assign_program: {

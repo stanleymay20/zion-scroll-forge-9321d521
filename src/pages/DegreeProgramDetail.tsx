@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { AccreditationBadge } from "@/components/accreditation/AccreditationBadge";
 import { PageTemplate } from "@/components/layout/PageTemplate";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,12 @@ export default function DegreeProgramDetail() {
         </div>
       }
     >
+      <div className="mb-4">
+        <AccreditationBadge
+          status={(program as any).accreditation_status}
+          showNotice
+        />
+      </div>
       {isCurriculumPending && (
         <Alert className="mb-6 border-amber-500/40 bg-amber-500/10">
           <AlertCircle className="h-4 w-4 text-amber-600" />
