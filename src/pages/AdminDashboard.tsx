@@ -33,10 +33,12 @@ import type { AdminDashboardStats } from '@/types/admin';
 export const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openIntegrityAlerts, setOpenIntegrityAlerts] = useState<{ total: number; critical: number }>({ total: 0, critical: 0 });
 
   useEffect(() => {
     loadDashboardStats();
-    const interval = setInterval(loadDashboardStats, 60000); // Refresh every minute
+    loadIntegrityAlerts();
+    const interval = setInterval(() => { loadDashboardStats(); loadIntegrityAlerts(); }, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -49,6 +51,18 @@ export const AdminDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadIntegrityAlerts = async () => {
+    const { data } = await supabase
+      .from('academic_integrity_alerts' as any)
+      .select('severity, status')
+      .eq('status', 'open');
+    const rows = (data ?? []) as Array<{ severity: string }>;
+    setOpenIntegrityAlerts({
+      total: rows.length,
+      critical: rows.filter(r => r.severity === 'critical').length,
+    });
   };
 
   return (
