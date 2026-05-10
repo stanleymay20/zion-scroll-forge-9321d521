@@ -5826,6 +5826,53 @@ export type Database = {
           },
         ]
       }
+      program_assignment_confirmations: {
+        Row: {
+          created_at: string
+          id: string
+          requested_program_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_reason: string | null
+          status: string
+          student_reason: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requested_program_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_reason?: string | null
+          status?: string
+          student_reason: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requested_program_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_reason?: string | null
+          status?: string
+          student_reason?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_assignment_confirmations_requested_program_id_fkey"
+            columns: ["requested_program_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       program_requirements: {
         Row: {
           additional_requirements: Json
@@ -9294,7 +9341,7 @@ export type Database = {
       }
       registrar_assign_program: {
         Args: { p_program_id: string; p_reason: string; p_user_id: string }
-        Returns: Json
+        Returns: undefined
       }
       resolve_integrity_alert: {
         Args: { p_alert_id: string; p_resolution_reason: string }
@@ -9326,6 +9373,10 @@ export type Database = {
       spend_scrollcoin: {
         Args: { p_amount: number; p_desc: string; p_user_id: string }
         Returns: undefined
+      }
+      student_confirm_program_intent: {
+        Args: { p_program_id: string; p_reason: string }
+        Returns: string
       }
       submit_transfer_request: {
         Args: {
