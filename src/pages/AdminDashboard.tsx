@@ -6,6 +6,8 @@
 import React, { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
   Users,
@@ -15,9 +17,9 @@ import {
   FileText,
   Database,
   Activity,
-  TrendingUp,
-  AlertCircle,
+  ShieldAlert,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { SystemHealthOverview } from '@/components/admin/SystemHealthOverview';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { CourseApprovalWorkflow } from '@/components/admin/CourseApprovalWorkflow';
