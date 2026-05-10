@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, GraduationCap, BookOpen, Clock } from "lucide-react";
 import { useDegreePrograms, useEnrollInDegree } from "@/hooks/useDegreePrograms";
+import { AccreditationBadge } from "@/components/accreditation/AccreditationBadge";
 
 console.info("✝️ Degree Programs — Christ-centered education");
 
