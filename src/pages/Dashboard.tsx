@@ -13,6 +13,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { useUserEnrollments } from "@/hooks/useCourses";
 import { useAcknowledgeLordship } from "@/hooks/useSpiritual";
 import { cn } from "@/lib/utils";
+import { StudentProgramAssignmentBanner } from "@/components/admissions/PendingProgramAssignment";
 
 export default function Dashboard() {
   const { data: dashboardData, isLoading } = useDashboard();
@@ -63,6 +64,7 @@ export default function Dashboard() {
         </div>
       }
     >
+      <StudentProgramAssignmentBanner />
       {/* Daily Acknowledgment */}
       <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 animate-fade-up">
         <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-5">

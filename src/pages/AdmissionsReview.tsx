@@ -16,6 +16,7 @@ import { useCohortStatus } from '@/hooks/useLaunchOps';
 import { CheckCircle, XCircle, Clock, User, Sparkles, Mail, IdCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUserFriendlyError } from "@/lib/errors";
+import { PendingProgramAssignmentsAdmin } from "@/components/admissions/PendingProgramAssignment";
 
 export default function AdmissionsReview() {
   const { data: applications } = usePendingApplications();
@@ -69,6 +70,7 @@ export default function AdmissionsReview() {
 
   return (
     <PageTemplate title="Admissions Review" description="Review applications, AI pre-score, and decide">
+      <PendingProgramAssignmentsAdmin />
       {cohort && (
         <Card className="mb-6 border-primary/30">
           <CardContent className="py-4">
