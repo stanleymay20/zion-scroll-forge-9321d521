@@ -221,10 +221,8 @@ async function checkOrphans(): Promise<Finding[]> {
       });
     }
   });
-  const { data: assignments } = await admin
-    .from("assignments")
-    .select("id, title, course_id, module_id");
-  (assignments ?? []).forEach((a: any) => {
+  const assignments = await fetchAllIds("assignments", "id, title, course_id, module_id");
+  assignments.forEach((a: any) => {
     if (a.course_id && !courseSet.has(a.course_id)) {
       findings.push({
         check_key: "orphan_assignment",
@@ -246,10 +244,8 @@ async function checkOrphans(): Promise<Finding[]> {
       });
     }
   });
-  const { data: quizzes } = await admin
-    .from("quizzes")
-    .select("id, title, module_id");
-  (quizzes ?? []).forEach((q: any) => {
+  const quizzes = await fetchAllIds("quizzes", "id, title, module_id");
+  quizzes.forEach((q: any) => {
     if (q.module_id && !moduleSet.has(q.module_id)) {
       findings.push({
         check_key: "orphan_quiz",
