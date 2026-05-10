@@ -72,6 +72,12 @@ export default function DegreeProgramDetail() {
         </div>
       }
     >
+      <div className="mb-4">
+        <AccreditationBadge
+          status={(program as any).accreditation_status}
+          showNotice
+        />
+      </div>
       {isCurriculumPending && (
         <Alert className="mb-6 border-amber-500/40 bg-amber-500/10">
           <AlertCircle className="h-4 w-4 text-amber-600" />
