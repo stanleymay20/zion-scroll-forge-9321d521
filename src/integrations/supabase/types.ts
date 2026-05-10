@@ -379,6 +379,90 @@ export type Database = {
           },
         ]
       }
+      accreditation_blueprint: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          degree_program_id: string
+          id: string
+          notes: string | null
+          prerequisite_slot_id: string | null
+          slot_title: string
+          slot_type: string
+          status: string
+          target_credits: number
+          term_recommended: string | null
+          updated_at: string
+          year_recommended: number | null
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          degree_program_id: string
+          id?: string
+          notes?: string | null
+          prerequisite_slot_id?: string | null
+          slot_title: string
+          slot_type: string
+          status?: string
+          target_credits?: number
+          term_recommended?: string | null
+          updated_at?: string
+          year_recommended?: number | null
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          degree_program_id?: string
+          id?: string
+          notes?: string | null
+          prerequisite_slot_id?: string | null
+          slot_title?: string
+          slot_type?: string
+          status?: string
+          target_credits?: number
+          term_recommended?: string | null
+          updated_at?: string
+          year_recommended?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accreditation_blueprint_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accreditation_blueprint_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "v_course_gradebook"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "accreditation_blueprint_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accreditation_blueprint_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accreditation_blueprint_prerequisite_slot_id_fkey"
+            columns: ["prerequisite_slot_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_blueprint"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       achievements: {
         Row: {
           category: string
@@ -2273,6 +2357,7 @@ export type Database = {
           institution_id: string | null
           instructor_of_record_placeholder: string | null
           is_active: boolean | null
+          is_external_facing: boolean
           level: string | null
           lock_reason: string | null
           locked_at: string | null
@@ -2300,6 +2385,7 @@ export type Database = {
           institution_id?: string | null
           instructor_of_record_placeholder?: string | null
           is_active?: boolean | null
+          is_external_facing?: boolean
           level?: string | null
           lock_reason?: string | null
           locked_at?: string | null
@@ -2327,6 +2413,7 @@ export type Database = {
           institution_id?: string | null
           instructor_of_record_placeholder?: string | null
           is_active?: boolean | null
+          is_external_facing?: boolean
           level?: string | null
           lock_reason?: string | null
           locked_at?: string | null
@@ -9373,6 +9460,13 @@ export type Database = {
         Returns: number
       }
       ensure_default_institution_membership: { Args: never; Returns: string }
+      generate_accreditation_blueprint: {
+        Args: never
+        Returns: {
+          program_id: string
+          slots_inserted: number
+        }[]
+      }
       generate_student_identity: {
         Args: { p_student_id: string }
         Returns: Json
