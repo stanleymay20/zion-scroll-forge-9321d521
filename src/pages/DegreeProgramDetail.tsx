@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, GraduationCap, BookOpen, Clock, ArrowLeft, CheckCircle } from "lucide-react";
+import { Loader2, GraduationCap, BookOpen, Clock, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useDegreeProgram, useEnrollInDegree, useDegreeProgress } from "@/hooks/useDegreePrograms";
 import { BackButton } from "@/components/layout/BackButton";
 
