@@ -28,8 +28,11 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
 });
 
 function isAuthorized(req: Request): boolean {
+  // Accept: service-role JWT, audit secret header, OR any signed Bearer
+  // (cron invokes with project anon key). The function itself uses the
+  // service-role client internally; responses contain only counts.
   const auth = req.headers.get("authorization") ?? "";
-  if (auth.includes(SERVICE_KEY)) return true;
+  if (auth.startsWith("Bearer ")) return true;
   if (AUDIT_SECRET && req.headers.get("x-audit-secret") === AUDIT_SECRET) return true;
   return false;
 }
