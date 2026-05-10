@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { AccreditationBadge } from "@/components/accreditation/AccreditationBadge";
 import { PageTemplate } from "@/components/layout/PageTemplate";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
