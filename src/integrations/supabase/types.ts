@@ -197,6 +197,63 @@ export type Database = {
           },
         ]
       }
+      academic_integrity_alerts: {
+        Row: {
+          check_key: string
+          created_at: string
+          details_json: Json
+          detection_count: number
+          entity_id: string | null
+          entity_type: string
+          first_detected_at: string
+          id: string
+          last_detected_at: string
+          resolution_reason: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: Database["public"]["Enums"]["integrity_alert_severity"]
+          status: Database["public"]["Enums"]["integrity_alert_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          check_key: string
+          created_at?: string
+          details_json?: Json
+          detection_count?: number
+          entity_id?: string | null
+          entity_type: string
+          first_detected_at?: string
+          id?: string
+          last_detected_at?: string
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: Database["public"]["Enums"]["integrity_alert_severity"]
+          status?: Database["public"]["Enums"]["integrity_alert_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          check_key?: string
+          created_at?: string
+          details_json?: Json
+          detection_count?: number
+          entity_id?: string | null
+          entity_type?: string
+          first_detected_at?: string
+          id?: string
+          last_detected_at?: string
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: Database["public"]["Enums"]["integrity_alert_severity"]
+          status?: Database["public"]["Enums"]["integrity_alert_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       academic_notifications: {
         Row: {
           body: string
@@ -9239,6 +9296,33 @@ export type Database = {
         Args: { p_program_id: string; p_reason: string; p_user_id: string }
         Returns: Json
       }
+      resolve_integrity_alert: {
+        Args: { p_alert_id: string; p_resolution_reason: string }
+        Returns: {
+          check_key: string
+          created_at: string
+          details_json: Json
+          detection_count: number
+          entity_id: string | null
+          entity_type: string
+          first_detected_at: string
+          id: string
+          last_detected_at: string
+          resolution_reason: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: Database["public"]["Enums"]["integrity_alert_severity"]
+          status: Database["public"]["Enums"]["integrity_alert_status"]
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "academic_integrity_alerts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       spend_scrollcoin: {
         Args: { p_amount: number; p_desc: string; p_user_id: string }
         Returns: undefined
@@ -9299,6 +9383,8 @@ export type Database = {
         | "advisory_faculty"
         | "seminar_faculty"
       faculty_verification_status: "pending" | "verified" | "retired"
+      integrity_alert_severity: "info" | "warning" | "critical"
+      integrity_alert_status: "open" | "acknowledged" | "resolved" | "dismissed"
       mentorship_session_type:
         | "initial_consultation"
         | "progress_review"
@@ -9476,6 +9562,8 @@ export const Constants = {
         "seminar_faculty",
       ],
       faculty_verification_status: ["pending", "verified", "retired"],
+      integrity_alert_severity: ["info", "warning", "critical"],
+      integrity_alert_status: ["open", "acknowledged", "resolved", "dismissed"],
       mentorship_session_type: [
         "initial_consultation",
         "progress_review",
