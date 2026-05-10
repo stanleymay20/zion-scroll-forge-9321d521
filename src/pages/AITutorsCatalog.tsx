@@ -83,11 +83,11 @@ export default function AITutorsCatalog() {
                     <div className="flex-1">
                       <CardTitle className="text-lg">{tutor.name}</CardTitle>
                       <CardDescription className="mt-1">
-                        {tutor.specialties?.map((spec, i) => (
-                          <Badge key={i} variant="secondary" className="mr-1 mb-1">
-                            {spec}
+                        {tutor.specialty && (
+                          <Badge variant="secondary" className="mr-1 mb-1">
+                            {tutor.specialty}
                           </Badge>
-                        ))}
+                        )}
                       </CardDescription>
                     </div>
                   </div>
