@@ -70,6 +70,7 @@ export default function AdmissionsReview() {
 
   return (
     <PageTemplate title="Admissions Review" description="Review applications, AI pre-score, and decide">
+      <PendingProgramAssignmentsAdmin />
       {cohort && (
         <Card className="mb-6 border-primary/30">
           <CardContent className="py-4">
