@@ -51,6 +51,8 @@ export default function DegreeProgramDetail() {
     ? (progress.completedCredits / (program as any).total_credits) * 100
     : 0;
 
+  const isCurriculumPending = (program as any).program_status === "curriculum_pending";
+
   return (
     <PageTemplate
       title={(program as any).title || "Degree Program"}
@@ -61,7 +63,7 @@ export default function DegreeProgramDetail() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          {!(program as any).is_enrolled && (
+          {!(program as any).is_enrolled && !isCurriculumPending && (
             <Button onClick={handleEnroll}>
               <GraduationCap className="h-4 w-4 mr-2" />
               Enroll Now
@@ -70,6 +72,16 @@ export default function DegreeProgramDetail() {
         </div>
       }
     >
+      {isCurriculumPending && (
+        <Alert className="mb-6 border-amber-500/40 bg-amber-500/10">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertTitle>Curriculum Being Finalized</AlertTitle>
+          <AlertDescription>
+            This program's curriculum is being finalized by the faculty council and is not yet open for enrollment.
+            Please check back soon or explore other available programs.
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <Card>
