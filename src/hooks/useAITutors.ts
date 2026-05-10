@@ -11,11 +11,11 @@ export interface AITutor {
   id: string;
   name: string;
   faculty_id?: string;
-  avatar_url?: string;
+  avatar_image_url?: string;
   description?: string;
-  specialties?: string[];
-  base_system_prompt: string;
-  is_active: boolean;
+  specialty?: string;
+  personality_prompt?: string;
+  is_online?: boolean;
   created_at: string;
 }
 
@@ -23,12 +23,14 @@ export interface TutorSession {
   id: string;
   user_id: string;
   tutor_id: string;
-  course_id?: string;
-  status: 'active' | 'closed';
+  module_id?: string;
+  institution_id: string;
+  status: 'active' | 'completed' | 'abandoned';
   created_at: string;
-  closed_at?: string;
+  started_at?: string;
+  ended_at?: string;
+  total_messages?: number;
   tutor?: AITutor;
-  course?: any;
 }
 
 export interface TutorMessage {
@@ -36,7 +38,6 @@ export interface TutorMessage {
   session_id: string;
   sender_type: 'student' | 'tutor' | 'system';
   content: string;
-  role: 'user' | 'assistant' | 'system';
   created_at: string;
   metadata?: Record<string, any>;
 }
@@ -46,7 +47,7 @@ export async function getAITutors() {
   const { data, error } = await (supabase as any)
     .from("ai_tutors")
     .select("*")
-    .eq("is_active", true)
+    .eq("is_online", true)
     .order("name", { ascending: true });
 
   if (error) throw error;
@@ -72,8 +73,7 @@ export async function getTutorSessions() {
     .from("ai_tutor_sessions")
     .select(`
       *,
-      tutor:ai_tutors(*),
-      course:courses(*)
+      tutor:ai_tutors(*)
     `)
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
@@ -87,8 +87,7 @@ export async function getTutorSession(id: string) {
     .from("ai_tutor_sessions")
     .select(`
       *,
-      tutor:ai_tutors(*),
-      course:courses(*)
+      tutor:ai_tutors(*)
     `)
     .eq("id", id)
     .single();
@@ -100,7 +99,7 @@ export async function getTutorSession(id: string) {
 export async function getSessionMessages(sessionId: string) {
   const { data, error } = await (supabase as any)
     .from("ai_tutor_messages")
-    .select("*")
+    .select("id, session_id, sender_type, content, metadata, created_at")
     .eq("session_id", sessionId)
     .order("created_at", { ascending: true });
 
@@ -108,19 +107,41 @@ export async function getSessionMessages(sessionId: string) {
   return data as TutorMessage[];
 }
 
+async function resolveInstitutionId(userId: string): Promise<string> {
+  const { data: profile } = await (supabase as any)
+    .from("profiles")
+    .select("current_institution_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profile?.current_institution_id) return profile.current_institution_id;
+
+  const { data: inst } = await (supabase as any)
+    .from("institutions")
+    .select("id")
+    .eq("slug", "scrolluniversity")
+    .maybeSingle();
+
+  if (!inst?.id) throw new Error("No institution available for session");
+  return inst.id as string;
+}
+
 export async function createTutorSession(params: {
   tutor_id: string;
-  course_id?: string;
+  module_id?: string;
 }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
+
+  const institution_id = await resolveInstitutionId(user.id);
 
   const { data, error } = await (supabase as any)
     .from("ai_tutor_sessions")
     .insert({
       user_id: user.id,
       tutor_id: params.tutor_id,
-      course_id: params.course_id,
+      module_id: params.module_id ?? null,
+      institution_id,
       status: "active"
     })
     .select()
@@ -150,6 +171,9 @@ export async function sendTutorMessage(params: {
   });
 
   if (response.error) throw response.error;
+  if ((response.data as any)?.error) {
+    throw new Error((response.data as any).error);
+  }
   return response.data;
 }
 
@@ -157,8 +181,8 @@ export async function closeTutorSession(sessionId: string) {
   const { data, error } = await (supabase as any)
     .from("ai_tutor_sessions")
     .update({
-      status: "closed",
-      closed_at: new Date().toISOString()
+      status: "completed",
+      ended_at: new Date().toISOString()
     })
     .eq("id", sessionId)
     .select()
