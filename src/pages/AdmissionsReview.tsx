@@ -16,6 +16,7 @@ import { useCohortStatus } from '@/hooks/useLaunchOps';
 import { CheckCircle, XCircle, Clock, User, Sparkles, Mail, IdCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUserFriendlyError } from "@/lib/errors";
+import { PendingProgramAssignmentsAdmin } from "@/components/admissions/PendingProgramAssignment";
 
 export default function AdmissionsReview() {
   const { data: applications } = usePendingApplications();
