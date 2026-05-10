@@ -1,169 +1,219 @@
+// ✝️ AI Tutor Voice — transcribes audio + responds, persists to ai_tutor_messages
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  validateUUID,
+  ValidationError,
+  createValidationErrorResponse,
+  extractAuthenticatedUser,
+} from "../_shared/validation.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
+const json = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+// 8 MB cap on base64 input (~6MB raw audio)
+const MAX_AUDIO_B64 = 8 * 1024 * 1024;
+
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { session_id, audio_base64 } = await req.json();
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
 
-    if (!session_id || !audio_base64) {
-      throw new Error('session_id and audio_base64 are required');
+    const { user, error: authError } = await extractAuthenticatedUser(
+      req,
+      supabase,
+      corsHeaders,
+    );
+    if (authError) return authError;
+
+    const { session_id, audio_base64 } = await req.json().catch(() => ({}));
+    validateUUID(session_id, "session_id");
+    if (typeof audio_base64 !== "string" || audio_base64.length === 0) {
+      throw new ValidationError("audio_base64 is required");
+    }
+    if (audio_base64.length > MAX_AUDIO_B64) {
+      throw new ValidationError("audio is too large (max ~6MB)");
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    console.log(`✝️ [voice-tutor] Processing voice input for session ${session_id}`);
-
-    // Get session details
     const { data: session } = await supabase
-      .from('ai_tutor_sessions')
-      .select('*, ai_tutors(*)')
-      .eq('id', session_id)
-      .single();
+      .from("ai_tutor_sessions")
+      .select(
+        "id, user_id, status, module_id, ai_tutors(name, description, personality_prompt, specialty)",
+      )
+      .eq("id", session_id)
+      .maybeSingle();
 
-    if (!session) {
-      throw new Error('Session not found');
+    if (!session) return json({ error: "Session not found" }, 404);
+    if (session.user_id !== user.id) return json({ error: "Forbidden" }, 403);
+    if (session.status !== "active") {
+      return json({ error: "Session is not active" }, 409);
     }
 
-    // Transcribe audio using Lovable AI
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) return json({ error: "AI not configured" }, 500);
+
+    // Decode base64 → bytes
+    let audioBuffer: Uint8Array;
+    try {
+      audioBuffer = Uint8Array.from(atob(audio_base64), (c) => c.charCodeAt(0));
+    } catch {
+      throw new ValidationError("audio_base64 is not valid base64");
     }
 
-    // Convert base64 to binary
-    const audioBuffer = Uint8Array.from(atob(audio_base64), c => c.charCodeAt(0));
-
-    // Call Lovable AI for transcription (using Whisper via OpenAI compatible endpoint)
-    const transcriptionResponse = await fetch('https://ai.gateway.lovable.dev/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'audio/webm',
+    // Transcribe
+    const transcriptionResponse = await fetch(
+      "https://ai.gateway.lovable.dev/v1/audio/transcriptions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "audio/webm",
+        },
+        body: audioBuffer,
       },
-      body: audioBuffer,
-    });
+    );
 
+    if (transcriptionResponse.status === 429) {
+      return json({ error: "Rate limit exceeded — try again shortly." }, 429);
+    }
+    if (transcriptionResponse.status === 402) {
+      return json({ error: "AI credits exhausted." }, 402);
+    }
     if (!transcriptionResponse.ok) {
-      throw new Error(`Transcription failed: ${transcriptionResponse.statusText}`);
+      const t = await transcriptionResponse.text().catch(() => "");
+      console.error("transcription failed", transcriptionResponse.status, t);
+      return json({ error: "Transcription failed" }, 502);
     }
 
     const { text: transcript } = await transcriptionResponse.json();
+    if (!transcript || typeof transcript !== "string") {
+      return json({ error: "Empty transcription" }, 502);
+    }
 
-    console.log(`✝️ [voice-tutor] Transcribed: "${transcript}"`);
-
-    // Save student message
-    await supabase
-      .from('ai_tutor_messages')
-      .insert({
-        session_id,
-        sender_type: 'student',
-        content: transcript,
-        role: 'user',
-        metadata: { source: 'voice' },
-      });
-
-    // Get conversation history
-    const { data: messages } = await supabase
-      .from('ai_tutor_messages')
-      .select('role, content')
-      .eq('session_id', session_id)
-      .order('created_at', { ascending: true });
-
-    // Build context with Scroll Governance
-    const scrollGuardrailPrefix = `
-[SCROLL GOVERNANCE ACTIVE]
-You operate under the Lordship of Jesus Christ. Your responses must:
-- Honor Scripture as ultimate authority
-- Maintain integrity and truth
-- Reject Babylonian values (materialism, pride, deception)
-- Demonstrate humility and grace
-- Point students toward Christ in all teaching
-
-You are ${session.ai_tutors.name}, ${session.ai_tutors.description}.
-`;
-
-    const systemMessage = {
-      role: 'system',
-      content: scrollGuardrailPrefix + (session.ai_tutors.base_system_prompt || ''),
-    };
-
-    // Call Lovable AI for response
-    const chatResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          systemMessage,
-          ...(messages || []),
-        ],
-      }),
+    // Save student message (user-owned via RLS would also pass; we use service)
+    await supabase.from("ai_tutor_messages").insert({
+      session_id,
+      sender_type: "student",
+      content: transcript,
+      metadata: { source: "voice" },
     });
 
+    // Load history
+    const { data: history } = await supabase
+      .from("ai_tutor_messages")
+      .select("sender_type, content")
+      .eq("session_id", session_id)
+      .order("created_at", { ascending: true })
+      .limit(40);
+
+    const tutor = (session as any).ai_tutors ?? {};
+    const systemPrompt = `[SCROLL GOVERNANCE ACTIVE]
+You are ${tutor.name ?? "a ScrollUniversity AI tutor"}${
+      tutor.specialty ? `, specializing in ${tutor.specialty}` : ""
+    }, operating under the Lordship of Jesus Christ.
+${tutor.description ?? ""}
+${tutor.personality_prompt ?? ""}
+
+GUIDELINES:
+- Honor scripture as ultimate authority and cite chapter:verse where relevant.
+- Be concise (this is voice — keep replies under ~120 words).
+- Encourage the student and end with a question or next step.`;
+
+    const aiMessages = [
+      { role: "system", content: systemPrompt },
+      ...(history ?? []).map((m: any) => ({
+        role: m.sender_type === "student" ? "user" : "assistant",
+        content: m.content,
+      })),
+    ];
+
+    const chatResponse = await fetch(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: aiMessages,
+          max_tokens: 400,
+        }),
+      },
+    );
+
+    if (chatResponse.status === 429) {
+      return json({ error: "Rate limit exceeded — try again shortly." }, 429);
+    }
+    if (chatResponse.status === 402) {
+      return json({ error: "AI credits exhausted." }, 402);
+    }
     if (!chatResponse.ok) {
-      throw new Error(`Chat completion failed: ${chatResponse.statusText}`);
+      const t = await chatResponse.text().catch(() => "");
+      console.error("chat completion failed", chatResponse.status, t);
+      return json({ error: "Chat completion failed" }, 502);
     }
 
     const chatData = await chatResponse.json();
-    const assistantMessage = chatData.choices[0].message.content;
+    const assistantMessage =
+      chatData?.choices?.[0]?.message?.content?.trim() ?? "";
+    if (!assistantMessage) return json({ error: "Empty AI response" }, 502);
 
-    // Save tutor response
-    await supabase
-      .from('ai_tutor_messages')
-      .insert({
-        session_id,
-        sender_type: 'tutor',
-        content: assistantMessage,
-        role: 'assistant',
-      });
-
-    // Create notification
-    await supabase.rpc('create_notification', {
-      p_user_id: session.user_id,
-      p_title: 'Your AI Tutor responded',
-      p_body: assistantMessage.substring(0, 100) + '...',
-      p_type: 'tutor',
-      p_related_id: session_id,
-      p_related_type: 'tutor_session',
+    await supabase.from("ai_tutor_messages").insert({
+      session_id,
+      sender_type: "tutor",
+      content: assistantMessage,
+      metadata: { source: "voice", model: "google/gemini-2.5-flash" },
     });
 
-    // Log spiritual event
-    await supabase
-      .from('spiritual_events_log')
-      .insert({
-        scope: 'ai_tutor',
-        action: 'voice_interaction',
+    // Best-effort notification + audit log
+    try {
+      await supabase.rpc("create_notification", {
+        p_user_id: session.user_id,
+        p_title: "Your AI Tutor responded",
+        p_body: assistantMessage.substring(0, 100) + "…",
+        p_type: "tutor",
+        p_related_id: session_id,
+        p_related_type: "tutor_session",
+      });
+    } catch (e) {
+      console.warn("notification rpc failed:", e);
+    }
+
+    try {
+      await supabase.from("spiritual_events_log").insert({
+        scope: "ai_tutor",
+        action: "voice_interaction",
         details: { session_id, transcript_length: transcript.length },
-        severity: 'info',
+        severity: "info",
         user_id: session.user_id,
       });
+    } catch (e) {
+      console.warn("spiritual_events_log insert failed:", e);
+    }
 
-    return new Response(
-      JSON.stringify({
-        transcript,
-        assistant_message: assistantMessage,
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (error) {
-    console.error('❌ [voice-tutor] Error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return json({ transcript, assistant_message: assistantMessage });
+  } catch (error: any) {
+    if (error instanceof ValidationError) {
+      return createValidationErrorResponse(error, corsHeaders);
+    }
+    console.error("ai-tutor-voice error:", error);
+    return json({ error: error?.message ?? "Internal error" }, 500);
   }
 });
