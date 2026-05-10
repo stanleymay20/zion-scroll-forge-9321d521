@@ -25,9 +25,9 @@ export default function AITutorsCatalog() {
     }
   };
 
-  const faculties = [...new Set(tutors?.map(t => t.specialties?.[0]) || [])];
+  const faculties = [...new Set((tutors?.map(t => t.specialty).filter(Boolean) as string[]) || [])];
   const filteredTutors = selectedFaculty
-    ? tutors?.filter(t => t.specialties?.includes(selectedFaculty))
+    ? tutors?.filter(t => t.specialty === selectedFaculty)
     : tutors;
 
   if (isLoading) {
