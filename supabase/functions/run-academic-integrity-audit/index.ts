@@ -186,13 +186,29 @@ async function checkCoursesWithoutModules(): Promise<Finding[]> {
   return findings;
 }
 
+async function fetchAllIds(table: string, cols: string): Promise<any[]> {
+  const pageSize = 1000;
+  let from = 0;
+  const all: any[] = [];
+  // Paginate to bypass the 1000-row default limit
+  for (;;) {
+    const { data, error } = await admin.from(table).select(cols).range(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 async function checkOrphans(): Promise<Finding[]> {
   const findings: Finding[] = [];
-  const { data: courseIds } = await admin.from("courses").select("id");
-  const courseSet = new Set((courseIds ?? []).map((c: any) => c.id));
-  const { data: modules } = await admin.from("course_modules").select("id, course_id, title");
+  const courseIds = await fetchAllIds("courses", "id");
+  const courseSet = new Set(courseIds.map((c: any) => c.id));
+  const modules = await fetchAllIds("course_modules", "id, course_id, title");
   const moduleSet = new Set<string>();
-  (modules ?? []).forEach((m: any) => {
+  modules.forEach((m: any) => {
     moduleSet.add(m.id);
     if (!courseSet.has(m.course_id)) {
       findings.push({
@@ -205,10 +221,8 @@ async function checkOrphans(): Promise<Finding[]> {
       });
     }
   });
-  const { data: assignments } = await admin
-    .from("assignments")
-    .select("id, title, course_id, module_id");
-  (assignments ?? []).forEach((a: any) => {
+  const assignments = await fetchAllIds("assignments", "id, title, course_id, module_id");
+  assignments.forEach((a: any) => {
     if (a.course_id && !courseSet.has(a.course_id)) {
       findings.push({
         check_key: "orphan_assignment",
@@ -230,10 +244,8 @@ async function checkOrphans(): Promise<Finding[]> {
       });
     }
   });
-  const { data: quizzes } = await admin
-    .from("quizzes")
-    .select("id, title, module_id");
-  (quizzes ?? []).forEach((q: any) => {
+  const quizzes = await fetchAllIds("quizzes", "id, title, module_id");
+  quizzes.forEach((q: any) => {
     if (q.module_id && !moduleSet.has(q.module_id)) {
       findings.push({
         check_key: "orphan_quiz",
