@@ -13,6 +13,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { useUserEnrollments } from "@/hooks/useCourses";
 import { useAcknowledgeLordship } from "@/hooks/useSpiritual";
 import { cn } from "@/lib/utils";
+import { StudentProgramAssignmentBanner } from "@/components/admissions/PendingProgramAssignment";
 
 export default function Dashboard() {
   const { data: dashboardData, isLoading } = useDashboard();
