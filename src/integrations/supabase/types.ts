@@ -9235,6 +9235,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      registrar_assign_program: {
+        Args: { p_program_id: string; p_reason: string; p_user_id: string }
+        Returns: Json
+      }
       spend_scrollcoin: {
         Args: { p_amount: number; p_desc: string; p_user_id: string }
         Returns: undefined
