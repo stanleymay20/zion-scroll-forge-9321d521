@@ -84,10 +84,19 @@ export default function DegreePrograms() {
                           {(program as any).faculty}
                         </Badge>
                         <Badge variant="outline">{(program as any).level}</Badge>
+                        <AccreditationBadge status={(program as any).accreditation_status} />
                       </div>
                       <CardDescription>
                         {(program as any).description}
                       </CardDescription>
+                      {(program as any).accreditation_status &&
+                        (program as any).accreditation_status !== "accreditation_ready" && (
+                          <p className="mt-2 text-xs italic text-muted-foreground">
+                            {(program as any).accreditation_status === "internal_honorific"
+                              ? "Internal honorific recognition — not an external degree."
+                              : "This program is under academic development and not yet accreditation-ready."}
+                          </p>
+                        )}
                     </div>
                   </div>
                 </CardHeader>
