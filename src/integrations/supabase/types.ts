@@ -1594,6 +1594,60 @@ export type Database = {
           },
         ]
       }
+      course_evidence_requirements: {
+        Row: {
+          assessment_evidence: Json
+          course_id: string
+          created_at: string
+          faculty_author: string | null
+          id: string
+          last_reviewed_at: string | null
+          notes: string | null
+          required_readings: Json
+          reviewed_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          assessment_evidence?: Json
+          course_id: string
+          created_at?: string
+          faculty_author?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          notes?: string | null
+          required_readings?: Json
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assessment_evidence?: Json
+          course_id?: string
+          created_at?: string
+          faculty_author?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          notes?: string | null
+          required_readings?: Json
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_evidence_requirements_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_evidence_requirements_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "v_course_gradebook"
+            referencedColumns: ["course_id"]
+          },
+        ]
+      }
       course_learning_outcomes: {
         Row: {
           bloom_level: string | null
@@ -1897,14 +1951,19 @@ export type Database = {
           career_track: string[] | null
           created_at: string | null
           credit_hours: number | null
+          curriculum_status:
+            | Database["public"]["Enums"]["curriculum_status"]
+            | null
           department_id: string | null
           description: string | null
           duration: string | null
           estimated_duration_hours: number | null
           faculty: string | null
+          faculty_author_id: string | null
           faculty_id: string | null
           id: string
           institution_id: string
+          last_reviewed_at: string | null
           learning_outcomes: Json | null
           learning_progression: Json | null
           level: string | null
@@ -1916,6 +1975,7 @@ export type Database = {
           price: number | null
           price_cents: number | null
           rating: number | null
+          reviewed_by: string | null
           scholarship_eligible: boolean | null
           scroll_coin_cost: number | null
           students: number | null
@@ -1929,14 +1989,19 @@ export type Database = {
           career_track?: string[] | null
           created_at?: string | null
           credit_hours?: number | null
+          curriculum_status?:
+            | Database["public"]["Enums"]["curriculum_status"]
+            | null
           department_id?: string | null
           description?: string | null
           duration?: string | null
           estimated_duration_hours?: number | null
           faculty?: string | null
+          faculty_author_id?: string | null
           faculty_id?: string | null
           id?: string
           institution_id: string
+          last_reviewed_at?: string | null
           learning_outcomes?: Json | null
           learning_progression?: Json | null
           level?: string | null
@@ -1948,6 +2013,7 @@ export type Database = {
           price?: number | null
           price_cents?: number | null
           rating?: number | null
+          reviewed_by?: string | null
           scholarship_eligible?: boolean | null
           scroll_coin_cost?: number | null
           students?: number | null
@@ -1961,14 +2027,19 @@ export type Database = {
           career_track?: string[] | null
           created_at?: string | null
           credit_hours?: number | null
+          curriculum_status?:
+            | Database["public"]["Enums"]["curriculum_status"]
+            | null
           department_id?: string | null
           description?: string | null
           duration?: string | null
           estimated_duration_hours?: number | null
           faculty?: string | null
+          faculty_author_id?: string | null
           faculty_id?: string | null
           id?: string
           institution_id?: string
+          last_reviewed_at?: string | null
           learning_outcomes?: Json | null
           learning_progression?: Json | null
           level?: string | null
@@ -1980,6 +2051,7 @@ export type Database = {
           price?: number | null
           price_cents?: number | null
           rating?: number | null
+          reviewed_by?: string | null
           scholarship_eligible?: boolean | null
           scroll_coin_cost?: number | null
           students?: number | null
@@ -2447,6 +2519,9 @@ export type Database = {
           accreditation_status: string
           career_paths: string[] | null
           created_at: string | null
+          credential_class:
+            | Database["public"]["Enums"]["credential_class"]
+            | null
           credit_hour_equivalence: Json | null
           description: string | null
           duration: string | null
@@ -2454,6 +2529,9 @@ export type Database = {
           governance_version: string | null
           id: string
           institution_id: string | null
+          institutional_layer:
+            | Database["public"]["Enums"]["institutional_layer"]
+            | null
           instructor_of_record_placeholder: string | null
           is_active: boolean | null
           is_external_facing: boolean
@@ -2477,6 +2555,9 @@ export type Database = {
           accreditation_status?: string
           career_paths?: string[] | null
           created_at?: string | null
+          credential_class?:
+            | Database["public"]["Enums"]["credential_class"]
+            | null
           credit_hour_equivalence?: Json | null
           description?: string | null
           duration?: string | null
@@ -2484,6 +2565,9 @@ export type Database = {
           governance_version?: string | null
           id?: string
           institution_id?: string | null
+          institutional_layer?:
+            | Database["public"]["Enums"]["institutional_layer"]
+            | null
           instructor_of_record_placeholder?: string | null
           is_active?: boolean | null
           is_external_facing?: boolean
@@ -2507,6 +2591,9 @@ export type Database = {
           accreditation_status?: string
           career_paths?: string[] | null
           created_at?: string | null
+          credential_class?:
+            | Database["public"]["Enums"]["credential_class"]
+            | null
           credit_hour_equivalence?: Json | null
           description?: string | null
           duration?: string | null
@@ -2514,6 +2601,9 @@ export type Database = {
           governance_version?: string | null
           id?: string
           institution_id?: string | null
+          institutional_layer?:
+            | Database["public"]["Enums"]["institutional_layer"]
+            | null
           instructor_of_record_placeholder?: string | null
           is_active?: boolean | null
           is_external_facing?: boolean
@@ -3515,6 +3605,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      external_standard_mappings: {
+        Row: {
+          alignment_notes: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          standard_body: string
+          standard_code: string
+          standard_title: string | null
+        }
+        Insert: {
+          alignment_notes?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          standard_body: string
+          standard_code: string
+          standard_title?: string | null
+        }
+        Update: {
+          alignment_notes?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          standard_body?: string
+          standard_code?: string
+          standard_title?: string | null
+        }
+        Relationships: []
       }
       faculties: {
         Row: {
@@ -5990,6 +6113,51 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practicum_requirements: {
+        Row: {
+          created_at: string
+          degree_program_id: string
+          description: string | null
+          id: string
+          reflection_required: boolean
+          required_hours: number
+          supervisor_required: boolean
+        }
+        Insert: {
+          created_at?: string
+          degree_program_id: string
+          description?: string | null
+          id?: string
+          reflection_required?: boolean
+          required_hours?: number
+          supervisor_required?: boolean
+        }
+        Update: {
+          created_at?: string
+          degree_program_id?: string
+          description?: string | null
+          id?: string
+          reflection_required?: boolean
+          required_hours?: number
+          supervisor_required?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practicum_requirements_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practicum_requirements_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
         ]
@@ -9086,6 +9254,60 @@ export type Database = {
           },
         ]
       }
+      thesis_dissertation_rules: {
+        Row: {
+          created_at: string
+          degree_program_id: string
+          ethics_review_required: boolean
+          id: string
+          milestones: Json
+          min_word_count: number | null
+          oral_defense_required: boolean
+          proposal_required: boolean
+          publication_required: boolean
+          supervisor_required: boolean
+        }
+        Insert: {
+          created_at?: string
+          degree_program_id: string
+          ethics_review_required?: boolean
+          id?: string
+          milestones?: Json
+          min_word_count?: number | null
+          oral_defense_required?: boolean
+          proposal_required?: boolean
+          publication_required?: boolean
+          supervisor_required?: boolean
+        }
+        Update: {
+          created_at?: string
+          degree_program_id?: string
+          ethics_review_required?: boolean
+          id?: string
+          milestones?: Json
+          min_word_count?: number | null
+          oral_defense_required?: boolean
+          proposal_required?: boolean
+          publication_required?: boolean
+          supervisor_required?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thesis_dissertation_rules_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thesis_dissertation_rules_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -9141,6 +9363,33 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      transcript_equivalency_rules: {
+        Row: {
+          conversion_factor: number
+          created_at: string
+          id: string
+          notes: string | null
+          source_system: string
+          target_system: string
+        }
+        Insert: {
+          conversion_factor: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          source_system?: string
+          target_system: string
+        }
+        Update: {
+          conversion_factor?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          source_system?: string
+          target_system?: string
+        }
+        Relationships: []
       }
       transcripts: {
         Row: {
@@ -9809,6 +10058,10 @@ export type Database = {
       }
     }
     Functions: {
+      accreditation_readiness_score: {
+        Args: { p_program_id: string }
+        Returns: number
+      }
       admin_override_enrollment: {
         Args: { p_course_id: string; p_reason?: string; p_user_id: string }
         Returns: Json
@@ -9874,6 +10127,10 @@ export type Database = {
         }
         Returns: string
       }
+      curriculum_depth_validator: {
+        Args: { p_program_id: string }
+        Returns: Json
+      }
       decide_transfer_request: {
         Args: {
           p_credit_remap?: Json
@@ -9910,6 +10167,10 @@ export type Database = {
       earn_scrollcoin: {
         Args: { p_amount: number; p_desc: string; p_user_id: string }
         Returns: undefined
+      }
+      enforce_program_quality_gate: {
+        Args: { p_program_id: string }
+        Returns: Json
       }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
@@ -10118,6 +10379,19 @@ export type Database = {
         | "practical"
         | "collaborative"
         | "scroll_defense"
+      credential_class:
+        | "academic_degree"
+        | "professional_certificate"
+        | "diploma"
+        | "research_fellowship"
+        | "honorific_distinction"
+        | "spiritual_overlay"
+      curriculum_status:
+        | "pending_authorship"
+        | "authored"
+        | "faculty_review"
+        | "accreditation_review"
+        | "approved"
       degree_program_status:
         | "active_public"
         | "pilot_private"
@@ -10129,6 +10403,10 @@ export type Database = {
         | "advisory_faculty"
         | "seminar_faculty"
       faculty_verification_status: "pending" | "verified" | "retired"
+      institutional_layer:
+        | "accreditation_track"
+        | "research_innovation"
+        | "scroll_distinction"
       integrity_alert_severity: "info" | "warning" | "critical"
       integrity_alert_status: "open" | "acknowledged" | "resolved" | "dismissed"
       mentorship_session_type:
@@ -10295,6 +10573,21 @@ export const Constants = {
         "collaborative",
         "scroll_defense",
       ],
+      credential_class: [
+        "academic_degree",
+        "professional_certificate",
+        "diploma",
+        "research_fellowship",
+        "honorific_distinction",
+        "spiritual_overlay",
+      ],
+      curriculum_status: [
+        "pending_authorship",
+        "authored",
+        "faculty_review",
+        "accreditation_review",
+        "approved",
+      ],
       degree_program_status: [
         "active_public",
         "pilot_private",
@@ -10308,6 +10601,11 @@ export const Constants = {
         "seminar_faculty",
       ],
       faculty_verification_status: ["pending", "verified", "retired"],
+      institutional_layer: [
+        "accreditation_track",
+        "research_innovation",
+        "scroll_distinction",
+      ],
       integrity_alert_severity: ["info", "warning", "critical"],
       integrity_alert_status: ["open", "acknowledged", "resolved", "dismissed"],
       mentorship_session_type: [
