@@ -91,8 +91,6 @@ async function checkAcceptedWithoutProgram(): Promise<Finding[]> {
 
 async function checkCrossFacultyMappings(): Promise<Finding[]> {
   // Mappings where program faculty != course faculty and no approved override
-  const { data } = await admin.rpc("__noop_skip__").select?.() ?? { data: null };
-  // Fallback to direct SQL via edge: query both joins
   const { data: rows } = await admin
     .from("degree_program_courses")
     .select(
