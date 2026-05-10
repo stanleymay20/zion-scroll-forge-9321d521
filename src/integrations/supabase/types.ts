@@ -1075,6 +1075,33 @@ export type Database = {
         }
         Relationships: []
       }
+      canonical_faculties: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
       capstone_tracks: {
         Row: {
           created_at: string
@@ -1289,6 +1316,36 @@ export type Database = {
             columns: ["semester_id"]
             isOneToOne: false
             referencedRelation: "semesters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clo_plo_mapping: {
+        Row: {
+          clo_id: string
+          plo_id: string
+        }
+        Insert: {
+          clo_id: string
+          plo_id: string
+        }
+        Update: {
+          clo_id?: string
+          plo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clo_plo_mapping_clo_id_fkey"
+            columns: ["clo_id"]
+            isOneToOne: false
+            referencedRelation: "course_learning_outcomes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clo_plo_mapping_plo_id_fkey"
+            columns: ["plo_id"]
+            isOneToOne: false
+            referencedRelation: "program_learning_outcomes"
             referencedColumns: ["id"]
           },
         ]
@@ -1530,6 +1587,48 @@ export type Database = {
           },
           {
             foreignKeyName: "course_certificates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "v_course_gradebook"
+            referencedColumns: ["course_id"]
+          },
+        ]
+      }
+      course_learning_outcomes: {
+        Row: {
+          bloom_level: string | null
+          code: string
+          course_id: string
+          created_at: string
+          id: string
+          statement: string
+        }
+        Insert: {
+          bloom_level?: string | null
+          code: string
+          course_id: string
+          created_at?: string
+          id?: string
+          statement: string
+        }
+        Update: {
+          bloom_level?: string | null
+          code?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          statement?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_learning_outcomes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_learning_outcomes_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "v_course_gradebook"
@@ -2359,12 +2458,14 @@ export type Database = {
           is_active: boolean | null
           is_external_facing: boolean
           level: string | null
+          lifecycle_status: string
           lock_reason: string | null
           locked_at: string | null
           locked_baseline: boolean | null
           locked_by: string | null
           min_gpa: number | null
           program_status: string | null
+          rebuilt_from_id: string | null
           scroll_level: string | null
           spiritual_requirements: Json | null
           title: string
@@ -2387,12 +2488,14 @@ export type Database = {
           is_active?: boolean | null
           is_external_facing?: boolean
           level?: string | null
+          lifecycle_status?: string
           lock_reason?: string | null
           locked_at?: string | null
           locked_baseline?: boolean | null
           locked_by?: string | null
           min_gpa?: number | null
           program_status?: string | null
+          rebuilt_from_id?: string | null
           scroll_level?: string | null
           spiritual_requirements?: Json | null
           title: string
@@ -2415,12 +2518,14 @@ export type Database = {
           is_active?: boolean | null
           is_external_facing?: boolean
           level?: string | null
+          lifecycle_status?: string
           lock_reason?: string | null
           locked_at?: string | null
           locked_baseline?: boolean | null
           locked_by?: string | null
           min_gpa?: number | null
           program_status?: string | null
+          rebuilt_from_id?: string | null
           scroll_level?: string | null
           spiritual_requirements?: Json | null
           title?: string
@@ -2432,6 +2537,20 @@ export type Database = {
             columns: ["institution_id"]
             isOneToOne: false
             referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "degree_programs_rebuilt_from_id_fkey"
+            columns: ["rebuilt_from_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "degree_programs_rebuilt_from_id_fkey"
+            columns: ["rebuilt_from_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
         ]
@@ -3792,6 +3911,30 @@ export type Database = {
             referencedColumns: ["submission_id"]
           },
         ]
+      }
+      graduate_attributes: {
+        Row: {
+          code: string
+          created_at: string
+          description: string
+          id: string
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description: string
+          id?: string
+          name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       graduation_candidates: {
         Row: {
@@ -5684,6 +5827,36 @@ export type Database = {
         }
         Relationships: []
       }
+      plo_attribute_mapping: {
+        Row: {
+          attribute_id: string
+          plo_id: string
+        }
+        Insert: {
+          attribute_id: string
+          plo_id: string
+        }
+        Update: {
+          attribute_id?: string
+          plo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plo_attribute_mapping_attribute_id_fkey"
+            columns: ["attribute_id"]
+            isOneToOne: false
+            referencedRelation: "graduate_attributes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plo_attribute_mapping_plo_id_fkey"
+            columns: ["plo_id"]
+            isOneToOne: false
+            referencedRelation: "program_learning_outcomes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_comment_likes: {
         Row: {
           comment_id: string
@@ -5919,6 +6092,44 @@ export type Database = {
         }
         Relationships: []
       }
+      professional_competencies: {
+        Row: {
+          canonical_faculty_id: string | null
+          code: string
+          created_at: string
+          description: string
+          external_framework: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          canonical_faculty_id?: string | null
+          code: string
+          created_at?: string
+          description: string
+          external_framework?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          canonical_faculty_id?: string | null
+          code?: string
+          created_at?: string
+          description?: string
+          external_framework?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_competencies_canonical_faculty_id_fkey"
+            columns: ["canonical_faculty_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_faculties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           academic_profile: Json | null
@@ -6002,6 +6213,51 @@ export type Database = {
           },
         ]
       }
+      program_accreditation_targets: {
+        Row: {
+          created_at: string
+          framework: string
+          id: string
+          notes: string | null
+          program_id: string
+          status: string
+          target_level: string | null
+        }
+        Insert: {
+          created_at?: string
+          framework: string
+          id?: string
+          notes?: string | null
+          program_id: string
+          status?: string
+          target_level?: string | null
+        }
+        Update: {
+          created_at?: string
+          framework?: string
+          id?: string
+          notes?: string | null
+          program_id?: string
+          status?: string
+          target_level?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_accreditation_targets_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_accreditation_targets_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       program_assignment_confirmations: {
         Row: {
           created_at: string
@@ -6050,6 +6306,91 @@ export type Database = {
           {
             foreignKeyName: "program_assignment_confirmations_requested_program_id_fkey"
             columns: ["requested_program_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_canonical_faculty: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          canonical_faculty_id: string
+          program_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          canonical_faculty_id: string
+          program_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          canonical_faculty_id?: string
+          program_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_canonical_faculty_canonical_faculty_id_fkey"
+            columns: ["canonical_faculty_id"]
+            isOneToOne: false
+            referencedRelation: "canonical_faculties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_canonical_faculty_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: true
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_canonical_faculty_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: true
+            referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_learning_outcomes: {
+        Row: {
+          bloom_level: string | null
+          code: string
+          created_at: string
+          id: string
+          program_id: string
+          statement: string
+        }
+        Insert: {
+          bloom_level?: string | null
+          code: string
+          created_at?: string
+          id?: string
+          program_id: string
+          statement: string
+        }
+        Update: {
+          bloom_level?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          program_id?: string
+          statement?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_learning_outcomes_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_learning_outcomes_program_id_fkey"
+            columns: ["program_id"]
             isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
