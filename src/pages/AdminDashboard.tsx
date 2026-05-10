@@ -78,6 +78,25 @@ export const AdminDashboard: React.FC = () => {
         </p>
       </div>
 
+      {openIntegrityAlerts.total > 0 && (
+        <Card className={openIntegrityAlerts.critical > 0 ? 'border-destructive' : ''}>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className={`h-6 w-6 ${openIntegrityAlerts.critical > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
+              <div>
+                <CardTitle className="text-base">Academic Integrity Alerts</CardTitle>
+                <CardDescription>
+                  {openIntegrityAlerts.total} open ({openIntegrityAlerts.critical} critical) — review governance drift
+                </CardDescription>
+              </div>
+            </div>
+            <Button asChild size="sm" variant={openIntegrityAlerts.critical > 0 ? 'destructive' : 'outline'}>
+              <Link to="/admin/integrity-alerts">Review</Link>
+            </Button>
+          </CardHeader>
+        </Card>
+      )}
+
       {/* Quick Stats */}
       {!loading && stats && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
