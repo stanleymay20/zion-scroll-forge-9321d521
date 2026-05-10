@@ -2116,6 +2116,10 @@ export type Database = {
         Row: {
           course_id: string
           created_at: string
+          cross_faculty_approved_at: string | null
+          cross_faculty_approved_by: string | null
+          cross_faculty_override: boolean
+          cross_faculty_reason: string | null
           degree_program_id: string
           id: string
           is_required: boolean
@@ -2126,6 +2130,10 @@ export type Database = {
         Insert: {
           course_id: string
           created_at?: string
+          cross_faculty_approved_at?: string | null
+          cross_faculty_approved_by?: string | null
+          cross_faculty_override?: boolean
+          cross_faculty_reason?: string | null
           degree_program_id: string
           id?: string
           is_required?: boolean
@@ -2136,6 +2144,10 @@ export type Database = {
         Update: {
           course_id?: string
           created_at?: string
+          cross_faculty_approved_at?: string | null
+          cross_faculty_approved_by?: string | null
+          cross_faculty_override?: boolean
+          cross_faculty_reason?: string | null
           degree_program_id?: string
           id?: string
           is_required?: boolean
@@ -9162,6 +9174,10 @@ export type Database = {
         Returns: boolean
       }
       increment_post_likes: { Args: { post_id: string }; Returns: undefined }
+      is_course_valid_for_program: {
+        Args: { p_course_id: string; p_program_id: string }
+        Returns: boolean
+      }
       is_registration_open: {
         Args: { p_term_id: string; p_user_id: string }
         Returns: boolean
@@ -9209,6 +9225,7 @@ export type Database = {
         }
         Returns: number
       }
+      normalize_faculty_name: { Args: { p_name: string }; Returns: string }
       publish_academic_year: { Args: { p_year_id: string }; Returns: boolean }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }

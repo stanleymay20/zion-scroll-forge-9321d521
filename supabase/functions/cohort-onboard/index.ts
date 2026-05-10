@@ -136,26 +136,60 @@ serve(async (req) => {
       if (trErr) console.error(`transition to ${status} failed`, trErr);
     }
 
-    // 4) Enroll into starter course
+    // 4) Enroll into the FIRST faculty-aligned course of the student's degree program.
+    //    Resolution order (no global pool fallback — refuses to silently leak across faculties):
+    //      a) degree_program_courses for student.degree_program_id, ordered by
+    //         (recommended_year ASC NULLS LAST, sequence_order ASC, created_at ASC)
+    //      b) degree_course_requirements as a legacy secondary source
+    //      c) NONE — log + skip; never auto-enroll into a random course.
     let starterCourseId: string | null = null;
+    let starterInstitutionId: string | null = null;
+
     if (student.degree_program_id) {
-      const { data: req } = await supabase
-        .from("degree_course_requirements")
-        .select("course_id")
+      const { data: dpc } = await supabase
+        .from("degree_program_courses")
+        .select("course_id, courses(institution_id)")
         .eq("degree_program_id", student.degree_program_id)
+        .order("recommended_year", { ascending: true, nullsFirst: false })
+        .order("sequence_order", { ascending: true })
+        .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
-      starterCourseId = req?.course_id ?? null;
+
+      if (dpc?.course_id) {
+        starterCourseId = dpc.course_id;
+        starterInstitutionId = (dpc as any).courses?.institution_id ?? null;
+      } else {
+        // Legacy mapping table (uses degree_id, NOT degree_program_id)
+        const { data: dcr } = await supabase
+          .from("degree_course_requirements")
+          .select("course_id, courses(institution_id)")
+          .eq("degree_id", student.degree_program_id)
+          .order("semester_recommended", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (dcr?.course_id) {
+          starterCourseId = dcr.course_id;
+          starterInstitutionId = (dcr as any).courses?.institution_id ?? null;
+        }
+      }
     }
-    if (!starterCourseId) {
-      const { data: anyCourse } = await supabase
-        .from("courses").select("id").order("created_at", { ascending: true }).limit(1).maybeSingle();
-      starterCourseId = anyCourse?.id ?? null;
-    }
-    if (starterCourseId) {
-      await supabase.from("enrollments").upsert(
-        { user_id: student.user_id, course_id: starterCourseId, progress: 0 },
+
+    if (starterCourseId && starterInstitutionId) {
+      const { error: enrErr } = await supabase.from("enrollments").upsert(
+        {
+          user_id: student.user_id,
+          course_id: starterCourseId,
+          institution_id: starterInstitutionId,
+          progress: 0,
+        },
         { onConflict: "user_id,course_id" },
+      );
+      if (enrErr) console.error("starter enrollment failed", enrErr);
+    } else {
+      console.warn(
+        `cohort-onboard: no faculty-aligned starter course for student ${studentId} (program ${student.degree_program_id}); enrollment skipped.`,
       );
     }
 
