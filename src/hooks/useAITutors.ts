@@ -11,11 +11,11 @@ export interface AITutor {
   id: string;
   name: string;
   faculty_id?: string;
-  avatar_url?: string;
+  avatar_image_url?: string;
   description?: string;
-  specialties?: string[];
-  base_system_prompt: string;
-  is_active: boolean;
+  specialty?: string;
+  personality_prompt?: string;
+  is_online?: boolean;
   created_at: string;
 }
 
@@ -23,12 +23,14 @@ export interface TutorSession {
   id: string;
   user_id: string;
   tutor_id: string;
-  course_id?: string;
-  status: 'active' | 'closed';
+  module_id?: string;
+  institution_id: string;
+  status: 'active' | 'completed' | 'abandoned';
   created_at: string;
-  closed_at?: string;
+  started_at?: string;
+  ended_at?: string;
+  total_messages?: number;
   tutor?: AITutor;
-  course?: any;
 }
 
 export interface TutorMessage {
@@ -36,7 +38,6 @@ export interface TutorMessage {
   session_id: string;
   sender_type: 'student' | 'tutor' | 'system';
   content: string;
-  role: 'user' | 'assistant' | 'system';
   created_at: string;
   metadata?: Record<string, any>;
 }
