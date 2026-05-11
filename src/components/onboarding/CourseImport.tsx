@@ -17,11 +17,15 @@ export const CourseImport = ({ onComplete, onBack, institutionId, faculties }: P
   };
 
   const handleImport = () => {
-    toast.info('Course import feature coming soon');
+    toast.info('Bulk import is governed by the Registrar pipeline', {
+      description: 'Submit your CSV/JSON to the Registrar Office for review and ingestion.',
+    });
   };
 
   const handleAIGeneration = () => {
-    toast.info('AI course generation feature coming soon');
+    toast.info('AI generation requires faculty review', {
+      description: 'Use the Faculty workspace to draft AI-assisted curricula before publishing.',
+    });
   };
 
   return (
@@ -63,7 +67,7 @@ export const CourseImport = ({ onComplete, onBack, institutionId, faculties }: P
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Import multiple courses at once from a structured file (Coming soon)
+              Import multiple courses at once from a structured CSV or JSON file
             </p>
           </CardContent>
         </Card>
@@ -80,7 +84,7 @@ export const CourseImport = ({ onComplete, onBack, institutionId, faculties }: P
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Generate courses, modules, and content automatically (Coming soon)
+              Generate courses, modules, and content for faculty review and approval
             </p>
           </CardContent>
         </Card>

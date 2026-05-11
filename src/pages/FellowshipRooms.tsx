@@ -37,8 +37,8 @@ export default function FellowshipRooms() {
   });
 
   const handleJoinRoom = async (_roomId: string) => {
-    toast.info('Fellowship rooms are coming soon', {
-      description: 'Live room joining is not yet available.'
+    toast.info('Live rooms launch with the next release', {
+      description: 'Real-time fellowship sessions are being finalized for governance review.'
     });
   };
 

@@ -77,8 +77,8 @@ export const ComingSoonPage = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2 font-serif">
-            <span>🚧</span>
-            <span>Coming Soon</span>
+            <span>📜</span>
+            <span>Under Academic Development</span>
           </CardTitle>
           <CardDescription>
             We're building something purposeful here — Christ-centered, AI-powered learning that

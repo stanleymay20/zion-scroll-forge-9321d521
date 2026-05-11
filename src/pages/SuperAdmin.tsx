@@ -211,7 +211,7 @@ export default function SuperAdmin() {
               <CardTitle>User Management</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">User management interface coming soon</p>
+              <p className="text-muted-foreground">Use the Admin → Users console for individual record management. Bulk tooling is governed under the SUYAS audit pipeline.</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -223,7 +223,7 @@ export default function SuperAdmin() {
               <CardTitle>Global Settings</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Platform-wide settings coming soon</p>
+              <p className="text-muted-foreground">Platform-wide settings are managed through governed migrations to preserve auditability. Contact the Registrar Office to propose a change.</p>
             </CardContent>
           </Card>
         </TabsContent>

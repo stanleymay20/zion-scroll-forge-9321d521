@@ -99,13 +99,13 @@ export default function ScrollGold() {
       description="Revolutionary blockchain-based economy for kingdom education"
       actions={
         <div className="flex space-x-2">
-          <Button variant="outline" disabled>
+          <Button variant="outline" disabled title="Peer-to-peer transfers launch with the next release">
             <Send className="h-4 w-4 mr-2" />
-            Send ScrollGold (Coming Soon)
+            Send ScrollGold
           </Button>
-          <Button disabled>
+          <Button disabled title="Marketplace launches with the next release">
             <ShoppingCart className="h-4 w-4 mr-2" />
-            Visit Marketplace (Coming Soon)
+            Visit Marketplace
           </Button>
         </div>
       }
