@@ -99,8 +99,20 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
 
   const handleDownloadBadge = async () => {
     try {
-      // In production, this would download the badge image from IPFS
-      toast.info('Badge download feature coming soon');
+      const url = badge.metadataUri;
+      if (!url) {
+        toast.error('No badge artifact available to download');
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `scrollbadge-${badge.tokenId || badge.id}.json`;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast.success('Badge download started');
     } catch (error) {
       console.error('Error downloading badge:', error);
       toast.error('Failed to download badge');

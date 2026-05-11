@@ -59,8 +59,8 @@ const SendReceiveInterface: React.FC<SendReceiveInterfaceProps> = ({
   };
 
   const generateQRCode = () => {
-    toast.info('QR code generation is coming soon', {
-      description: 'In the meantime, copy your address using the button above.',
+    toast.info('Use the copy button to share your address', {
+      description: 'Visual QR rendering is being finalized for the next release.',
     });
   };
 

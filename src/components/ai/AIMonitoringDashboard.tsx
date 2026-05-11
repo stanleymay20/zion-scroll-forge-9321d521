@@ -346,7 +346,7 @@ export const AIMonitoringDashboard: React.FC = () => {
               <div className="flex items-center justify-center h-32">
                 <div className="text-center">
                   <TrendingUp className="h-12 w-12 mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600">Trend analysis coming soon</p>
+                  <p className="text-sm text-gray-600">No trend data captured for the selected window yet.</p>
                 </div>
               </div>
             </CardContent>

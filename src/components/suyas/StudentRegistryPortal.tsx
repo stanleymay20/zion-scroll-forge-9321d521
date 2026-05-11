@@ -366,8 +366,8 @@ export default function StudentRegistryPortal() {
             <CardContent>
               <div className="text-center py-12 text-muted-foreground">
                 <Calendar className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <p>Calendar view coming soon</p>
-                <p className="text-sm mt-2">Export your schedule to Google Calendar or iCal</p>
+                <p>No scheduled events for the current term.</p>
+                <p className="text-sm mt-2">Export your schedule to Google Calendar or iCal once items are published.</p>
                 <Button variant="outline" className="mt-4">
                   <Download className="h-4 w-4 mr-2" />
                   Export .ics

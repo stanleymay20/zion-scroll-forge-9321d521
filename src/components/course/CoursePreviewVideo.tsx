@@ -77,29 +77,21 @@ export function CoursePreviewVideo({
     setIsLoading(false);
   };
 
-  // If no video URL, show placeholder
+  // If no video URL: show thumbnail only, or hide the card entirely.
   if (!videoUrl) {
+    if (!thumbnailUrl) return null;
     return (
       <Card>
         <CardContent className="p-0">
-          <div className="relative aspect-video bg-muted flex items-center justify-center">
-            {thumbnailUrl ? (
-              <img 
-                src={thumbnailUrl} 
-                alt={title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="text-center p-8">
-                <Play className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  Preview video coming soon
-                </p>
-              </div>
-            )}
+          <div className="relative aspect-video bg-muted">
+            <img
+              src={thumbnailUrl}
+              alt={title}
+              className="w-full h-full object-cover"
+            />
             <div className="absolute top-4 right-4">
               <Badge variant="secondary" className="bg-black/70 text-white">
-                Preview
+                Course Cover
               </Badge>
             </div>
           </div>
