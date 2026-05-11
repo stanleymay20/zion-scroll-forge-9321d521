@@ -99,14 +99,14 @@ export const BadgeDetailModal: React.FC<BadgeDetailModalProps> = ({
 
   const handleDownloadBadge = async () => {
     try {
-      const url = badge.metadataUri || badge.imageUrl;
+      const url = badge.metadataUri;
       if (!url) {
         toast.error('No badge artifact available to download');
         return;
       }
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${badge.name || 'scrollbadge'}.png`;
+      a.download = `scrollbadge-${badge.tokenId || badge.id}.json`;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       document.body.appendChild(a);
