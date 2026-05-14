@@ -148,18 +148,12 @@ export default function CourseDetailPage() {
               )}
             </div>
 
-            <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-              {previewVideoUrl ? (
-                <video
-                  src={previewVideoUrl}
-                  controls
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <PlayCircle className="h-24 w-24 text-muted-foreground" />
-                </div>
-              )}
+            <div className="relative">
+              <CoursePreviewVideo
+                videoUrl={previewVideoUrl}
+                thumbnailUrl={course.thumbnail_url}
+                title={course.title}
+              />
             </div>
           </div>
         </div>
