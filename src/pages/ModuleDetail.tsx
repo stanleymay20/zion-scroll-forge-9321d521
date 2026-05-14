@@ -10,6 +10,7 @@ import ReactMarkdown from 'react-markdown';
 import { toast } from '@/hooks/use-toast';
 import { AITutorAvatar } from '@/components/AITutorAvatar';
 import { MultiAgentClassroom } from '@/components/learning/MultiAgentClassroom';
+import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
 import { CompanionResources } from '@/components/learning/CompanionResources';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,7 +84,20 @@ export default function ModuleDetail() {
   return (
     <PageTemplate title={module.title}>
       <div className="space-y-6">
-        {/* AI Tutor Avatar - First Priority */}
+        {/* Live AI Avatar Lecture — real-time WebRTC video classroom (D-ID + ElevenLabs) */}
+        {defaultTutor && (
+          <LiveAvatarLecture
+            tutorId={defaultTutor.id}
+            tutorName={defaultTutor.name}
+            tutorSpecialty={defaultTutor.specialty}
+            tutorAvatar={defaultTutor.avatar_image_url}
+            moduleId={moduleId}
+            moduleContent={module.content_md}
+            moduleTitle={module.title}
+          />
+        )}
+
+        {/* AI Tutor Avatar — chat + audio companion */}
         {defaultTutor && (
           <AITutorAvatar
             tutorId={defaultTutor.id}

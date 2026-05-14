@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CourseReviews } from "@/components/course/CourseReviews";
+import { CoursePreviewVideo } from "@/components/course/CoursePreviewVideo";
 import { BookOpen, Clock, Users, Star, PlayCircle, Award, CheckCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getUserFriendlyError } from "@/lib/errors";
@@ -148,18 +149,12 @@ export default function CourseDetailPage() {
               )}
             </div>
 
-            <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-              {previewVideoUrl ? (
-                <video
-                  src={previewVideoUrl}
-                  controls
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <PlayCircle className="h-24 w-24 text-muted-foreground" />
-                </div>
-              )}
+            <div className="relative">
+              <CoursePreviewVideo
+                videoUrl={previewVideoUrl}
+                thumbnailUrl={course.thumbnail_url}
+                title={course.title}
+              />
             </div>
           </div>
         </div>
