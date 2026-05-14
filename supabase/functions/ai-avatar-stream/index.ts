@@ -44,7 +44,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           source_url:
-            "https://create-images-results.d-id.com/DefaultPresenters/Noelle_f/image.jpeg",
+            "https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg",
           driver_url: "bank://lively",
           config: { stitch: true, fluent: true },
         }),
