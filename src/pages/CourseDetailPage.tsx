@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CourseReviews } from "@/components/course/CourseReviews";
+import { CoursePreviewVideo } from "@/components/course/CoursePreviewVideo";
 import { BookOpen, Clock, Users, Star, PlayCircle, Award, CheckCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getUserFriendlyError } from "@/lib/errors";
