@@ -549,6 +549,70 @@ export function LiveAvatarLecture({
     }
   };
 
+  // Unlock browser audio inside a user gesture (autoplay policy).
+  const enableAudio = async () => {
+    try {
+      const a = new Audio();
+      a.muted = true;
+      // 1ms silent wav data URI
+      a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+      await a.play().catch(() => {});
+      a.pause();
+      setAudioUnlocked(true);
+      setIsMuted(false);
+      toast.success('🔊 Sound enabled');
+    } catch {
+      setAudioUnlocked(true);
+      setIsMuted(false);
+    }
+  };
+
+  // Test microphone permission + show 3-sec input level meter.
+  const testMicrophone = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setMicStatus('unsupported');
+      toast.error('Microphone API not supported in this browser');
+      return;
+    }
+    setMicStatus('requesting');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setMicStatus('granted');
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      src.connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      const start = Date.now();
+      const loop = () => {
+        analyser.getByteFrequencyData(buf);
+        const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
+        setMicLevel(Math.min(100, Math.round((avg / 128) * 100)));
+        if (Date.now() - start < 3000) requestAnimationFrame(loop);
+        else {
+          stream.getTracks().forEach((t) => t.stop());
+          ctx.close();
+          setMicLevel(0);
+          toast.success('🎤 Microphone working');
+        }
+      };
+      loop();
+    } catch (err: any) {
+      const name = err?.name || '';
+      if (name === 'NotAllowedError' || name === 'SecurityError') setMicStatus('denied');
+      else if (name === 'NotFoundError' || name === 'OverconstrainedError') setMicStatus('no-device');
+      else if (name === 'NotReadableError') setMicStatus('in-use');
+      else setMicStatus('denied');
+      toast.error(
+        name === 'NotAllowedError' ? 'Microphone blocked. Allow it in your browser settings.'
+        : name === 'NotFoundError' ? 'No microphone found.'
+        : name === 'NotReadableError' ? 'Microphone in use by another app.'
+        : 'Microphone unavailable.'
+      );
+    }
+  };
+
   const pendingCount = questions.filter((q) => q.status === 'pending').length;
 
   return (
