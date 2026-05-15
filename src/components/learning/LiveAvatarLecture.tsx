@@ -100,6 +100,9 @@ export function LiveAvatarLecture({
   const [isRecording, setIsRecording] = useState(false);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
   const [showQueue, setShowQueue] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [micStatus, setMicStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied' | 'no-device' | 'in-use' | 'unsupported'>('idle');
+  const [micLevel, setMicLevel] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
