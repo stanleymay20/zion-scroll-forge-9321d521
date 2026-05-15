@@ -329,6 +329,14 @@ export function LiveAvatarLecture({
             })),
             moduleContent: moduleContent?.substring(0, 3000),
             tutorId: speakerVoiceId,
+            tutorName: speakerName,
+            tutorSpecialty: speaker === 'cohost' ? cohostSpecialty : tutorSpecialty,
+            courseTitle,
+            programTitle,
+            facultyName,
+            moduleTitle,
+            studentName,
+            learningObjectives,
           },
         });
 
@@ -346,7 +354,7 @@ export function LiveAvatarLecture({
           await persistTranscript(activeSid, speaker, data.message, speakerName);
         }
 
-        if (data.audio_base64 && !isMuted) {
+        if (data.audio_base64 && !isMuted && audioUnlocked) {
           playAudio(data.audio_base64);
         }
       } catch (err: any) {
