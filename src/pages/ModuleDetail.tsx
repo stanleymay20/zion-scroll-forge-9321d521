@@ -12,6 +12,8 @@ import { AITutorAvatar } from '@/components/AITutorAvatar';
 import { MultiAgentClassroom } from '@/components/learning/MultiAgentClassroom';
 import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
 import { CompanionResources } from '@/components/learning/CompanionResources';
+import { useLiveClassContext } from '@/hooks/useLiveClassContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BackButton } from "@/components/layout/BackButton";
