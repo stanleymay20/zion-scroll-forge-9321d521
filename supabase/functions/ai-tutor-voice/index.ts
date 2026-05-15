@@ -7,6 +7,7 @@ import {
   createValidationErrorResponse,
   extractAuthenticatedUser,
 } from "../_shared/validation.ts";
+import { IVY_PLUS_RUBRIC_SPOKEN } from "../_shared/ivy-pedagogy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
