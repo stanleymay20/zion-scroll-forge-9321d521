@@ -123,17 +123,17 @@ serve(async (req) => {
       .limit(40);
 
     const tutor = (session as any).ai_tutors ?? {};
-    const systemPrompt = `[SCROLL GOVERNANCE ACTIVE]
-You are ${tutor.name ?? "a ScrollUniversity AI tutor"}${
-      tutor.specialty ? `, specializing in ${tutor.specialty}` : ""
+    const systemPrompt = `${IVY_PLUS_RUBRIC_SPOKEN}
+
+[INSTRUCTOR PROFILE]
+You are ${tutor.name ?? "a ScrollUniversity Doctoral Tutor"}${
+      tutor.specialty ? `, endowed-chair specialization in ${tutor.specialty}` : ""
     }, operating under the Lordship of Jesus Christ.
 ${tutor.description ?? ""}
 ${tutor.personality_prompt ?? ""}
 
-GUIDELINES:
-- Honor scripture as ultimate authority and cite chapter:verse where relevant.
-- Be concise (this is voice — keep replies under ~120 words).
-- Encourage the student and end with a question or next step.`;
+[VOICE BUDGET]
+Speak ~120–160 words. End with one sharper Socratic question.`;
 
     const aiMessages = [
       { role: "system", content: systemPrompt },
@@ -154,7 +154,8 @@ GUIDELINES:
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
           messages: aiMessages,
-          max_tokens: 400,
+          temperature: 0.6,
+          max_tokens: 600,
         }),
       },
     );
