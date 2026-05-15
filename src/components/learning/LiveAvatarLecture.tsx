@@ -55,6 +55,13 @@ interface LiveAvatarLectureProps {
   moduleId?: string;
   moduleContent?: string;
   moduleTitle?: string;
+  // Real course context (no fallbacks).
+  courseId?: string;
+  courseTitle?: string;
+  programTitle?: string;
+  facultyName?: string;
+  studentName?: string;
+  learningObjectives?: string[];
 }
 
 export function LiveAvatarLecture({
@@ -69,6 +76,12 @@ export function LiveAvatarLecture({
   moduleId,
   moduleContent,
   moduleTitle,
+  courseId,
+  courseTitle,
+  programTitle,
+  facultyName,
+  studentName,
+  learningObjectives,
 }: LiveAvatarLectureProps) {
   const hasCohost = Boolean(cohostName);
 
@@ -87,6 +100,9 @@ export function LiveAvatarLecture({
   const [isRecording, setIsRecording] = useState(false);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
   const [showQueue, setShowQueue] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [micStatus, setMicStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied' | 'no-device' | 'in-use' | 'unsupported'>('idle');
+  const [micLevel, setMicLevel] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -235,9 +251,11 @@ export function LiveAvatarLecture({
       setIsConnected(true);
       toast.success('🎥 Live lecture started');
 
+      const programLine = programTitle ? ` who is enrolled in ${programTitle}${facultyName ? ` (${facultyName})` : ''}` : '';
+      const courseLine = courseTitle ? `${courseTitle}${moduleTitle ? ` — module "${moduleTitle}"` : ''}` : (moduleTitle || 'this module');
       const intro = hasCohost
-        ? `Welcome the student to today's lecture on ${moduleTitle || 'this module'}. Briefly introduce yourself as ${tutorName} and your co-lecturer ${cohostName} (${cohostSpecialty}). Mention students can raise hand to queue questions.`
-        : `Introduce yourself and welcome the student to today's lecture on this module. Mention they can raise hand to queue a question.`;
+        ? `Welcome ${studentName || 'the student'}${programLine} to today's lecture on ${courseLine}. Briefly introduce yourself as ${tutorName} (${tutorSpecialty}) and your co-lecturer ${cohostName} (${cohostSpecialty}). Mention students can raise hand to queue questions.`
+        : `Welcome ${studentName || 'the student'}${programLine} to today's lecture on ${courseLine}. Briefly introduce yourself as ${tutorName} (${tutorSpecialty}). Mention they can raise hand to queue a question.`;
       await sendToAvatar(intro, 'host', sid || undefined, true);
     } catch (err: any) {
       console.error('Stream connection error:', err);
@@ -311,6 +329,14 @@ export function LiveAvatarLecture({
             })),
             moduleContent: moduleContent?.substring(0, 3000),
             tutorId: speakerVoiceId,
+            tutorName: speakerName,
+            tutorSpecialty: speaker === 'cohost' ? cohostSpecialty : tutorSpecialty,
+            courseTitle,
+            programTitle,
+            facultyName,
+            moduleTitle,
+            studentName,
+            learningObjectives,
           },
         });
 
@@ -328,7 +354,7 @@ export function LiveAvatarLecture({
           await persistTranscript(activeSid, speaker, data.message, speakerName);
         }
 
-        if (data.audio_base64 && !isMuted) {
+        if (data.audio_base64 && !isMuted && audioUnlocked) {
           playAudio(data.audio_base64);
         }
       } catch (err: any) {
@@ -523,6 +549,70 @@ export function LiveAvatarLecture({
     }
   };
 
+  // Unlock browser audio inside a user gesture (autoplay policy).
+  const enableAudio = async () => {
+    try {
+      const a = new Audio();
+      a.muted = true;
+      // 1ms silent wav data URI
+      a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+      await a.play().catch(() => {});
+      a.pause();
+      setAudioUnlocked(true);
+      setIsMuted(false);
+      toast.success('🔊 Sound enabled');
+    } catch {
+      setAudioUnlocked(true);
+      setIsMuted(false);
+    }
+  };
+
+  // Test microphone permission + show 3-sec input level meter.
+  const testMicrophone = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setMicStatus('unsupported');
+      toast.error('Microphone API not supported in this browser');
+      return;
+    }
+    setMicStatus('requesting');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setMicStatus('granted');
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      src.connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      const start = Date.now();
+      const loop = () => {
+        analyser.getByteFrequencyData(buf);
+        const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
+        setMicLevel(Math.min(100, Math.round((avg / 128) * 100)));
+        if (Date.now() - start < 3000) requestAnimationFrame(loop);
+        else {
+          stream.getTracks().forEach((t) => t.stop());
+          ctx.close();
+          setMicLevel(0);
+          toast.success('🎤 Microphone working');
+        }
+      };
+      loop();
+    } catch (err: any) {
+      const name = err?.name || '';
+      if (name === 'NotAllowedError' || name === 'SecurityError') setMicStatus('denied');
+      else if (name === 'NotFoundError' || name === 'OverconstrainedError') setMicStatus('no-device');
+      else if (name === 'NotReadableError') setMicStatus('in-use');
+      else setMicStatus('denied');
+      toast.error(
+        name === 'NotAllowedError' ? 'Microphone blocked. Allow it in your browser settings.'
+        : name === 'NotFoundError' ? 'No microphone found.'
+        : name === 'NotReadableError' ? 'Microphone in use by another app.'
+        : 'Microphone unavailable.'
+      );
+    }
+  };
+
   const pendingCount = questions.filter((q) => q.status === 'pending').length;
 
   return (
@@ -627,6 +717,49 @@ export function LiveAvatarLecture({
       </CardHeader>
 
       <CardContent className="space-y-3 pb-3">
+        {/* Truthful provider/status strip */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <Badge variant={courseTitle ? 'secondary' : 'destructive'}>
+            {courseTitle ? `Course: ${courseTitle}` : 'No course context'}
+          </Badge>
+          {programTitle && <Badge variant="outline">Program: {programTitle}</Badge>}
+          {facultyName && <Badge variant="outline">Faculty: {facultyName}</Badge>}
+          <Badge variant={audioUnlocked && !isMuted ? 'secondary' : 'outline'}>
+            Audio: {isMuted ? 'muted' : audioUnlocked ? 'on' : 'tap Enable Sound'}
+          </Badge>
+          <Badge
+            variant={
+              micStatus === 'granted' ? 'secondary'
+              : micStatus === 'denied' || micStatus === 'no-device' || micStatus === 'in-use' || micStatus === 'unsupported' ? 'destructive'
+              : 'outline'
+            }
+          >
+            Mic: {micStatus === 'idle' ? 'not tested'
+              : micStatus === 'requesting' ? 'requesting…'
+              : micStatus === 'granted' ? 'granted'
+              : micStatus === 'denied' ? 'blocked'
+              : micStatus === 'no-device' ? 'no device'
+              : micStatus === 'in-use' ? 'in use'
+              : 'unsupported'}
+          </Badge>
+          {!audioUnlocked && (
+            <Button size="sm" variant="outline" className="h-7" onClick={enableAudio}>
+              <Volume2 className="h-3 w-3 mr-1" /> Enable Sound
+            </Button>
+          )}
+          <Button size="sm" variant="outline" className="h-7" onClick={testMicrophone}>
+            <Mic className="h-3 w-3 mr-1" /> Test Microphone
+          </Button>
+          {micStatus === 'requesting' || micLevel > 0 ? (
+            <div className="h-2 w-24 bg-muted rounded overflow-hidden">
+              <div className="h-full bg-primary transition-all" style={{ width: `${micLevel}%` }} />
+            </div>
+          ) : null}
+          {micStatus === 'denied' && (
+            <span className="text-destructive">Allow mic in browser site settings, then retry.</span>
+          )}
+        </div>
+
         {/* Avatar Video / Panel Area */}
         {showVideo && (
           <div className={`grid gap-2 ${hasCohost ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1'}`}>

@@ -75,8 +75,12 @@ serve(async (req) => {
 
     // ─── ACTION: Send text to avatar (make it talk) ───
     if (action === "talk") {
-      const { stream_id, session_id, text, messages, moduleContent, tutorId } =
-        body;
+      const {
+        stream_id, session_id, text, messages, moduleContent, tutorId,
+        tutorName, tutorSpecialty,
+        courseTitle, programTitle, facultyName, moduleTitle,
+        studentName, learningObjectives,
+      } = body;
 
       if (!stream_id || !session_id || !text) {
         return new Response(
@@ -90,15 +94,27 @@ serve(async (req) => {
         );
       }
 
-      // 1. Get AI response from Lovable AI
+      // Build dynamic, course-accurate system prompt — no hardcoded persona/discipline.
+      const safeTutor = tutorName || "Professor";
+      const safeSpec = tutorSpecialty || facultyName || "this discipline";
+      const objectivesText = Array.isArray(learningObjectives) && learningObjectives.length
+        ? `\n[LEARNING OBJECTIVES]\n- ${learningObjectives.slice(0, 6).join("\n- ")}`
+        : "";
+      const studentLine = studentName ? `The student is ${studentName}. ` : "";
+      const programLine = programTitle ? `They are enrolled in ${programTitle}${facultyName ? ` (${facultyName})` : ""}. ` : "";
+      const courseLine = courseTitle ? `Today's course is "${courseTitle}"${moduleTitle ? `, module "${moduleTitle}"` : ""}. ` : "";
+
       const systemPrompt = `${IVY_PLUS_RUBRIC_SPOKEN}
 
 [INSTRUCTOR PROFILE]
-You are Professor Noelle, an endowed-chair lecturer at ScrollUniversity delivering a live video lecture. You speak — you do not write.
+You are ${safeTutor}, a ScrollUniversity lecturer specialising in ${safeSpec}, delivering a live video lecture. You speak — you do not write.
+
+[STUDENT & COURSE CONTEXT]
+${studentLine}${programLine}${courseLine}Stay strictly on this course's discipline. Never default to theology or hermeneutics unless that is the explicit course subject.${objectivesText}
 
 [VOICE BUDGET]
 Spoken response: 110–160 words, 2–3 short paragraphs.
-Open with a one-sentence diagnostic of what the student is really asking, ground the answer in the module material, name a primary source or scripture (chapter:verse) when making a substantive claim, then close with one sharper Socratic question.
+Open with a one-sentence diagnostic of what the student is really asking, ground the answer in the actual course/module material, name a primary source (cite peer-reviewed work or, only when the discipline is theological, scripture chapter:verse), then close with one sharper Socratic question.
 ${moduleContent ? `\n[GROUNDING — current module]\n${moduleContent.substring(0, 2500)}` : ""}`;
 
       const chatMessages = [

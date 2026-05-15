@@ -12,6 +12,8 @@ import { AITutorAvatar } from '@/components/AITutorAvatar';
 import { MultiAgentClassroom } from '@/components/learning/MultiAgentClassroom';
 import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
 import { CompanionResources } from '@/components/learning/CompanionResources';
+import { useLiveClassContext } from '@/hooks/useLiveClassContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BackButton } from "@/components/layout/BackButton";
@@ -68,42 +70,49 @@ export default function ModuleDetail() {
     }
   };
 
-  // Default AI tutor (using Sophia as default)
-  const { data: defaultTutor } = useQuery({
-    queryKey: ['default-tutor'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('ai_tutors')
-        .select('*')
-        .eq('name', 'Sophia')
-        .maybeSingle();
-      return data;
-    }
-  });
+  // Resolve real student → program → course → faculty → matched tutor (no global fallback).
+  const { data: liveCtx } = useLiveClassContext(moduleId);
+  const tutor = liveCtx?.tutor || null;
 
   return (
     <PageTemplate title={module.title}>
       <div className="space-y-6">
-        {/* Live AI Avatar Lecture — real-time WebRTC video classroom (D-ID + ElevenLabs) */}
-        {defaultTutor && (
+        {/* Live AI Avatar Lecture — gated on real course/tutor context */}
+        {liveCtx && !tutor && (
+          <Alert variant="destructive">
+            <AlertTitle>No live class available for this module</AlertTitle>
+            <AlertDescription>
+              {liveCtx.courseTitle
+                ? `No AI faculty has been assigned to "${liveCtx.facultyName || liveCtx.courseTitle}" yet. The lecture cannot start until a tutor is provisioned for this faculty.`
+                : 'This module is not linked to a course in your assigned program.'}
+            </AlertDescription>
+          </Alert>
+        )}
+        {liveCtx && tutor && (
           <LiveAvatarLecture
-            tutorId={defaultTutor.id}
-            tutorName={defaultTutor.name}
-            tutorSpecialty={defaultTutor.specialty}
-            tutorAvatar={defaultTutor.avatar_image_url}
+            tutorId={tutor.id}
+            tutorName={tutor.name}
+            tutorSpecialty={tutor.specialty}
+            tutorAvatar={tutor.avatar_image_url}
             moduleId={moduleId}
             moduleContent={module.content_md}
             moduleTitle={module.title}
+            courseId={liveCtx.courseId || undefined}
+            courseTitle={liveCtx.courseTitle || undefined}
+            programTitle={liveCtx.programTitle || undefined}
+            facultyName={liveCtx.facultyName || undefined}
+            studentName={liveCtx.studentName || undefined}
+            learningObjectives={liveCtx.learningObjectives}
           />
         )}
 
         {/* AI Tutor Avatar — chat + audio companion */}
-        {defaultTutor && (
+        {tutor && (
           <AITutorAvatar
-            tutorId={defaultTutor.id}
-            tutorName={defaultTutor.name}
-            tutorSpecialty={defaultTutor.specialty}
-            tutorAvatar={defaultTutor.avatar_image_url}
+            tutorId={tutor.id}
+            tutorName={tutor.name}
+            tutorSpecialty={tutor.specialty}
+            tutorAvatar={tutor.avatar_image_url}
             moduleId={moduleId}
             moduleContent={module.content_md}
           />

@@ -361,15 +361,24 @@ export default function CourseLearningPage() {
           </TabsContent>
 
           <TabsContent value="avatar">
-            <LiveAvatarLecture
-              tutorName={aiTutor?.name || 'Professor Noelle'}
-              tutorSpecialty={aiTutor?.specialty || 'General Studies'}
-              tutorAvatar={aiTutor?.avatar_image_url}
-              tutorId={aiTutor?.id}
-              moduleId={currentModuleId || undefined}
-              moduleContent={currentModule?.content_md}
-              moduleTitle={currentModule?.title}
-            />
+            {aiTutor ? (
+              <LiveAvatarLecture
+                tutorName={aiTutor.name}
+                tutorSpecialty={aiTutor.specialty}
+                tutorAvatar={aiTutor.avatar_image_url}
+                tutorId={aiTutor.id}
+                moduleId={currentModuleId || undefined}
+                moduleContent={currentModule?.content_md}
+                moduleTitle={currentModule?.title}
+                courseId={courseData?.id}
+                courseTitle={courseData?.title}
+                facultyName={courseData?.faculty}
+              />
+            ) : (
+              <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                No AI faculty has been assigned to this course yet. Live lecture is unavailable until a tutor is provisioned for this faculty.
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="tutor">
