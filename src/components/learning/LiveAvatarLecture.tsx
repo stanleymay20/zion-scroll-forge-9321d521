@@ -251,9 +251,11 @@ export function LiveAvatarLecture({
       setIsConnected(true);
       toast.success('🎥 Live lecture started');
 
+      const programLine = programTitle ? ` who is enrolled in ${programTitle}${facultyName ? ` (${facultyName})` : ''}` : '';
+      const courseLine = courseTitle ? `${courseTitle}${moduleTitle ? ` — module "${moduleTitle}"` : ''}` : (moduleTitle || 'this module');
       const intro = hasCohost
-        ? `Welcome the student to today's lecture on ${moduleTitle || 'this module'}. Briefly introduce yourself as ${tutorName} and your co-lecturer ${cohostName} (${cohostSpecialty}). Mention students can raise hand to queue questions.`
-        : `Introduce yourself and welcome the student to today's lecture on this module. Mention they can raise hand to queue a question.`;
+        ? `Welcome ${studentName || 'the student'}${programLine} to today's lecture on ${courseLine}. Briefly introduce yourself as ${tutorName} (${tutorSpecialty}) and your co-lecturer ${cohostName} (${cohostSpecialty}). Mention students can raise hand to queue questions.`
+        : `Welcome ${studentName || 'the student'}${programLine} to today's lecture on ${courseLine}. Briefly introduce yourself as ${tutorName} (${tutorSpecialty}). Mention they can raise hand to queue a question.`;
       await sendToAvatar(intro, 'host', sid || undefined, true);
     } catch (err: any) {
       console.error('Stream connection error:', err);
