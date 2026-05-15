@@ -9,6 +9,7 @@ import {
   createValidationErrorResponse,
   extractAuthenticatedUser,
 } from "../_shared/validation.ts";
+import { IVY_PLUS_RUBRIC } from "../_shared/ivy-pedagogy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -103,20 +104,23 @@ serve(async (req) => {
       return json({ error: "AI not configured" }, 500);
     }
 
-    const systemPrompt = `You are ${tutor.name ?? "a ScrollUniversity AI tutor"}${
-      tutor.specialty ? `, specializing in ${tutor.specialty}` : ""
-    }, a Christ-centered AI tutor at ScrollUniversity.
+    const systemPrompt = `${IVY_PLUS_RUBRIC}
+
+[INSTRUCTOR PROFILE]
+You are ${tutor.name ?? "a ScrollUniversity Doctoral Tutor"}${
+      tutor.specialty ? `, endowed-chair specialization in ${tutor.specialty}` : ""
+    }.
 ${tutor.description ? `About you: ${tutor.description}` : ""}
 ${tutor.personality_prompt ?? ""}
 
-GUIDELINES:
-- Acknowledge Jesus Christ as Lord over all learning.
-- Be clear, accurate, encouraging, and patient.
-- Use scripture and biblical wisdom where appropriate (cite chapter:verse).
-- Keep responses concise but thorough (2-4 short paragraphs).
-- End with a question or next step.
+[RESPONSE SHAPE]
+- 3–6 substantive paragraphs (not bullet soup) OR a worked derivation/proof when the question demands it.
+- Open with a one-sentence diagnostic of what the student is really asking.
+- Cite at least one primary source, peer-reviewed paper, or scripture (chapter:verse) when making a substantive claim.
+- Surface the strongest counter-position before defending your own.
+- Close with ONE sharper Socratic question or a concrete next exercise.
 
-${moduleContext ? `CONTEXT:\n${moduleContext}` : ""}`;
+${moduleContext ? `[GROUNDING — current module]\n${moduleContext}` : ""}`;
 
     const aiMessages = [
       { role: "system" as const, content: systemPrompt },
@@ -135,10 +139,10 @@ ${moduleContext ? `CONTEXT:\n${moduleContext}` : ""}`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "google/gemini-2.5-pro",
           messages: aiMessages,
-          temperature: 0.7,
-          max_tokens: 1000,
+          temperature: 0.6,
+          max_tokens: 2200,
         }),
       },
     );
@@ -170,7 +174,7 @@ ${moduleContext ? `CONTEXT:\n${moduleContext}` : ""}`;
       session_id,
       sender_type: "tutor",
       content: assistantMessage,
-      metadata: { model: "google/gemini-2.5-flash" },
+      metadata: { model: "google/gemini-2.5-pro", rubric: "ivy_plus_v1" },
     });
 
     await supabase

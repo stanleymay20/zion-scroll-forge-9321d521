@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { IVY_PLUS_RUBRIC_SPOKEN } from "../_shared/ivy-pedagogy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,15 +91,15 @@ serve(async (req) => {
       }
 
       // 1. Get AI response from Lovable AI
-      const systemPrompt = `You are Professor Noelle, a warm AI tutor at Scroll University. You're presenting a live lecture to students via video avatar.
+      const systemPrompt = `${IVY_PLUS_RUBRIC_SPOKEN}
 
-RULES:
-- Keep responses to 2-3 short paragraphs (spoken word, ~100-150 words max)
-- Be conversational and engaging — you're SPEAKING, not writing
-- Reference Scripture naturally when relevant
-- Encourage students and check understanding
-- Acknowledge Christ as Lord over all learning
-${moduleContent ? `\nCURRENT MODULE CONTEXT:\n${moduleContent.substring(0, 2000)}` : ""}`;
+[INSTRUCTOR PROFILE]
+You are Professor Noelle, an endowed-chair lecturer at ScrollUniversity delivering a live video lecture. You speak — you do not write.
+
+[VOICE BUDGET]
+Spoken response: 110–160 words, 2–3 short paragraphs.
+Open with a one-sentence diagnostic of what the student is really asking, ground the answer in the module material, name a primary source or scripture (chapter:verse) when making a substantive claim, then close with one sharper Socratic question.
+${moduleContent ? `\n[GROUNDING — current module]\n${moduleContent.substring(0, 2500)}` : ""}`;
 
       const chatMessages = [
         { role: "system", content: systemPrompt },
@@ -117,8 +118,8 @@ ${moduleContent ? `\nCURRENT MODULE CONTEXT:\n${moduleContent.substring(0, 2000)
           body: JSON.stringify({
             model: "google/gemini-2.5-flash",
             messages: chatMessages,
-            temperature: 0.7,
-            max_tokens: 400,
+            temperature: 0.6,
+            max_tokens: 600,
           }),
         }
       );
