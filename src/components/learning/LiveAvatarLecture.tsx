@@ -717,6 +717,49 @@ export function LiveAvatarLecture({
       </CardHeader>
 
       <CardContent className="space-y-3 pb-3">
+        {/* Truthful provider/status strip */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <Badge variant={courseTitle ? 'secondary' : 'destructive'}>
+            {courseTitle ? `Course: ${courseTitle}` : 'No course context'}
+          </Badge>
+          {programTitle && <Badge variant="outline">Program: {programTitle}</Badge>}
+          {facultyName && <Badge variant="outline">Faculty: {facultyName}</Badge>}
+          <Badge variant={audioUnlocked && !isMuted ? 'secondary' : 'outline'}>
+            Audio: {isMuted ? 'muted' : audioUnlocked ? 'on' : 'tap Enable Sound'}
+          </Badge>
+          <Badge
+            variant={
+              micStatus === 'granted' ? 'secondary'
+              : micStatus === 'denied' || micStatus === 'no-device' || micStatus === 'in-use' || micStatus === 'unsupported' ? 'destructive'
+              : 'outline'
+            }
+          >
+            Mic: {micStatus === 'idle' ? 'not tested'
+              : micStatus === 'requesting' ? 'requesting…'
+              : micStatus === 'granted' ? 'granted'
+              : micStatus === 'denied' ? 'blocked'
+              : micStatus === 'no-device' ? 'no device'
+              : micStatus === 'in-use' ? 'in use'
+              : 'unsupported'}
+          </Badge>
+          {!audioUnlocked && (
+            <Button size="sm" variant="outline" className="h-7" onClick={enableAudio}>
+              <Volume2 className="h-3 w-3 mr-1" /> Enable Sound
+            </Button>
+          )}
+          <Button size="sm" variant="outline" className="h-7" onClick={testMicrophone}>
+            <Mic className="h-3 w-3 mr-1" /> Test Microphone
+          </Button>
+          {micStatus === 'requesting' || micLevel > 0 ? (
+            <div className="h-2 w-24 bg-muted rounded overflow-hidden">
+              <div className="h-full bg-primary transition-all" style={{ width: `${micLevel}%` }} />
+            </div>
+          ) : null}
+          {micStatus === 'denied' && (
+            <span className="text-destructive">Allow mic in browser site settings, then retry.</span>
+          )}
+        </div>
+
         {/* Avatar Video / Panel Area */}
         {showVideo && (
           <div className={`grid gap-2 ${hasCohost ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1'}`}>
