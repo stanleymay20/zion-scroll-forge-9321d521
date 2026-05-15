@@ -55,6 +55,13 @@ interface LiveAvatarLectureProps {
   moduleId?: string;
   moduleContent?: string;
   moduleTitle?: string;
+  // Real course context (no fallbacks).
+  courseId?: string;
+  courseTitle?: string;
+  programTitle?: string;
+  facultyName?: string;
+  studentName?: string;
+  learningObjectives?: string[];
 }
 
 export function LiveAvatarLecture({
@@ -69,6 +76,12 @@ export function LiveAvatarLecture({
   moduleId,
   moduleContent,
   moduleTitle,
+  courseId,
+  courseTitle,
+  programTitle,
+  facultyName,
+  studentName,
+  learningObjectives,
 }: LiveAvatarLectureProps) {
   const hasCohost = Boolean(cohostName);
 
