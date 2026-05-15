@@ -174,7 +174,7 @@ ${moduleContext ? `[GROUNDING — current module]\n${moduleContext}` : ""}`;
       session_id,
       sender_type: "tutor",
       content: assistantMessage,
-      metadata: { model: "google/gemini-2.5-flash" },
+      metadata: { model: "google/gemini-2.5-pro", rubric: "ivy_plus_v1" },
     });
 
     await supabase
