@@ -42,7 +42,13 @@ export function LockedCourseCard({
       };
     if (access.reason === "student_hold")
       return { to: "/dashboard", label: "Resolve holds" };
-    return { to: "/apply", label: "Apply for admission" };
+    if (access.reason === "admin_only" || access.reason === "role_required")
+      return { to: "/dashboard", label: "Back to dashboard" };
+    if (access.reason === "course_not_found")
+      return { to: "/catalog", label: "Browse catalog" };
+    // Default: send to catalog rather than the application form, which would
+    // bounce already-admitted students out of their own learning flow.
+    return { to: "/catalog", label: "Browse catalog" };
   })();
 
   return (
