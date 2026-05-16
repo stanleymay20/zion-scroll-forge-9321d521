@@ -251,11 +251,21 @@ export function LiveAvatarLecture({
       setIsConnected(true);
       toast.success('🎥 Live lecture started');
 
-      const programLine = programTitle ? ` who is enrolled in ${programTitle}${facultyName ? ` (${facultyName})` : ''}` : '';
-      const courseLine = courseTitle ? `${courseTitle}${moduleTitle ? ` — module "${moduleTitle}"` : ''}` : (moduleTitle || 'this module');
-      const intro = hasCohost
-        ? `Welcome ${studentName || 'the student'}${programLine} to today's lecture on ${courseLine}. Briefly introduce yourself as ${tutorName} (${tutorSpecialty}) and your co-lecturer ${cohostName} (${cohostSpecialty}). Mention students can raise hand to queue questions.`
-        : `Welcome ${studentName || 'the student'}${programLine} to today's lecture on ${courseLine}. Briefly introduce yourself as ${tutorName} (${tutorSpecialty}). Mention they can raise hand to queue a question.`;
+      const courseLabel = courseTitle
+        ? `${courseTitle}${moduleTitle ? ` — module "${moduleTitle}"` : ''}`
+        : (moduleTitle || 'this session');
+      const programBit = programTitle ? ` in ${programTitle}${facultyName ? ` (${facultyName})` : ''}` : '';
+      const namePart = studentName ? `, ${studentName}` : '';
+      const cohostLine = hasCohost
+        ? ` Briefly introduce your co-lecturer ${cohostName}${cohostSpecialty ? ` (${cohostSpecialty})` : ''}, then invite the student in.`
+        : ' Invite the student to ask questions or raise a hand at any time.';
+      const intro =
+        `Open the live class with a warm, human welcome — no robotic phrases, no over-dramatic prophetic language. ` +
+        `Speak directly to the student: "Welcome${namePart}. I'm ${tutorName}, and I'm glad you're here. ` +
+        `Today we're stepping into ${courseLabel}${programBit}. Our goal is not just to collect information, ` +
+        `but to understand how this work shapes wise, faithful, and excellent thinking. Take a breath — we'll go step by step." ` +
+        `Then in one or two short sentences, name the single most important thing you want them to take away from this session, ` +
+        `and end with one gentle question that invites them to start.${cohostLine}`;
       await sendToAvatar(intro, 'host', sid || undefined, true);
     } catch (err: any) {
       console.error('Stream connection error:', err);
