@@ -9,7 +9,7 @@ import {
   createValidationErrorResponse,
   extractAuthenticatedUser,
 } from "../_shared/validation.ts";
-import { IVY_PLUS_RUBRIC } from "../_shared/ivy-pedagogy.ts";
+import { buildTutorSystemPrompt, type TutorTone, type WarmthLevel } from "../_shared/tutor-persona.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,7 +43,7 @@ serve(async (req) => {
     if (authError) return authError;
 
     const body = await req.json().catch(() => ({}));
-    const { session_id, message } = body ?? {};
+    const { session_id, message, tone, warmth, student_name, course_title, program_title, faculty_name } = body ?? {};
 
     validateUUID(session_id, "session_id");
     const userMessage = sanitizeString(message)?.slice(0, MAX_LENGTHS.content);
@@ -71,7 +71,8 @@ serve(async (req) => {
     const tutor = (session as any).ai_tutors ?? {};
 
     // Load module context (optional)
-    let moduleContext = "";
+    let moduleTitle: string | null = null;
+    let moduleContent: string | null = null;
     if (session.module_id) {
       const { data: mod } = await supabase
         .from("course_modules")
@@ -79,7 +80,8 @@ serve(async (req) => {
         .eq("id", session.module_id)
         .maybeSingle();
       if (mod) {
-        moduleContext = `Module: ${mod.title}\n${(mod.content_md ?? "").slice(0, 3000)}`;
+        moduleTitle = mod.title ?? null;
+        moduleContent = (mod.content_md ?? "").slice(0, 3000);
       }
     }
 
@@ -104,23 +106,21 @@ serve(async (req) => {
       return json({ error: "AI not configured" }, 500);
     }
 
-    const systemPrompt = `${IVY_PLUS_RUBRIC}
-
-[INSTRUCTOR PROFILE]
-You are ${tutor.name ?? "a ScrollUniversity Doctoral Tutor"}${
-      tutor.specialty ? `, endowed-chair specialization in ${tutor.specialty}` : ""
-    }.
-${tutor.description ? `About you: ${tutor.description}` : ""}
-${tutor.personality_prompt ?? ""}
-
-[RESPONSE SHAPE]
-- 3–6 substantive paragraphs (not bullet soup) OR a worked derivation/proof when the question demands it.
-- Open with a one-sentence diagnostic of what the student is really asking.
-- Cite at least one primary source, peer-reviewed paper, or scripture (chapter:verse) when making a substantive claim.
-- Surface the strongest counter-position before defending your own.
-- Close with ONE sharper Socratic question or a concrete next exercise.
-
-${moduleContext ? `[GROUNDING — current module]\n${moduleContext}` : ""}`;
+    const systemPrompt = buildTutorSystemPrompt({
+      mode: "text",
+      tone: (tone as TutorTone | TutorTone[] | undefined),
+      warmth: (warmth as WarmthLevel | undefined),
+      tutorName: tutor.name,
+      tutorSpecialty: tutor.specialty,
+      tutorDescription: tutor.description,
+      personalityPrompt: tutor.personality_prompt,
+      studentName: student_name ?? null,
+      courseTitle: course_title ?? null,
+      programTitle: program_title ?? null,
+      facultyName: faculty_name ?? null,
+      moduleTitle,
+      moduleContent,
+    });
 
     const aiMessages = [
       { role: "system" as const, content: systemPrompt },
