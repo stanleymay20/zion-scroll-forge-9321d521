@@ -123,17 +123,19 @@ serve(async (req) => {
       .limit(40);
 
     const tutor = (session as any).ai_tutors ?? {};
-    const systemPrompt = `${IVY_PLUS_RUBRIC_SPOKEN}
-
-[INSTRUCTOR PROFILE]
-You are ${tutor.name ?? "a ScrollUniversity Doctoral Tutor"}${
-      tutor.specialty ? `, endowed-chair specialization in ${tutor.specialty}` : ""
-    }, operating under the Lordship of Jesus Christ.
-${tutor.description ?? ""}
-${tutor.personality_prompt ?? ""}
-
-[VOICE BUDGET]
-Speak ~120–160 words. End with one sharper Socratic question.`;
+    const systemPrompt = buildTutorSystemPrompt({
+      mode: "spoken",
+      tone: (tone as TutorTone | TutorTone[] | undefined),
+      warmth: (warmth as WarmthLevel | undefined),
+      tutorName: tutor.name,
+      tutorSpecialty: tutor.specialty,
+      tutorDescription: tutor.description,
+      personalityPrompt: tutor.personality_prompt,
+      studentName: student_name ?? null,
+      courseTitle: course_title ?? null,
+      programTitle: program_title ?? null,
+      facultyName: faculty_name ?? null,
+    });
 
     const aiMessages = [
       { role: "system", content: systemPrompt },
@@ -173,9 +175,10 @@ Speak ~120–160 words. End with one sharper Socratic question.`;
     }
 
     const chatData = await chatResponse.json();
-    const assistantMessage =
+    const rawAssistant =
       chatData?.choices?.[0]?.message?.content?.trim() ?? "";
-    if (!assistantMessage) return json({ error: "Empty AI response" }, 502);
+    if (!rawAssistant) return json({ error: "Empty AI response" }, 502);
+    const assistantMessage = formatForTTS(rawAssistant);
 
     await supabase.from("ai_tutor_messages").insert({
       session_id,
