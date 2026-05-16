@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { IVY_PLUS_RUBRIC_SPOKEN } from "../_shared/ivy-pedagogy.ts";
+import { buildTutorSystemPrompt, formatForTTS, type TutorTone, type WarmthLevel } from "../_shared/tutor-persona.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -80,6 +80,7 @@ serve(async (req) => {
         tutorName, tutorSpecialty,
         courseTitle, programTitle, facultyName, moduleTitle,
         studentName, learningObjectives,
+        tone, warmth,
       } = body;
 
       if (!stream_id || !session_id || !text) {
@@ -94,28 +95,20 @@ serve(async (req) => {
         );
       }
 
-      // Build dynamic, course-accurate system prompt — no hardcoded persona/discipline.
-      const safeTutor = tutorName || "Professor";
-      const safeSpec = tutorSpecialty || facultyName || "this discipline";
-      const objectivesText = Array.isArray(learningObjectives) && learningObjectives.length
-        ? `\n[LEARNING OBJECTIVES]\n- ${learningObjectives.slice(0, 6).join("\n- ")}`
-        : "";
-      const studentLine = studentName ? `The student is ${studentName}. ` : "";
-      const programLine = programTitle ? `They are enrolled in ${programTitle}${facultyName ? ` (${facultyName})` : ""}. ` : "";
-      const courseLine = courseTitle ? `Today's course is "${courseTitle}"${moduleTitle ? `, module "${moduleTitle}"` : ""}. ` : "";
-
-      const systemPrompt = `${IVY_PLUS_RUBRIC_SPOKEN}
-
-[INSTRUCTOR PROFILE]
-You are ${safeTutor}, a ScrollUniversity lecturer specialising in ${safeSpec}, delivering a live video lecture. You speak — you do not write.
-
-[STUDENT & COURSE CONTEXT]
-${studentLine}${programLine}${courseLine}Stay strictly on this course's discipline. Never default to theology or hermeneutics unless that is the explicit course subject.${objectivesText}
-
-[VOICE BUDGET]
-Spoken response: 110–160 words, 2–3 short paragraphs.
-Open with a one-sentence diagnostic of what the student is really asking, ground the answer in the actual course/module material, name a primary source (cite peer-reviewed work or, only when the discipline is theological, scripture chapter:verse), then close with one sharper Socratic question.
-${moduleContent ? `\n[GROUNDING — current module]\n${moduleContent.substring(0, 2500)}` : ""}`;
+      const systemPrompt = buildTutorSystemPrompt({
+        mode: "spoken",
+        tone: tone as TutorTone | TutorTone[] | undefined,
+        warmth: warmth as WarmthLevel | undefined,
+        tutorName,
+        tutorSpecialty: tutorSpecialty || facultyName || null,
+        studentName,
+        courseTitle,
+        programTitle,
+        facultyName,
+        moduleTitle,
+        learningObjectives,
+        moduleContent,
+      });
 
       const chatMessages = [
         { role: "system", content: systemPrompt },
