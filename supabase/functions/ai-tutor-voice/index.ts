@@ -7,7 +7,7 @@ import {
   createValidationErrorResponse,
   extractAuthenticatedUser,
 } from "../_shared/validation.ts";
-import { IVY_PLUS_RUBRIC_SPOKEN } from "../_shared/ivy-pedagogy.ts";
+import { buildTutorSystemPrompt, formatForTTS, type TutorTone, type WarmthLevel } from "../_shared/tutor-persona.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +42,7 @@ serve(async (req) => {
     );
     if (authError) return authError;
 
-    const { session_id, audio_base64 } = await req.json().catch(() => ({}));
+    const { session_id, audio_base64, tone, warmth, student_name, course_title, program_title, faculty_name } = await req.json().catch(() => ({}));
     validateUUID(session_id, "session_id");
     if (typeof audio_base64 !== "string" || audio_base64.length === 0) {
       throw new ValidationError("audio_base64 is required");
