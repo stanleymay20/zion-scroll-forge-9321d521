@@ -163,13 +163,17 @@ serve(async (req) => {
       }
 
       const aiData = await aiResp.json();
-      const aiMessage = aiData.choices[0].message.content;
+      const rawMessage: string = aiData.choices[0].message.content ?? "";
+      // Strip markdown / list characters before TTS — sounds natural spoken.
+      const spokenMessage = formatForTTS(rawMessage);
+      const aiMessage = spokenMessage || rawMessage;
 
-      // 2. Generate audio via ElevenLabs TTS
+      // 2. Generate audio via ElevenLabs TTS — warm, conversational settings.
       let audioBase64: string | null = null;
+      let ttsAvailable = false;
       if (ELEVENLABS_API_KEY) {
         try {
-          const voiceId = "EXAVITQu4vr4xnSDxMaL"; // Sarah voice
+          const voiceId = "EXAVITQu4vr4xnSDxMaL"; // Sarah — warm female
           const ttsResp = await fetch(
             `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
             {
@@ -182,11 +186,11 @@ serve(async (req) => {
                 text: aiMessage,
                 model_id: "eleven_turbo_v2_5",
                 voice_settings: {
-                  stability: 0.6,
-                  similarity_boost: 0.75,
-                  style: 0.4,
+                  stability: 0.45,        // a little more expressive
+                  similarity_boost: 0.8,
+                  style: 0.55,            // warmer, more human
                   use_speaker_boost: true,
-                  speed: 1.0,
+                  speed: 0.97,
                 },
               }),
             }
@@ -194,13 +198,13 @@ serve(async (req) => {
 
           if (ttsResp.ok) {
             const audioBuffer = await ttsResp.arrayBuffer();
-            // Use Deno's btoa-safe encoding
             const uint8 = new Uint8Array(audioBuffer);
             let binary = "";
             for (let i = 0; i < uint8.length; i++) {
               binary += String.fromCharCode(uint8[i]);
             }
             audioBase64 = btoa(binary);
+            ttsAvailable = true;
           } else {
             console.error("ElevenLabs TTS error:", ttsResp.status);
           }
@@ -247,6 +251,7 @@ serve(async (req) => {
         JSON.stringify({
           message: aiMessage,
           audio_base64: audioBase64,
+          tts_available: ttsAvailable,
           did_talk: didTalkResult,
         }),
         {
