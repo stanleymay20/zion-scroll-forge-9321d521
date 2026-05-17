@@ -84,6 +84,7 @@ export function LiveAvatarLecture({
   learningObjectives,
 }: LiveAvatarLectureProps) {
   const hasCohost = Boolean(cohostName);
+  const [deliveryMode, setDeliveryMode] = useState<'offline' | 'avatar' | 'audio' | 'text'>('offline');
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -209,7 +210,11 @@ export function LiveAvatarLecture({
 
       pc.ontrack = (event) => {
         if (videoRef.current && event.streams[0]) {
+          videoRef.current.muted = true;
           videoRef.current.srcObject = event.streams[0];
+          videoRef.current.play().catch((playErr) => {
+            console.error('Video autoplay error:', playErr);
+          });
         }
       };
 
@@ -249,6 +254,7 @@ export function LiveAvatarLecture({
       });
 
       setIsConnected(true);
+      setDeliveryMode('avatar');
       toast.success('🎥 Live lecture started');
 
       const courseLabel = courseTitle
@@ -269,7 +275,8 @@ export function LiveAvatarLecture({
       await sendToAvatar(intro, 'host', sid || undefined, true);
     } catch (err: any) {
       console.error('Stream connection error:', err);
-      toast.error('Failed to connect avatar stream. Using audio-only mode.');
+      setDeliveryMode('text');
+      toast.error('Failed to connect avatar stream. Switching to truthful tutor fallback.');
       setShowVideo(false);
       setIsConnected(true);
     } finally {
@@ -304,6 +311,7 @@ export function LiveAvatarLecture({
     streamIdRef.current = null;
     sessionStreamRef.current = null;
     setIsConnected(false);
+    setDeliveryMode('offline');
 
     if (videoRef.current) videoRef.current.srcObject = null;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -365,7 +373,10 @@ export function LiveAvatarLecture({
         }
 
         if (data.audio_base64 && !isMuted && audioUnlocked) {
+          setDeliveryMode((prev) => (prev === 'avatar' ? prev : 'audio'));
           playAudio(data.audio_base64);
+        } else if (deliveryMode !== 'avatar') {
+          setDeliveryMode('text');
         }
       } catch (err: any) {
         console.error('Avatar talk error:', err);
