@@ -14,8 +14,6 @@ import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
 import { CompanionResources } from '@/components/learning/CompanionResources';
 import { useLiveClassContext } from '@/hooks/useLiveClassContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { BackButton } from "@/components/layout/BackButton";
 
 console.info('✝️ Module Detail — Christ is Lord over learning');
@@ -24,6 +22,10 @@ export default function ModuleDetail() {
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>();
   const { data: module, isLoading } = useModule(moduleId!);
   const completeModule = useCompleteModule();
+  // Resolve real student → program → course → faculty → matched tutor (no global fallback).
+  // Hook must run before early returns to preserve React hook ordering.
+  const { data: liveCtx } = useLiveClassContext(moduleId);
+  const tutor = liveCtx?.tutor || null;
 
   if (isLoading) {
     return (
@@ -70,10 +72,6 @@ export default function ModuleDetail() {
     }
   };
 
-  // Resolve real student → program → course → faculty → matched tutor (no global fallback).
-  const { data: liveCtx } = useLiveClassContext(moduleId);
-  const tutor = liveCtx?.tutor || null;
-
   return (
     <PageTemplate title={module.title}>
       <div className="space-y-6">
@@ -90,6 +88,7 @@ export default function ModuleDetail() {
         )}
         {liveCtx && tutor && (
           <LiveAvatarLecture
+            userId={liveCtx.userId || undefined}
             tutorId={tutor.id}
             tutorName={tutor.name}
             tutorSpecialty={tutor.specialty}
