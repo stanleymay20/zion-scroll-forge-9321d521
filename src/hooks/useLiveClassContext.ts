@@ -12,6 +12,7 @@ export interface LiveClassContext {
   ready: boolean;
   blocked: boolean;
   blockedReason?: string;
+  userId: string | null;
   studentName: string | null;
   programTitle: string | null;
   programId: string | null;
