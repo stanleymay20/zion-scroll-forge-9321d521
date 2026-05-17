@@ -168,12 +168,18 @@ export default function MyCourses() {
                     <Progress value={enrollment.progress || 0} />
                   </div>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex-col items-stretch gap-2">
+                  {enrollment.moduleCount === 0 && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 text-center">
+                      Curriculum pending — modules are still being authored.
+                    </p>
+                  )}
                   <Button 
                     className="w-full" 
+                    disabled={enrollment.moduleCount === 0}
                     onClick={() => navigate(`/courses/${enrollment.courses?.id}/learn`)}
                   >
-                    Continue Learning
+                    {enrollment.moduleCount === 0 ? "Awaiting Curriculum" : "Continue Learning"}
                   </Button>
                 </CardFooter>
               </Card>
