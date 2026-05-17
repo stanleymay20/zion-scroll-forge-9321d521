@@ -180,8 +180,15 @@ describe('LiveAvatarLecture workflow', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText((_, el) => !!el && el.textContent?.toLowerCase().includes('delivery: text tutor only') === true)
-      ).toBeInTheDocument()
+        screen.getAllByText((_, el) => {
+          if (!el) return false;
+          const own = (el.textContent || '').toLowerCase();
+          const childMatch = Array.from(el.children).some(
+            (c) => (c.textContent || '').toLowerCase().includes('delivery: text tutor only')
+          );
+          return own.includes('delivery: text tutor only') && !childMatch;
+        }).length
+      ).toBeGreaterThan(0)
     );
   });
 });
