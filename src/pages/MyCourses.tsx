@@ -32,14 +32,18 @@ export default function MyCourses() {
             description,
             thumbnail_url,
             faculty,
-            level
+            level,
+            course_modules(id)
           )
         `)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data;
+      return (data || []).map((e: any) => ({
+        ...e,
+        moduleCount: e.courses?.course_modules?.length ?? 0,
+      }));
     },
     enabled: !!user?.id,
   });
