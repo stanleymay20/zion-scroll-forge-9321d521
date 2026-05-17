@@ -172,6 +172,10 @@ describe('LiveAvatarLecture workflow', () => {
     render(<LiveAvatarLecture tutorName="Caleb" tutorSpecialty="Computer Science & AI" />);
     fireEvent.click(screen.getByRole('button', { name: /start lecture/i }));
 
-    await waitFor(() => expect(screen.getByText(/delivery: text tutor only/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByText((_, el) => !!el && el.textContent?.toLowerCase().includes('delivery: text tutor only') === true)
+      ).toBeInTheDocument()
+    );
   });
 });
