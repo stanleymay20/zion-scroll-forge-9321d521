@@ -38,6 +38,7 @@ export function useLiveClassContext(moduleId?: string) {
     queryFn: async () => {
       const empty: LiveClassContext = {
         ready: false, blocked: true, blockedReason: 'No module selected.',
+        userId: null,
         studentName: null, programTitle: null, programId: null,
         facultyName: null, facultyId: null, courseId: null, courseTitle: null,
         moduleId: moduleId ?? null, moduleTitle: null, moduleContent: null,
@@ -109,6 +110,7 @@ export function useLiveClassContext(moduleId?: string) {
       return {
         ready: true,
         blocked: false,
+        userId: user.id,
         studentName: student?.full_name ?? user.email ?? null,
         programTitle,
         programId: student?.degree_program_id ?? null,
