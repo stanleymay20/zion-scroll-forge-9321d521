@@ -1,95 +1,111 @@
-# Locked Academic Identity Model
 
-Move ScrollUniversity from a "course marketplace" UX to a governed academic identity model. Students cannot self-mutate faculty, degree, cohort, or SUYAS track. All changes flow through an auditable Program Transfer Request workflow.
+# Institutional Hardening Phase — Implementation Plan
 
-## What's already in place (no rebuild needed)
-- Program-bound enrollment, matriculation, year gating, prereq enforcement, elective approvals, SUYAS audit logging.
-- `students.degree_program_id`, `cohort_label`, `current_year`, `student_academic_profiles` view, `AcademicAssignmentCard`.
-- `enforce_course_enrollment_gate` trigger and `admin_override_enrollment` RPC.
+This is a multi-week, multi-domain initiative. To keep each change auditable and shippable, I'll implement it in **7 sequenced PRs (one per Phase A–G)**. Each PR is independently verifiable. Below is the full scope and the ordering I recommend.
 
-## What's missing (this plan adds it)
+Per your standing rule — *no fake academic depth, no fabricated curriculum, no placeholder modules* — every gate below **blocks publication rather than synthesising content**. Where a program is incomplete it will be honestly marked, never auto-filled.
 
-### 1. Lock the academic identity at the database layer
-- Add a trigger `enforce_academic_identity_lock` on `public.students` that blocks any non-admin UPDATE to: `degree_program_id`, `faculty_id`, `suyas_track`, `cohort_label`, `current_year`, `academic_level`.
-- Only `service_role` or users with `admin`/`superadmin`/`registrar` role may change these — and only through approved transfer RPCs.
-- Mirror lock on `profiles.lifecycle_status` (already governed by `transition_student_status` — add explicit trigger to block direct UPDATE).
+---
 
-### 2. Program Transfer Request system (new)
+## PR1 — Phase A: Curriculum Depth Gates (database + admin surface)
 
-**Tables**
-- `program_transfer_requests`
-  - `student_user_id`, `from_program_id`, `to_program_id`, `from_faculty_id`, `to_faculty_id`
-  - `reason` (text, required), `academic_justification` (text), `supporting_docs` (jsonb)
-  - `status`: `submitted | advisor_review | faculty_review | registrar_review | approved | denied | withdrawn | archived`
-  - `submitted_at`, `decided_at`, `effective_term_id`
-- `transfer_review_notes` — append-only reviewer notes (advisor / faculty / registrar)
-- `transfer_decisions` — final immutable decision record with credit-remap snapshot
+Migrations:
+- `curriculum_depth_scores` (program_id, modules, outcomes, references, assessment_diversity, practicum, research, faculty_review, instructional_hours, sequencing, total_score, computed_at)
+- `module_authoring_requirements` extension to `course_modules`: `learning_objectives jsonb`, `estimated_duration_min int`, `references jsonb`, `activities jsonb`, `prerequisites jsonb`, `tutor_context text`, `assessment_id uuid`
+- DB functions: `module_depth_score(course_id)`, `assessment_rigor_score(course_id)`, `curriculum_depth_score(program_id)` — pure scoring, no content generation
+- Trigger on `degree_programs`: block `lifecycle_status='active_public'` unless tier-specific gate passes (Cert / Bachelor / Master / Doctoral thresholds from your spec)
+- Trigger on `course_modules` publish: require non-null objectives, duration, references, activities
 
-**RPCs (SECURITY DEFINER, audit-logged)**
-- `submit_transfer_request(to_program_id, reason, justification)` — student-callable; one open request at a time.
-- `advance_transfer_request(request_id, next_status, note)` — role-gated by stage (advisor → faculty → registrar).
-- `decide_transfer_request(request_id, decision, credit_remap)` — registrar/admin only; on approve, atomically:
-  - snapshot old `students` row,
-  - update `students.degree_program_id` / faculty / track,
-  - mark transferable enrollments (`enrollments.transfer_status = 'transferred' | 'non_transferable'`),
-  - log `program_transfer` action in `suyas_audit_logs`.
-- `withdraw_transfer_request(request_id)` — student can withdraw while still pre-decision.
+Admin UI:
+- `/admin/curriculum-depth` page listing every program with score, missing gates, and a "Cannot publish — reason" badge
+- No content authored automatically — incomplete programs simply stay `internal_development`
 
-**RLS**
-- Students: read own requests, insert via RPC only.
-- Advisors/faculty: read assigned-cohort requests, no direct write (RPC only).
-- Registrar/admin: full read, decisions via RPC only.
+## PR2 — Phase B: AI Tutor Pedagogy Engine
 
-### 3. Transcript integrity
-- Add `enrollments.transfer_status` (`active | transferred | non_transferable | archived`) and `transferred_from_program_id`.
-- Approval RPC takes a `credit_remap` JSON: `[{ enrollment_id, action: 'transfer'|'archive' }]`.
-- Old enrollments are never deleted — preserved for transcript history.
+Files:
+- `supabase/functions/_shared/tutor-persona.ts` — extend with `teachingMode: 'lecture'|'socratic'|'coaching'|'revision'|'assessment_prep'|'practicum_reflection'`
+- `supabase/functions/_shared/tutor-pedagogy.ts` (new) — mode-specific instruction blocks, scaffolding rules, intervention triggers
+- `useLiveClassContext.ts` — enrich payload with: prior modules completed, assessment status, weak topics (from `tutor_student_memory` table), pacing percentile, PLO targets for current module
+- New table `tutor_student_memory` (user_id, course_id, misconceptions jsonb, strengths jsonb, weak_areas jsonb, preferred_pace, last_topics jsonb, intervention_flag bool)
+- Edge functions `ai-tutor-chat` & `ai-avatar-stream` — read+write memory each turn, switch mode based on `intent` param + recent assessment failures
+- Auto-intervention: 3 consecutive low scores → tutor switches to revision mode + creates `student_intervention_alert` row for faculty
 
-### 4. UX shift (frontend)
+## PR3 — Phase C: Assessment & Integrity
 
-**Remove / demote**
-- "Browse all programs and enroll" framing on the student dashboard. Catalog stays accessible read-only as `/catalog` (already public_preview), but the dashboard stops surfacing cross-program enroll CTAs.
+Migrations:
+- `assessment_question_pools` (assessment_id, questions jsonb, draw_count int)
+- `assessment_attempts` (user_id, assessment_id, attempt_no, drawn_question_ids, score, integrity_flags jsonb, started_at, submitted_at)
+- `assessment_audit_logs` (attempt_id, event_type, payload, created_at)
+- `learning_outcome_mappings` (entity_type, entity_id, plo_id) — module/assessment/course ↔ PLO
+- `program_learning_outcomes` (program_id, code, statement, bloom_level)
+- `faculty_curriculum_reviews` (course_id, reviewer_id, state enum approved/changes_requested/rejected, comments, reviewed_at)
+- Function `transcript_with_attainment(user_id)` returning credits + PLO attainment + practicum/thesis status + accreditation track
 
-**Promote (in `AcademicAssignmentCard` and a new `MyAcademicIdentity` page)**
-- Locked identity panel: Faculty / Degree / Cohort / SUYAS Track / Advisor / Year — all read-only with a lock icon.
-- "Recommended next course" + "Locked upcoming" (already wired via `get_assigned_next_course`).
-- "Request a Program Transfer" button → opens `TransferRequestDialog`.
+UI:
+- Faculty review queue at `/faculty/curriculum-reviews`
+- Student transcript view extended with PLO attainment matrix
 
-**New pages / components**
-- `src/pages/student/TransferRequest.tsx` — submit + view own request status timeline.
-- `src/pages/admin/TransferRequestsAdmin.tsx` — registrar queue with stage actions.
-- `src/components/identity/LockedIdentityPanel.tsx`
-- `src/components/transfer/TransferRequestDialog.tsx`
-- `src/components/transfer/TransferStatusTimeline.tsx`
-- `src/hooks/useProgramTransfer.ts`
+## PR4 — Phase D: Progression & Standing Engine
 
-### 5. SUYAS audit coverage
-Every transition emits `log_suyas_action` with action types: `transfer_submitted`, `transfer_advanced`, `transfer_approved`, `transfer_denied`, `transfer_withdrawn`, `identity_lock_violation_attempt`.
+Migrations:
+- Extend `enforce_course_enrollment_gate` to also check: practicum_completed, thesis_state, gpa >= threshold, no integrity hold
+- New table `academic_standing` (user_id, term_id, standing enum good/probation/intervention/honors/eligible_to_graduate, gpa, computed_at)
+- Function `recompute_academic_standing(user_id, term_id)` — runs nightly + on grade insert
+- Strengthen `check_graduation_eligibility` to require: PLO attainment ≥ threshold, capstone/thesis approved, faculty signoff row exists, no integrity holds
 
-## Out of scope (call out, not built now)
-- Advisor assignment workflow (assumes `students.advisor_id` exists or is added later).
-- Email notifications for stage changes (queue infra exists; can wire after).
-- Cohort sequencing changes / leave-of-absence flows.
+UI:
+- Student dashboard "Academic Standing" card
+- Registrar dashboard standing distribution
 
-## Technical summary
+## PR5 — Phase E: Accreditation Evidence Layer
 
-```text
-Student ──submit──▶ program_transfer_requests (submitted)
-            │
-            ▼
-   advisor_review ──▶ faculty_review ──▶ registrar_review
-            │                                  │
-            ▼                                  ▼
-        denied/withdrawn               approved (atomic)
-                                        ├─ students.* updated (via RPC only)
-                                        ├─ enrollments remapped
-                                        ├─ transfer_decisions row
-                                        └─ suyas_audit_logs entry
+Migrations:
+- `accreditation_evidence` (standard_code, program_id, evidence_type, document_url, status, reviewer_id, reviewed_at)
+- `curriculum_review_cycles` (program_id, cycle_year, status, started_at, completed_at, summary)
+- `learning_outcome_attainment` (program_id, plo_id, cohort_year, students_assessed, students_attained, attainment_rate)
+- `faculty_credential_reviews` (faculty_id, credential_type, document_url, verified_by, verified_at)
+- `assessment_effectiveness_reviews` (assessment_id, cycle_year, validity_score, reliability_score, notes)
 
-Direct UPDATE on students.degree_program_id by non-admin
-    └─▶ enforce_academic_identity_lock trigger raises exception
-```
+Admin dashboard `/admin/accreditation-readiness`:
+- Per-program readiness score (weighted depth + faculty review + PLO attainment + evidence completeness)
+- Gap report: missing evidence, weak programs, faculty review gaps, integrity issues
 
-**Migration order:** (1) identity lock trigger, (2) transfer tables + RLS, (3) RPCs, (4) `enrollments.transfer_status` columns, (5) frontend.
+## PR6 — Phase F: Public Catalog Truthfulness
 
-Approve to proceed, or tell me which sections to trim/expand (e.g. skip advisor stage, ship registrar-only first).
+- `CourseCatalog` + `ProgramDetail` pages: surface `curriculum_maturity` (Accreditation Ready / Pilot / In Development / Internal Distinction / Curriculum Pending) as a visible chip
+- Hide accreditation/thesis/practicum claims when not present in DB
+- Add disclosure block per program: delivery status, practicum availability, thesis availability, accreditation track
+- Catalog query filters out programs that fail depth gate from default listing; advanced filter can show "In Development"
+
+## PR7 — Phase G: Live Classroom Hardening
+
+`LiveAvatarLecture.tsx`:
+- Persistent status row: Avatar ●  Audio ●  Mic ●  Provider (D-ID/ElevenLabs/Text-only)
+- Auto-reconnect on stream drop (3 retries, exponential backoff), then degrade to text tutor with banner "Avatar provider unavailable — continuing in text mode"
+- Latency warning chip when avg RTT > 1500 ms
+- Session recovery: store last `session_id` in localStorage, resume on refresh
+- Never render avatar `<video>` element when provider unavailable — replace with explicit "Text tutor mode" panel
+
+---
+
+## Technical Notes
+
+- All gates are **enforcement triggers** in Postgres, not application-layer checks, so they cannot be bypassed by direct API calls.
+- All scoring functions return raw numbers + reasons; no automatic content creation.
+- Tutor memory is per `(user_id, course_id)`, RLS-locked to the student + their faculty + admins.
+- Faculty review workflow integrates with the existing `quality_audit_logs` so SUYAS continues to be the single source of governance truth.
+- Public catalog change is read-only; no data is rewritten — programs already demoted in last migration stay demoted.
+
+## Out of Scope (explicit)
+
+- Writing actual curriculum content. Empty programs stay empty + honestly labelled.
+- Replacing the existing tutor persona file — only extending it.
+- Changing the existing economy (SG), auth, or institution model.
+
+---
+
+## Ask Before I Start
+
+PR1 alone is ~6 tables + 3 functions + 2 triggers + 1 admin page. The full 7-PR sequence is roughly 25+ migrations and ~40 edited/created files. I'd like to ship them **one PR at a time, in order A→G**, pausing after each for you to review the migration before I move on. 
+
+**Reply "go" and I'll start with PR1 (Phase A: Curriculum Depth Gates).** Or tell me to reorder / drop phases.
