@@ -54,11 +54,19 @@ jobs:
           sarif_file: 'trivy-results.sarif'
       
       - name: Run Snyk security scan
+        if: ${{ secrets.SNYK_TOKEN != '' }}
+        continue-on-error: true
         uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
+
+      - name: Snyk token not configured
+        if: ${{ secrets.SNYK_TOKEN == '' }}
+        run: |
+          echo "SNYK_TOKEN is not configured. Trivy SARIF scanning remains active."
+          echo "Configure SNYK_TOKEN in repository secrets to enable Snyk as an additional advisory scan."
 
   # Backend Tests
   backend-tests:
