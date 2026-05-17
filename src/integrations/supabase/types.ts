@@ -5037,6 +5037,293 @@ export type Database = {
         }
         Relationships: []
       }
+      integrity_appeals: {
+        Row: {
+          acknowledged_at: string | null
+          closed_at: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_due_at: string | null
+          hold_id: string
+          id: string
+          outcome: string | null
+          outcome_rationale_internal: string | null
+          outcome_rationale_public: string | null
+          state: string
+          statement: string
+          student_user_id: string
+          submitted_at: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          closed_at?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_due_at?: string | null
+          hold_id: string
+          id?: string
+          outcome?: string | null
+          outcome_rationale_internal?: string | null
+          outcome_rationale_public?: string | null
+          state?: string
+          statement: string
+          student_user_id: string
+          submitted_at?: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          closed_at?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_due_at?: string | null
+          hold_id?: string
+          id?: string
+          outcome?: string | null
+          outcome_rationale_internal?: string | null
+          outcome_rationale_public?: string | null
+          state?: string
+          statement?: string
+          student_user_id?: string
+          submitted_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrity_appeals_hold_id_fkey"
+            columns: ["hold_id"]
+            isOneToOne: false
+            referencedRelation: "student_holds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrity_case_evidence: {
+        Row: {
+          appeal_id: string | null
+          created_at: string
+          description: string | null
+          evidence_url: string | null
+          hold_id: string
+          id: string
+          is_confidential: boolean
+          source_type: string
+          submitted_by: string
+          title: string
+        }
+        Insert: {
+          appeal_id?: string | null
+          created_at?: string
+          description?: string | null
+          evidence_url?: string | null
+          hold_id: string
+          id?: string
+          is_confidential?: boolean
+          source_type: string
+          submitted_by: string
+          title: string
+        }
+        Update: {
+          appeal_id?: string | null
+          created_at?: string
+          description?: string | null
+          evidence_url?: string | null
+          hold_id?: string
+          id?: string
+          is_confidential?: boolean
+          source_type?: string
+          submitted_by?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrity_case_evidence_appeal_id_fkey"
+            columns: ["appeal_id"]
+            isOneToOne: false
+            referencedRelation: "integrity_appeals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integrity_case_evidence_hold_id_fkey"
+            columns: ["hold_id"]
+            isOneToOne: false
+            referencedRelation: "student_holds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrity_case_reviews: {
+        Row: {
+          appeal_id: string | null
+          assigned_at: string
+          assigned_by: string
+          confidential_notes: string | null
+          created_at: string
+          decision: string | null
+          decision_at: string | null
+          due_at: string | null
+          hold_id: string
+          id: string
+          public_summary: string | null
+          reviewer_role: string
+          reviewer_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          appeal_id?: string | null
+          assigned_at?: string
+          assigned_by: string
+          confidential_notes?: string | null
+          created_at?: string
+          decision?: string | null
+          decision_at?: string | null
+          due_at?: string | null
+          hold_id: string
+          id?: string
+          public_summary?: string | null
+          reviewer_role: string
+          reviewer_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          appeal_id?: string | null
+          assigned_at?: string
+          assigned_by?: string
+          confidential_notes?: string | null
+          created_at?: string
+          decision?: string | null
+          decision_at?: string | null
+          due_at?: string | null
+          hold_id?: string
+          id?: string
+          public_summary?: string | null
+          reviewer_role?: string
+          reviewer_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrity_case_reviews_appeal_id_fkey"
+            columns: ["appeal_id"]
+            isOneToOne: false
+            referencedRelation: "integrity_appeals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integrity_case_reviews_hold_id_fkey"
+            columns: ["hold_id"]
+            isOneToOne: false
+            referencedRelation: "student_holds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrity_decision_history: {
+        Row: {
+          actor_role: string
+          actor_user_id: string
+          appeal_id: string | null
+          created_at: string
+          from_state: string | null
+          hold_id: string
+          id: string
+          rationale: string | null
+          to_state: string
+        }
+        Insert: {
+          actor_role: string
+          actor_user_id: string
+          appeal_id?: string | null
+          created_at?: string
+          from_state?: string | null
+          hold_id: string
+          id?: string
+          rationale?: string | null
+          to_state: string
+        }
+        Update: {
+          actor_role?: string
+          actor_user_id?: string
+          appeal_id?: string | null
+          created_at?: string
+          from_state?: string | null
+          hold_id?: string
+          id?: string
+          rationale?: string | null
+          to_state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrity_decision_history_appeal_id_fkey"
+            columns: ["appeal_id"]
+            isOneToOne: false
+            referencedRelation: "integrity_appeals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integrity_decision_history_hold_id_fkey"
+            columns: ["hold_id"]
+            isOneToOne: false
+            referencedRelation: "student_holds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrity_notifications: {
+        Row: {
+          appeal_id: string | null
+          body: string
+          channel: string
+          hold_id: string
+          id: string
+          sent_at: string
+          sent_by: string | null
+          student_user_id: string
+          subject: string
+        }
+        Insert: {
+          appeal_id?: string | null
+          body: string
+          channel?: string
+          hold_id: string
+          id?: string
+          sent_at?: string
+          sent_by?: string | null
+          student_user_id: string
+          subject: string
+        }
+        Update: {
+          appeal_id?: string | null
+          body?: string
+          channel?: string
+          hold_id?: string
+          id?: string
+          sent_at?: string
+          sent_by?: string | null
+          student_user_id?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrity_notifications_appeal_id_fkey"
+            columns: ["appeal_id"]
+            isOneToOne: false
+            referencedRelation: "integrity_appeals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integrity_notifications_hold_id_fkey"
+            columns: ["hold_id"]
+            isOneToOne: false
+            referencedRelation: "student_holds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       intervention_alerts: {
         Row: {
           alert_type: string
@@ -9002,62 +9289,95 @@ export type Database = {
       }
       student_holds: {
         Row: {
+          ai_signal: Json | null
           blocks_graduation: boolean
           blocks_registration: boolean
           blocks_transcript: boolean
           created_at: string
+          decision_due_at: string | null
+          escalation_due_at: string | null
           hold_type: string
           id: string
           is_active: boolean
+          lifecycle_state: string
           notes: string | null
           placed_at: string
           placed_by: string | null
           reason: string
+          reinstated_at: string | null
+          reinstatement_conditions: string | null
           removed_at: string | null
           removed_by: string | null
           resolution_notes: string | null
           resolved_at: string | null
           resolved_by: string | null
+          review_due_at: string | null
+          sanction_type: string | null
+          severity: string
+          temporary_restrictions: Json
+          triggered_by_ai: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
+          ai_signal?: Json | null
           blocks_graduation?: boolean
           blocks_registration?: boolean
           blocks_transcript?: boolean
           created_at?: string
+          decision_due_at?: string | null
+          escalation_due_at?: string | null
           hold_type: string
           id?: string
           is_active?: boolean
+          lifecycle_state?: string
           notes?: string | null
           placed_at?: string
           placed_by?: string | null
           reason: string
+          reinstated_at?: string | null
+          reinstatement_conditions?: string | null
           removed_at?: string | null
           removed_by?: string | null
           resolution_notes?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          review_due_at?: string | null
+          sanction_type?: string | null
+          severity?: string
+          temporary_restrictions?: Json
+          triggered_by_ai?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
+          ai_signal?: Json | null
           blocks_graduation?: boolean
           blocks_registration?: boolean
           blocks_transcript?: boolean
           created_at?: string
+          decision_due_at?: string | null
+          escalation_due_at?: string | null
           hold_type?: string
           id?: string
           is_active?: boolean
+          lifecycle_state?: string
           notes?: string | null
           placed_at?: string
           placed_by?: string | null
           reason?: string
+          reinstated_at?: string | null
+          reinstatement_conditions?: string | null
           removed_at?: string | null
           removed_by?: string | null
           resolution_notes?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
+          review_due_at?: string | null
+          sanction_type?: string | null
+          severity?: string
+          temporary_restrictions?: Json
+          triggered_by_ai?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -11105,6 +11425,15 @@ export type Database = {
         Args: { p_program_id: string }
         Returns: Json
       }
+      decide_integrity_appeal: {
+        Args: {
+          _appeal_id: string
+          _internal_notes?: string
+          _outcome: string
+          _public_rationale: string
+        }
+        Returns: Json
+      }
       decide_transfer_request: {
         Args: {
           p_credit_remap?: Json
@@ -11331,6 +11660,10 @@ export type Database = {
       }
       submit_assessment_attempt: {
         Args: { p_attempt_id: string; p_responses: Json; p_score?: number }
+        Returns: Json
+      }
+      submit_integrity_appeal: {
+        Args: { _hold_id: string; _statement: string }
         Returns: Json
       }
       submit_transfer_request: {

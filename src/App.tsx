@@ -81,6 +81,8 @@ const CurriculumDepthAdmin = lazy(() => import("./pages/admin/CurriculumDepthAdm
 const CurriculumReviewsQueue = lazy(() => import("./pages/faculty/CurriculumReviewsQueue"));
 const RegistrarStandingDashboard = lazy(() => import("./pages/registrar/RegistrarStandingDashboard"));
 const AccreditationReadinessAdmin = lazy(() => import("./pages/admin/AccreditationReadinessAdmin"));
+const IntegrityCasesAdmin = lazy(() => import("./pages/admin/IntegrityCasesAdmin"));
+const StudentIntegrityCenter = lazy(() => import("./pages/StudentIntegrityCenter"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
@@ -440,6 +442,8 @@ const App = () => (
               <Route path="faculty/curriculum-reviews" element={<RoleRoute allowedRoles={["admin","superadmin","faculty"]}><CurriculumReviewsQueue /></RoleRoute>} />
               <Route path="registrar/standing" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><RegistrarStandingDashboard /></RoleRoute>} />
               <Route path="admin/accreditation-readiness" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><AccreditationReadinessAdmin /></RoleRoute>} />
+              <Route path="admin/integrity-cases" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><IntegrityCasesAdmin /></RoleRoute>} />
+              <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
               <Route path="courses-detail/:courseId" element={<CourseDetailPage />} />
