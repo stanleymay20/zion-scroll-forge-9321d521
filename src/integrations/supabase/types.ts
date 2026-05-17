@@ -302,6 +302,39 @@ export type Database = {
         }
         Relationships: []
       }
+      academic_standing_audit: {
+        Row: {
+          created_at: string
+          id: string
+          inputs_snapshot: Json
+          new_standing: string
+          previous_standing: string | null
+          term_id: string | null
+          triggered_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inputs_snapshot?: Json
+          new_standing: string
+          previous_standing?: string | null
+          term_id?: string | null
+          triggered_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inputs_snapshot?: Json
+          new_standing?: string
+          previous_standing?: string | null
+          term_id?: string | null
+          triggered_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       academic_terms: {
         Row: {
           created_at: string | null
@@ -4501,6 +4534,51 @@ export type Database = {
           },
         ]
       }
+      graduation_eligibility_checks: {
+        Row: {
+          capstone_approved: boolean
+          computed_at: string
+          credits_met: boolean
+          details: Json
+          faculty_signoff: boolean
+          id: string
+          is_eligible: boolean
+          no_blocking_holds: boolean
+          plo_attainment_met: boolean
+          program_id: string
+          thesis_approved: boolean
+          user_id: string
+        }
+        Insert: {
+          capstone_approved: boolean
+          computed_at?: string
+          credits_met: boolean
+          details?: Json
+          faculty_signoff: boolean
+          id?: string
+          is_eligible: boolean
+          no_blocking_holds: boolean
+          plo_attainment_met: boolean
+          program_id: string
+          thesis_approved: boolean
+          user_id: string
+        }
+        Update: {
+          capstone_approved?: boolean
+          computed_at?: string
+          credits_met?: boolean
+          details?: Json
+          faculty_signoff?: boolean
+          id?: string
+          is_eligible?: boolean
+          no_blocking_holds?: boolean
+          plo_attainment_met?: boolean
+          program_id?: string
+          thesis_approved?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       graduation_requirements: {
         Row: {
           capstone_required: boolean | null
@@ -8403,47 +8481,65 @@ export type Database = {
       }
       student_academic_standing: {
         Row: {
+          computed_by: string | null
+          computed_inputs: Json
           created_at: string | null
           credits_attempted: number | null
           credits_earned: number | null
           cumulative_gpa: number | null
           dean_list: boolean | null
+          evidence_sufficient: boolean
           gpa: number | null
           honors: string | null
           id: string
+          intervention_flags: Json
           last_calculated_at: string | null
+          plo_attainment_rate: number | null
           semester_id: string | null
           standing: string | null
+          term_id: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          computed_by?: string | null
+          computed_inputs?: Json
           created_at?: string | null
           credits_attempted?: number | null
           credits_earned?: number | null
           cumulative_gpa?: number | null
           dean_list?: boolean | null
+          evidence_sufficient?: boolean
           gpa?: number | null
           honors?: string | null
           id?: string
+          intervention_flags?: Json
           last_calculated_at?: string | null
+          plo_attainment_rate?: number | null
           semester_id?: string | null
           standing?: string | null
+          term_id?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          computed_by?: string | null
+          computed_inputs?: Json
           created_at?: string | null
           credits_attempted?: number | null
           credits_earned?: number | null
           cumulative_gpa?: number | null
           dean_list?: boolean | null
+          evidence_sufficient?: boolean
           gpa?: number | null
           honors?: string | null
           id?: string
+          intervention_flags?: Json
           last_calculated_at?: string | null
+          plo_attainment_rate?: number | null
           semester_id?: string | null
           standing?: string | null
+          term_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -8453,6 +8549,13 @@ export type Database = {
             columns: ["semester_id"]
             isOneToOne: false
             referencedRelation: "semesters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_academic_standing_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
             referencedColumns: ["id"]
           },
         ]
@@ -10702,18 +10805,20 @@ export type Database = {
         Args: { p_course_id: string }
         Returns: Json
       }
-      check_graduation_eligibility: {
-        Args: { p_user_id: string }
-        Returns: {
-          credits_completed: number
-          credits_required: number
-          eligible: boolean
-          gpa: number
-          has_holds: boolean
-          min_gpa: number
-          missing_requirements: string[]
-        }[]
-      }
+      check_graduation_eligibility:
+        | { Args: { _program_id: string; _user_id: string }; Returns: Json }
+        | {
+            Args: { p_user_id: string }
+            Returns: {
+              credits_completed: number
+              credits_required: number
+              eligible: boolean
+              gpa: number
+              has_holds: boolean
+              min_gpa: number
+              missing_requirements: string[]
+            }[]
+          }
       check_seal_criteria: { Args: { p_course_id: string }; Returns: Json }
       create_notification: {
         Args: {
@@ -10776,6 +10881,14 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      enroll_with_gates: {
+        Args: {
+          _course_id: string
+          _course_offering_id?: string
+          _term_id?: string
+        }
+        Returns: Json
       }
       ensure_default_institution_membership: { Args: never; Returns: string }
       generate_accreditation_blueprint: {
@@ -10883,6 +10996,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      recompute_academic_standing: {
+        Args: { _term_id: string; _user_id: string }
+        Returns: Json
       }
       recompute_program_accreditation_status: {
         Args: never
