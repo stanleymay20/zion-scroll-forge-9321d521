@@ -37,7 +37,7 @@ interface DepthRow {
 }
 
 const reasonLabel = (r: string) =>
-  r.replaceAll("_", " ").replace(/needs (\d+) /, "needs $1 ");
+  r.replace(/_/g, " ").replace(/needs (\d+) /, "needs $1 ");
 
 export default function CurriculumDepthAdmin() {
   const [programs, setPrograms] = useState<ProgramRow[]>([]);
