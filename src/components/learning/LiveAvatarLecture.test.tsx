@@ -142,17 +142,23 @@ describe('LiveAvatarLecture workflow', () => {
       />
     );
 
-    const textIn = (needle: string) => (_: string, el: Element | null) =>
-      !!el && el.textContent?.toLowerCase().replace(/\s+/g, ' ').includes(needle) === true;
+    const hasText = (needle: string) => (_: string, el: Element | null) => {
+      if (!el) return false;
+      const own = (el.textContent || '').toLowerCase().replace(/\s+/g, ' ');
+      const childMatch = Array.from(el.children).some(
+        (c) => (c.textContent || '').toLowerCase().replace(/\s+/g, ' ').includes(needle)
+      );
+      return own.includes(needle) && !childMatch;
+    };
 
     fireEvent.click(screen.getByRole('button', { name: /enable sound/i }));
-    await waitFor(() => expect(screen.getByText(textIn('audio: on'))).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(hasText('audio: on')).length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getByRole('button', { name: /test microphone/i }));
-    await waitFor(() => expect(screen.getByText(textIn('mic: granted'))).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(hasText('mic: granted')).length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getByRole('button', { name: /start lecture/i }));
-    await waitFor(() => expect(screen.getByText(textIn('delivery: live avatar'))).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(hasText('delivery: live avatar')).length).toBeGreaterThan(0));
 
     const input = screen.getByPlaceholderText(/ask, or tap hand to queue/i);
     fireEvent.change(input, { target: { value: 'Can you explain the practical implication?' } });
