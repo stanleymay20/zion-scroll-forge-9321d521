@@ -1,0 +1,1 @@
+ALTER VIEW public.program_public_render_state SET (security_invoker = true);
