@@ -277,12 +277,48 @@ serve(async (req) => {
         }
       }
 
+      // ─── PR2: persist memory + open intervention alert if triggered ───
+      if (userId && courseId) {
+        const nextTopics = [
+          ...(moduleTitle ? [moduleTitle] : []),
+          ...(pedagogy.nextMemory.last_topics || []),
+        ].slice(0, 6);
+        await supabase.from("tutor_student_memory").upsert({
+          user_id: userId,
+          course_id: courseId,
+          ...pedagogy.nextMemory,
+          last_topics: nextTopics,
+          last_interaction_at: new Date().toISOString(),
+        }, { onConflict: "user_id,course_id" });
+
+        if (pedagogy.shouldIntervene) {
+          const { data: existing } = await supabase
+            .from("student_intervention_alerts")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("course_id", courseId)
+            .eq("status", "open")
+            .maybeSingle();
+          if (!existing) {
+            await supabase.from("student_intervention_alerts").insert({
+              user_id: userId,
+              course_id: courseId,
+              trigger_reason: pedagogy.interventionReason ?? "Repeated low assessment scores.",
+              recommended_action: "Faculty check-in; tutor switched to revision mode.",
+              metadata: { source: "ai-avatar-stream", mode: pedagogy.mode },
+            });
+          }
+        }
+      }
+
       return new Response(
         JSON.stringify({
           message: aiMessage,
           audio_base64: audioBase64,
           tts_available: ttsAvailable,
           did_talk: didTalkResult,
+          teaching_mode: pedagogy.mode,
+          intervention_opened: pedagogy.shouldIntervene,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
