@@ -956,6 +956,200 @@ export type Database = {
         }
         Relationships: []
       }
+      assessment_attempts: {
+        Row: {
+          assignment_id: string
+          attempt_no: number
+          drawn_question_ids: Json
+          graded_at: string | null
+          graded_by: string | null
+          id: string
+          integrity_flags: Json
+          max_score: number | null
+          responses: Json
+          score: number | null
+          started_at: string
+          status: string
+          submitted_at: string | null
+          time_limit_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          assignment_id: string
+          attempt_no?: number
+          drawn_question_ids?: Json
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          integrity_flags?: Json
+          max_score?: number | null
+          responses?: Json
+          score?: number | null
+          started_at?: string
+          status?: string
+          submitted_at?: string | null
+          time_limit_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          assignment_id?: string
+          attempt_no?: number
+          drawn_question_ids?: Json
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          integrity_flags?: Json
+          max_score?: number | null
+          responses?: Json
+          score?: number | null
+          started_at?: string
+          status?: string
+          submitted_at?: string | null
+          time_limit_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_attempts_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_attempts_graded_by_fkey"
+            columns: ["graded_by"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "assessment_attempts_graded_by_fkey"
+            columns: ["graded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_attempts_graded_by_fkey"
+            columns: ["graded_by"]
+            isOneToOne: false
+            referencedRelation: "v_student_analytics"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "assessment_attempts_graded_by_fkey"
+            columns: ["graded_by"]
+            isOneToOne: false
+            referencedRelation: "v_user_dashboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "assessment_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "assessment_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_student_analytics"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "assessment_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_dashboard"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      assessment_audit_logs: {
+        Row: {
+          actor_id: string | null
+          attempt_id: string
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          actor_id?: string | null
+          attempt_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json
+        }
+        Update: {
+          actor_id?: string | null
+          attempt_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_audit_logs_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_question_pools: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          draw_count: number
+          id: string
+          questions: Json
+          shuffle: boolean
+          time_limit_seconds: number | null
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          draw_count?: number
+          id?: string
+          questions?: Json
+          shuffle?: boolean
+          time_limit_seconds?: number | null
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          draw_count?: number
+          id?: string
+          questions?: Json
+          shuffle?: boolean
+          time_limit_seconds?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_question_pools_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: true
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignments: {
         Row: {
           course_id: string | null
@@ -3770,6 +3964,82 @@ export type Database = {
           },
         ]
       }
+      faculty_curriculum_reviews: {
+        Row: {
+          comments: string | null
+          course_id: string
+          created_at: string
+          id: string
+          reviewed_at: string | null
+          reviewer_id: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          comments?: string | null
+          course_id: string
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewer_id: string
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          comments?: string | null
+          course_id?: string
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewer_id?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_curriculum_reviews_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_curriculum_reviews_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "v_course_gradebook"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "faculty_curriculum_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "faculty_curriculum_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_curriculum_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "v_student_analytics"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "faculty_curriculum_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_dashboard"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       faculty_profiles: {
         Row: {
           bio: string | null
@@ -4749,6 +5019,41 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      learning_outcome_mappings: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          plo_id: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          plo_id: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          plo_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "learning_outcome_mappings_plo_id_fkey"
+            columns: ["plo_id"]
+            isOneToOne: false
+            referencedRelation: "program_learning_outcomes"
             referencedColumns: ["id"]
           },
         ]
@@ -10592,6 +10897,10 @@ export type Database = {
           title: string
         }[]
       }
+      record_faculty_review: {
+        Args: { p_comments?: string; p_course_id: string; p_state: string }
+        Returns: Json
+      }
       registrar_assign_program: {
         Args: { p_program_id: string; p_reason: string; p_user_id: string }
         Returns: undefined
@@ -10627,9 +10936,17 @@ export type Database = {
         Args: { p_amount: number; p_desc: string; p_user_id: string }
         Returns: undefined
       }
+      start_assessment_attempt: {
+        Args: { p_assignment_id: string }
+        Returns: Json
+      }
       student_confirm_program_intent: {
         Args: { p_program_id: string; p_reason: string }
         Returns: string
+      }
+      submit_assessment_attempt: {
+        Args: { p_attempt_id: string; p_responses: Json; p_score?: number }
+        Returns: Json
       }
       submit_transfer_request: {
         Args: {
@@ -10645,6 +10962,7 @@ export type Database = {
         Args: { p_category: string; p_question: string }
         Returns: undefined
       }
+      transcript_with_attainment: { Args: { p_user_id: string }; Returns: Json }
       transition_student_status: {
         Args: { p_new_status: string; p_reason?: string; p_user_id: string }
         Returns: boolean
