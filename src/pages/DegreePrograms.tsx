@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, GraduationCap, BookOpen, Clock } from "lucide-react";
 import { useDegreePrograms, useEnrollInDegree } from "@/hooks/useDegreePrograms";
 import { AccreditationBadge } from "@/components/accreditation/AccreditationBadge";
+import { ProgramTruthPanel, EnrollmentGate } from "@/components/trust/ProgramTruthPanel";
+import { Link } from "react-router-dom";
 
 console.info("✝️ Degree Programs — Christ-centered education");
 
@@ -111,12 +113,17 @@ export default function DegreePrograms() {
                     <span className="font-medium">{program.total_credits}</span>
                   </div>
                 </div>
-                {program.program_status === "curriculum_pending" ||
-                program.accreditation_status !== "accreditation_ready" ? (
-                  <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-                    Curriculum under development — not yet open for enrollment.
-                  </div>
-                ) : (
+                <ProgramTruthPanel programId={program.id} compact />
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <Link
+                    to={`/program-verification/${program.id}`}
+                    className="text-xs text-primary hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View verification →
+                  </Link>
+                </div>
+                <EnrollmentGate programId={program.id}>
                   <Button
                     variant={program.is_enrolled ? "outline" : "default"}
                     className="w-full"
@@ -126,9 +133,9 @@ export default function DegreePrograms() {
                     }}
                     disabled={program.is_enrolled}
                   >
-                    {program.is_enrolled ? "Enrolled" : "Enroll Now"}
+                    {program.is_enrolled ? "Enrolled" : "Apply / Enroll"}
                   </Button>
-                )}
+                </EnrollmentGate>
               </CardContent>
             </Card>
           );

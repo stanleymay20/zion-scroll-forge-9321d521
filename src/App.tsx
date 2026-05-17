@@ -86,6 +86,7 @@ const StudentIntegrityCenter = lazy(() => import("./pages/StudentIntegrityCenter
 const GovernanceTransparency = lazy(() => import("./pages/GovernanceTransparency"));
 const AccreditationStatus = lazy(() => import("./pages/AccreditationStatus"));
 const ProgramVerification = lazy(() => import("./pages/ProgramVerification"));
+const CatalogTruth = lazy(() => import("./pages/CatalogTruth"));
 const PublicClaimsAdmin = lazy(() => import("./pages/admin/PublicClaimsAdmin"));
 const Outcomes = lazy(() => import("./pages/Outcomes"));
 const EmploymentMethodology = lazy(() => import("./pages/EmploymentMethodology"));
@@ -331,6 +332,9 @@ const App = () => (
             </Route>
             <Route path="/program-verification/:id" element={<PublicLayout />}>
               <Route index element={<ProgramVerification />} />
+            </Route>
+            <Route path="/catalog-truth" element={<PublicLayout />}>
+              <Route index element={<CatalogTruth />} />
             </Route>
             <Route path="/outcomes" element={<PublicLayout />}>
               <Route index element={<Outcomes />} />
