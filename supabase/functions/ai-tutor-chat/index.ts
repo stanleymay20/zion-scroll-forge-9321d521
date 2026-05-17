@@ -50,7 +50,11 @@ serve(async (req) => {
     if (authError) return authError;
 
     const body = await req.json().catch(() => ({}));
-    const { session_id, message, tone, warmth, student_name, course_title, program_title, faculty_name } = body ?? {};
+    const {
+      session_id, message, tone, warmth,
+      student_name, course_title, program_title, faculty_name,
+      intent, mode_override, last_assessment_score,
+    } = body ?? {};
 
     validateUUID(session_id, "session_id");
     const userMessage = sanitizeString(message)?.slice(0, MAX_LENGTHS.content);
@@ -80,17 +84,38 @@ serve(async (req) => {
     // Load module context (optional)
     let moduleTitle: string | null = null;
     let moduleContent: string | null = null;
+    let courseIdForMemory: string | null = null;
     if (session.module_id) {
       const { data: mod } = await supabase
         .from("course_modules")
-        .select("title, content_md")
+        .select("title, content_md, course_id")
         .eq("id", session.module_id)
         .maybeSingle();
       if (mod) {
         moduleTitle = mod.title ?? null;
         moduleContent = (mod.content_md ?? "").slice(0, 3000);
+        courseIdForMemory = (mod as any).course_id ?? null;
       }
     }
+
+    // ─── PR2: Load student memory for this course (best-effort) ───
+    let memory: TutorStudentMemory = { ...EMPTY_MEMORY };
+    if (courseIdForMemory) {
+      const { data: memRow } = await supabase
+        .from("tutor_student_memory")
+        .select("misconceptions,strengths,weak_areas,last_topics,preferred_pace,current_mode,consecutive_low_scores,intervention_flag")
+        .eq("user_id", user.id)
+        .eq("course_id", courseIdForMemory)
+        .maybeSingle();
+      if (memRow) memory = { ...EMPTY_MEMORY, ...(memRow as any) };
+    }
+
+    const pedagogy = decidePedagogy({
+      intent: typeof intent === "string" ? intent : null,
+      modeOverride: (mode_override as TeachingMode | null) ?? null,
+      lastAssessmentScore: typeof last_assessment_score === "number" ? last_assessment_score : null,
+      memory,
+    });
 
     // Persist student message FIRST so it shows even if AI fails
     await supabase.from("ai_tutor_messages").insert({
