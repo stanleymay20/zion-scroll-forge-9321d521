@@ -28,14 +28,14 @@ const RegistrarStandingDashboard = () => {
     })();
   }, []);
 
+  useTitleEffect(() => {
+    document.title = "Registrar — Academic Standing Distribution";
+  }, []);
+
   const total = buckets.reduce((s, b) => s + b.count, 0);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <Helmet>
-        <title>Registrar — Academic Standing Distribution</title>
-        <meta name="description" content="Distribution of student academic standing across the institution." />
-      </Helmet>
       <header>
         <h1 className="text-3xl font-bold">Academic Standing Distribution</h1>
         <p className="text-muted-foreground">Truthful counts derived from graded evidence only.</p>
