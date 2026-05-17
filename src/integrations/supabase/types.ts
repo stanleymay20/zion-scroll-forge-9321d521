@@ -1727,65 +1727,83 @@ export type Database = {
       }
       course_modules: {
         Row: {
+          activities: Json
           content: Json | null
           content_char_count: number | null
           content_md: string | null
           course_id: string | null
           created_at: string | null
           duration_minutes: number | null
+          estimated_duration_min: number | null
           has_audio_script: boolean | null
           has_study_guide: boolean | null
           has_video_script: boolean | null
           id: string
           institution_id: string
+          learning_objectives: Json
           material_url: string | null
+          module_prerequisites: Json
+          module_references: Json
           order_index: number | null
           quality_verified: boolean | null
           quiz_data: Json | null
           rewards_amount: number | null
           title: string
+          tutor_context: string | null
           verified_at: string | null
           verified_by: string | null
         }
         Insert: {
+          activities?: Json
           content?: Json | null
           content_char_count?: number | null
           content_md?: string | null
           course_id?: string | null
           created_at?: string | null
           duration_minutes?: number | null
+          estimated_duration_min?: number | null
           has_audio_script?: boolean | null
           has_study_guide?: boolean | null
           has_video_script?: boolean | null
           id?: string
           institution_id: string
+          learning_objectives?: Json
           material_url?: string | null
+          module_prerequisites?: Json
+          module_references?: Json
           order_index?: number | null
           quality_verified?: boolean | null
           quiz_data?: Json | null
           rewards_amount?: number | null
           title: string
+          tutor_context?: string | null
           verified_at?: string | null
           verified_by?: string | null
         }
         Update: {
+          activities?: Json
           content?: Json | null
           content_char_count?: number | null
           content_md?: string | null
           course_id?: string | null
           created_at?: string | null
           duration_minutes?: number | null
+          estimated_duration_min?: number | null
           has_audio_script?: boolean | null
           has_study_guide?: boolean | null
           has_video_script?: boolean | null
           id?: string
           institution_id?: string
+          learning_objectives?: Json
           material_url?: string | null
+          module_prerequisites?: Json
+          module_references?: Json
           order_index?: number | null
           quality_verified?: boolean | null
           quiz_data?: Json | null
           rewards_amount?: number | null
           title?: string
+          tutor_context?: string | null
           verified_at?: string | null
           verified_by?: string | null
         }
@@ -2172,6 +2190,72 @@ export type Database = {
           verification_type?: string | null
         }
         Relationships: []
+      }
+      curriculum_depth_scores: {
+        Row: {
+          assessment_diversity: number
+          computed_at: string
+          faculty_reviewed_courses: number
+          gate_passed: boolean
+          gate_reasons: Json
+          has_practicum: boolean
+          has_research: boolean
+          instructional_hours: number
+          module_count: number
+          outcomes_count: number
+          program_id: string
+          reference_density: number
+          sequencing_score: number
+          total_score: number
+        }
+        Insert: {
+          assessment_diversity?: number
+          computed_at?: string
+          faculty_reviewed_courses?: number
+          gate_passed?: boolean
+          gate_reasons?: Json
+          has_practicum?: boolean
+          has_research?: boolean
+          instructional_hours?: number
+          module_count?: number
+          outcomes_count?: number
+          program_id: string
+          reference_density?: number
+          sequencing_score?: number
+          total_score?: number
+        }
+        Update: {
+          assessment_diversity?: number
+          computed_at?: string
+          faculty_reviewed_courses?: number
+          gate_passed?: boolean
+          gate_reasons?: Json
+          has_practicum?: boolean
+          has_research?: boolean
+          instructional_hours?: number
+          module_count?: number
+          outcomes_count?: number
+          program_id?: string
+          reference_density?: number
+          sequencing_score?: number
+          total_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_depth_scores_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: true
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curriculum_depth_scores_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: true
+            referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       degree_analytics: {
         Row: {
@@ -10075,6 +10159,7 @@ export type Database = {
         Returns: boolean
       }
       archive_academic_year: { Args: { p_year_id: string }; Returns: boolean }
+      assessment_rigor_score: { Args: { p_course_id: string }; Returns: Json }
       award_by_rule: {
         Args: {
           p_event: string
@@ -10127,6 +10212,7 @@ export type Database = {
         }
         Returns: string
       }
+      curriculum_depth_score: { Args: { p_program_id: string }; Returns: Json }
       curriculum_depth_validator: {
         Args: { p_program_id: string }
         Returns: Json
@@ -10263,6 +10349,7 @@ export type Database = {
         }
         Returns: string
       }
+      module_depth_score: { Args: { p_course_id: string }; Returns: Json }
       move_to_dlq: {
         Args: {
           dlq_name: string
