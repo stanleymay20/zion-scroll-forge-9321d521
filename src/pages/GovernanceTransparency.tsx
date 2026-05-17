@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VerifiedClaimBadge, ClaimVerificationState } from "@/components/trust/VerifiedClaimBadge";
 import { ShieldCheck } from "lucide-react";
-import { Helmet } from "react-helmet-async";
+import { Helmet } from "react-helmet";
 
 const claimTypes = [
   "all","accreditation","faculty","curriculum","practicum","employment",
