@@ -16,6 +16,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -30,12 +37,34 @@ serve(async (req) => {
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
+    const body = await req.json();
+    const { action } = body;
+
+    // Auth is best-effort for stream creation, but required to persist tutor memory safely.
+    // We infer the learner from the JWT rather than trusting a caller-supplied userId.
+    const bearer = (req.headers.get("authorization") ?? "").replace("Bearer ", "").trim();
+    const { data: authData } = bearer
+      ? await supabase.auth.getUser(bearer)
+      : { data: { user: null } as any };
+    const authUserId = authData?.user?.id ?? null;
+
+    // Lightweight provider readiness probe for frontend/admin diagnostics.
+    if (action === "provider_health") {
+      return json({
+        ok: Boolean(LOVABLE_API_KEY),
+        providers: {
+          llm: Boolean(LOVABLE_API_KEY),
+          avatar: Boolean(DID_API_KEY),
+          tts: Boolean(ELEVENLABS_API_KEY),
+        },
+        mode: DID_API_KEY ? "avatar" : ELEVENLABS_API_KEY ? "audio" : "text",
+        checked_at: new Date().toISOString(),
+      });
+    }
+
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY not configured");
     }
-
-    const body = await req.json();
-    const { action } = body;
 
     // ─── ACTION: Create a streaming session ───
     if (action === "create_stream") {
@@ -43,7 +72,6 @@ serve(async (req) => {
         throw new Error("DID_API_KEY not configured");
       }
 
-      // Create a D-ID streaming session
       const streamResp = await fetch("https://api.d-id.com/talks/streams", {
         method: "POST",
         headers: {
@@ -67,17 +95,12 @@ serve(async (req) => {
       const streamData = await streamResp.json();
       console.log("D-ID stream created:", streamData.id);
 
-      return new Response(
-        JSON.stringify({
-          stream_id: streamData.id,
-          session_id: streamData.session_id,
-          offer: streamData.offer,
-          ice_servers: streamData.ice_servers,
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return json({
+        stream_id: streamData.id,
+        session_id: streamData.session_id,
+        offer: streamData.offer,
+        ice_servers: streamData.ice_servers,
+      });
     }
 
     // ─── ACTION: Send text to avatar (make it talk) ───
@@ -88,29 +111,27 @@ serve(async (req) => {
         courseTitle, programTitle, facultyName, moduleTitle,
         studentName, learningObjectives,
         tone, warmth,
-        // PR2 — pedagogy
-        userId, courseId, intent, modeOverride, lastAssessmentScore,
+        courseId, intent, modeOverride, lastAssessmentScore,
       } = body;
 
       if (!stream_id || !session_id || !text) {
-        return new Response(
-          JSON.stringify({
-            error: "stream_id, session_id, and text are required",
-          }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
+        return json({ error: "stream_id, session_id, and text are required" }, 400);
+      }
+
+      // Never trust body.userId for memory writes. Use JWT user, with body.userId only as
+      // a compatibility fallback when a legacy client is still being upgraded.
+      const effectiveUserId = authUserId ?? (typeof body.userId === "string" ? body.userId : null);
+      if (body.userId && authUserId && body.userId !== authUserId) {
+        console.warn("Ignoring mismatched avatar userId", { bodyUserId: body.userId, authUserId });
       }
 
       // ─── PR2: load tutor_student_memory (best-effort) ───
       let memory: TutorStudentMemory = { ...EMPTY_MEMORY };
-      if (userId && courseId) {
+      if (effectiveUserId && courseId) {
         const { data: memRow } = await supabase
           .from("tutor_student_memory")
           .select("misconceptions,strengths,weak_areas,last_topics,preferred_pace,current_mode,consecutive_low_scores,intervention_flag")
-          .eq("user_id", userId)
+          .eq("user_id", effectiveUserId)
           .eq("course_id", courseId)
           .maybeSingle();
         if (memRow) memory = { ...EMPTY_MEMORY, ...(memRow as any) };
@@ -166,35 +187,16 @@ serve(async (req) => {
       if (!aiResp.ok) {
         const status = aiResp.status;
         if (status === 429) {
-          return new Response(
-            JSON.stringify({
-              error: "RATE_LIMITED",
-              message: "Rate limited. Please wait a moment.",
-            }),
-            {
-              status: 429,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
-          );
+          return json({ error: "RATE_LIMITED", message: "Rate limited. Please wait a moment." }, 429);
         }
         if (status === 402) {
-          return new Response(
-            JSON.stringify({
-              error: "CREDITS_REQUIRED",
-              message: "AI credits exhausted. Please add credits.",
-            }),
-            {
-              status: 402,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
-          );
+          return json({ error: "CREDITS_REQUIRED", message: "AI credits exhausted. Please add credits." }, 402);
         }
         throw new Error(`AI Gateway error: ${status}`);
       }
 
       const aiData = await aiResp.json();
       const rawMessage: string = aiData.choices[0].message.content ?? "";
-      // Strip markdown / list characters before TTS — sounds natural spoken.
       const spokenMessage = formatForTTS(rawMessage);
       const aiMessage = spokenMessage || rawMessage;
 
@@ -203,7 +205,7 @@ serve(async (req) => {
       let ttsAvailable = false;
       if (ELEVENLABS_API_KEY) {
         try {
-          const voiceId = "EXAVITQu4vr4xnSDxMaL"; // Sarah — warm female
+          const voiceId = "EXAVITQu4vr4xnSDxMaL";
           const ttsResp = await fetch(
             `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
             {
@@ -216,9 +218,9 @@ serve(async (req) => {
                 text: aiMessage,
                 model_id: "eleven_turbo_v2_5",
                 voice_settings: {
-                  stability: 0.45,        // a little more expressive
+                  stability: 0.45,
                   similarity_boost: 0.8,
-                  style: 0.55,            // warmer, more human
+                  style: 0.55,
                   use_speaker_boost: true,
                   speed: 0.97,
                 },
@@ -230,9 +232,7 @@ serve(async (req) => {
             const audioBuffer = await ttsResp.arrayBuffer();
             const uint8 = new Uint8Array(audioBuffer);
             let binary = "";
-            for (let i = 0; i < uint8.length; i++) {
-              binary += String.fromCharCode(uint8[i]);
-            }
+            for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
             audioBase64 = btoa(binary);
             ttsAvailable = true;
           } else {
@@ -267,24 +267,21 @@ serve(async (req) => {
             }
           );
 
-          if (talkResp.ok) {
-            didTalkResult = await talkResp.json();
-          } else {
-            console.error("D-ID talk error:", talkResp.status);
-          }
+          if (talkResp.ok) didTalkResult = await talkResp.json();
+          else console.error("D-ID talk error:", talkResp.status);
         } catch (didErr) {
           console.error("D-ID talk error:", didErr);
         }
       }
 
       // ─── PR2: persist memory + open intervention alert if triggered ───
-      if (userId && courseId) {
+      if (effectiveUserId && courseId) {
         const nextTopics = [
           ...(moduleTitle ? [moduleTitle] : []),
           ...(pedagogy.nextMemory.last_topics || []),
         ].slice(0, 6);
         await supabase.from("tutor_student_memory").upsert({
-          user_id: userId,
+          user_id: effectiveUserId,
           course_id: courseId,
           ...pedagogy.nextMemory,
           last_topics: nextTopics,
@@ -295,13 +292,13 @@ serve(async (req) => {
           const { data: existing } = await supabase
             .from("student_intervention_alerts")
             .select("id")
-            .eq("user_id", userId)
+            .eq("user_id", effectiveUserId)
             .eq("course_id", courseId)
             .eq("status", "open")
             .maybeSingle();
           if (!existing) {
             await supabase.from("student_intervention_alerts").insert({
-              user_id: userId,
+              user_id: effectiveUserId,
               course_id: courseId,
               trigger_reason: pedagogy.interventionReason ?? "Repeated low assessment scores.",
               recommended_action: "Faculty check-in; tutor switched to revision mode.",
@@ -311,115 +308,63 @@ serve(async (req) => {
         }
       }
 
-      return new Response(
-        JSON.stringify({
-          message: aiMessage,
-          audio_base64: audioBase64,
-          tts_available: ttsAvailable,
-          did_talk: didTalkResult,
-          teaching_mode: pedagogy.mode,
-          intervention_opened: pedagogy.shouldIntervene,
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return json({
+        message: aiMessage,
+        audio_base64: audioBase64,
+        tts_available: ttsAvailable,
+        did_talk: didTalkResult,
+        teaching_mode: pedagogy.mode,
+        intervention_opened: pedagogy.shouldIntervene,
+        memory_user_scoped: Boolean(effectiveUserId && courseId),
+      });
     }
 
     // ─── ACTION: Send SDP answer (WebRTC handshake) ───
     if (action === "sdp_answer") {
       const { stream_id, session_id, answer } = body;
-
       if (!DID_API_KEY) throw new Error("DID_API_KEY not configured");
-
-      const resp = await fetch(
-        `https://api.d-id.com/talks/streams/${stream_id}/sdp`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${DID_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ session_id, answer }),
-        }
-      );
-
-      if (!resp.ok) {
-        const errText = await resp.text();
-        throw new Error(`SDP answer failed: ${errText}`);
-      }
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const resp = await fetch(`https://api.d-id.com/talks/streams/${stream_id}/sdp`, {
+        method: "POST",
+        headers: { Authorization: `Basic ${DID_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id, answer }),
       });
+      if (!resp.ok) throw new Error(`SDP answer failed: ${await resp.text()}`);
+      return json({ success: true });
     }
 
     // ─── ACTION: Send ICE candidate ───
     if (action === "ice_candidate") {
       const { stream_id, session_id, candidate } = body;
-
       if (!DID_API_KEY) throw new Error("DID_API_KEY not configured");
-
-      const resp = await fetch(
-        `https://api.d-id.com/talks/streams/${stream_id}/ice`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${DID_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ session_id, candidate }),
-        }
-      );
-
-      if (!resp.ok) {
-        const errText = await resp.text();
-        console.error("ICE candidate error:", errText);
-      }
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const resp = await fetch(`https://api.d-id.com/talks/streams/${stream_id}/ice`, {
+        method: "POST",
+        headers: { Authorization: `Basic ${DID_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id, candidate }),
       });
+      if (!resp.ok) console.error("ICE candidate error:", await resp.text());
+      return json({ success: true });
     }
 
     // ─── ACTION: Destroy stream ───
     if (action === "destroy_stream") {
       const { stream_id, session_id } = body;
-
       if (DID_API_KEY && stream_id) {
         try {
           await fetch(`https://api.d-id.com/talks/streams/${stream_id}`, {
             method: "DELETE",
-            headers: {
-              Authorization: `Basic ${DID_API_KEY}`,
-              "Content-Type": "application/json",
-            },
+            headers: { Authorization: `Basic ${DID_API_KEY}`, "Content-Type": "application/json" },
             body: JSON.stringify({ session_id }),
           });
         } catch (e) {
           console.error("Stream destroy error:", e);
         }
       }
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ success: true });
     }
 
-    return new Response(
-      JSON.stringify({
-        error: "Invalid action. Use: create_stream, talk, sdp_answer, ice_candidate, destroy_stream",
-      }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  } catch (error) {
+    return json({ error: "Invalid action. Use: provider_health, create_stream, talk, sdp_answer, ice_candidate, destroy_stream" }, 400);
+  } catch (error: any) {
     console.error("ai-avatar-stream error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: error.message }, 500);
   }
 });
