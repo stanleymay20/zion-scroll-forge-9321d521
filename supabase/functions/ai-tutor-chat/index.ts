@@ -10,6 +10,13 @@ import {
   extractAuthenticatedUser,
 } from "../_shared/validation.ts";
 import { buildTutorSystemPrompt, type TutorTone, type WarmthLevel } from "../_shared/tutor-persona.ts";
+import {
+  decidePedagogy,
+  renderMemorySummary,
+  EMPTY_MEMORY,
+  type TeachingMode,
+  type TutorStudentMemory,
+} from "../_shared/tutor-pedagogy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
