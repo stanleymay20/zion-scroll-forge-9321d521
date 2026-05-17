@@ -8388,6 +8388,122 @@ export type Database = {
         }
         Relationships: []
       }
+      student_intervention_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          assigned_faculty_id: string | null
+          course_id: string
+          created_at: string
+          id: string
+          metadata: Json
+          recommended_action: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          status: string
+          trigger_reason: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          assigned_faculty_id?: string | null
+          course_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          recommended_action?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          status?: string
+          trigger_reason: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          assigned_faculty_id?: string | null
+          course_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          recommended_action?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          status?: string
+          trigger_reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_intervention_alerts_assigned_faculty_id_fkey"
+            columns: ["assigned_faculty_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "student_intervention_alerts_assigned_faculty_id_fkey"
+            columns: ["assigned_faculty_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_intervention_alerts_assigned_faculty_id_fkey"
+            columns: ["assigned_faculty_id"]
+            isOneToOne: false
+            referencedRelation: "v_student_analytics"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "student_intervention_alerts_assigned_faculty_id_fkey"
+            columns: ["assigned_faculty_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_dashboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "student_intervention_alerts_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_intervention_alerts_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "v_course_gradebook"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "student_intervention_alerts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "student_intervention_alerts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_intervention_alerts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_student_analytics"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "student_intervention_alerts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_dashboard"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       student_learning_profiles: {
         Row: {
           created_at: string | null
@@ -9672,6 +9788,100 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "semesters"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      tutor_student_memory: {
+        Row: {
+          consecutive_low_scores: number
+          course_id: string
+          created_at: string
+          current_mode: string
+          id: string
+          intervention_flag: boolean
+          last_interaction_at: string
+          last_topics: Json
+          misconceptions: Json
+          preferred_pace: string
+          strengths: Json
+          updated_at: string
+          user_id: string
+          weak_areas: Json
+        }
+        Insert: {
+          consecutive_low_scores?: number
+          course_id: string
+          created_at?: string
+          current_mode?: string
+          id?: string
+          intervention_flag?: boolean
+          last_interaction_at?: string
+          last_topics?: Json
+          misconceptions?: Json
+          preferred_pace?: string
+          strengths?: Json
+          updated_at?: string
+          user_id: string
+          weak_areas?: Json
+        }
+        Update: {
+          consecutive_low_scores?: number
+          course_id?: string
+          created_at?: string
+          current_mode?: string
+          id?: string
+          intervention_flag?: boolean
+          last_interaction_at?: string
+          last_topics?: Json
+          misconceptions?: Json
+          preferred_pace?: string
+          strengths?: Json
+          updated_at?: string
+          user_id?: string
+          weak_areas?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tutor_student_memory_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutor_student_memory_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "v_course_gradebook"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "tutor_student_memory_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "tutor_student_memory_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutor_student_memory_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_student_analytics"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "tutor_student_memory_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "v_user_dashboard"
+            referencedColumns: ["user_id"]
           },
         ]
       }
