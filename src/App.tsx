@@ -87,6 +87,11 @@ const GovernanceTransparency = lazy(() => import("./pages/GovernanceTransparency
 const AccreditationStatus = lazy(() => import("./pages/AccreditationStatus"));
 const ProgramVerification = lazy(() => import("./pages/ProgramVerification"));
 const PublicClaimsAdmin = lazy(() => import("./pages/admin/PublicClaimsAdmin"));
+const Outcomes = lazy(() => import("./pages/Outcomes"));
+const EmploymentMethodology = lazy(() => import("./pages/EmploymentMethodology"));
+const ResearchImpact = lazy(() => import("./pages/ResearchImpact"));
+const GraduateSuccess = lazy(() => import("./pages/GraduateSuccess"));
+const OutcomesAdmin = lazy(() => import("./pages/admin/OutcomesAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
