@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, GraduationCap, BookOpen, Clock } from "lucide-react";
 import { useDegreePrograms, useEnrollInDegree } from "@/hooks/useDegreePrograms";
 import { AccreditationBadge } from "@/components/accreditation/AccreditationBadge";
+import { ProgramTruthPanel, EnrollmentGate } from "@/components/trust/ProgramTruthPanel";
+import { Link } from "react-router-dom";
 
 console.info("✝️ Degree Programs — Christ-centered education");
 
