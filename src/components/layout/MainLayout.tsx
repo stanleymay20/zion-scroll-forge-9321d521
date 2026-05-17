@@ -10,7 +10,7 @@ export const MainLayout = () => {
   const showBack = pathname !== "/dashboard" && pathname !== "/";
   const allowWithoutInstitution = ["/apply", "/orientation", "/matriculation"].some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
-  );
+  ) || /^\/courses\/[^/]+(?:\/.*)?$/.test(pathname);
 
   const content = (
     <div className="min-h-screen bg-background overflow-x-hidden">
