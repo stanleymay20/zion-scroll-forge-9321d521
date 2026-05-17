@@ -93,12 +93,30 @@ export const InstitutionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       let role: string | null = null;
 
       if ((profile as any)?.current_institution_id) {
+        const currentInstitutionId = (profile as any)?.current_institution_id as string;
         const membership = formattedMemberships.find(
-          (m: InstitutionMembership) => m.institution_id === (profile as any)?.current_institution_id
+          (m: InstitutionMembership) => m.institution_id === currentInstitutionId
         );
         if (membership) {
           active = membership.institution;
           role = membership.role;
+        } else {
+          const directInstitution = institutionsById[currentInstitutionId] || null;
+          if (directInstitution) {
+            active = directInstitution;
+            role = 'student';
+          } else {
+            const { data: institutionByProfile } = await supabase
+              .from('institutions' as any)
+              .select('id, name, slug, short_name, description, logo_url, primary_color, accent_color, plan, is_active')
+              .eq('id', currentInstitutionId)
+              .maybeSingle();
+
+            if (institutionByProfile) {
+              active = institutionByProfile as unknown as Institution;
+              role = 'student';
+            }
+          }
         }
       }
 

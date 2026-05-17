@@ -84,6 +84,7 @@ export function LiveAvatarLecture({
   learningObjectives,
 }: LiveAvatarLectureProps) {
   const hasCohost = Boolean(cohostName);
+  const [deliveryMode, setDeliveryMode] = useState<'offline' | 'avatar' | 'audio' | 'text'>('offline');
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -209,7 +210,11 @@ export function LiveAvatarLecture({
 
       pc.ontrack = (event) => {
         if (videoRef.current && event.streams[0]) {
+          videoRef.current.muted = true;
           videoRef.current.srcObject = event.streams[0];
+          videoRef.current.play().catch((playErr) => {
+            console.error('Video autoplay error:', playErr);
+          });
         }
       };
 
@@ -249,6 +254,7 @@ export function LiveAvatarLecture({
       });
 
       setIsConnected(true);
+      setDeliveryMode('avatar');
       toast.success('🎥 Live lecture started');
 
       const courseLabel = courseTitle
@@ -269,7 +275,8 @@ export function LiveAvatarLecture({
       await sendToAvatar(intro, 'host', sid || undefined, true);
     } catch (err: any) {
       console.error('Stream connection error:', err);
-      toast.error('Failed to connect avatar stream. Using audio-only mode.');
+      setDeliveryMode('text');
+      toast.error('Failed to connect avatar stream. Switching to truthful tutor fallback.');
       setShowVideo(false);
       setIsConnected(true);
     } finally {
@@ -304,6 +311,7 @@ export function LiveAvatarLecture({
     streamIdRef.current = null;
     sessionStreamRef.current = null;
     setIsConnected(false);
+    setDeliveryMode('offline');
 
     if (videoRef.current) videoRef.current.srcObject = null;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -365,7 +373,10 @@ export function LiveAvatarLecture({
         }
 
         if (data.audio_base64 && !isMuted && audioUnlocked) {
+          setDeliveryMode((prev) => (prev === 'avatar' ? prev : 'audio'));
           playAudio(data.audio_base64);
+        } else if (deliveryMode !== 'avatar') {
+          setDeliveryMode('text');
         }
       } catch (err: any) {
         console.error('Avatar talk error:', err);
@@ -732,6 +743,9 @@ export function LiveAvatarLecture({
           <Badge variant={courseTitle ? 'secondary' : 'destructive'}>
             {courseTitle ? `Course: ${courseTitle}` : 'No course context'}
           </Badge>
+          <Badge variant={deliveryMode === 'avatar' || deliveryMode === 'audio' ? 'secondary' : deliveryMode === 'text' ? 'outline' : 'destructive'}>
+            Delivery: {deliveryMode === 'avatar' ? 'live avatar' : deliveryMode === 'audio' ? 'audio tutor' : deliveryMode === 'text' ? 'text tutor only' : 'offline'}
+          </Badge>
           {programTitle && <Badge variant="outline">Program: {programTitle}</Badge>}
           {facultyName && <Badge variant="outline">Faculty: {facultyName}</Badge>}
           <Badge variant={audioUnlocked && !isMuted ? 'secondary' : 'outline'}>
@@ -775,7 +789,7 @@ export function LiveAvatarLecture({
           <div className={`grid gap-2 ${hasCohost ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1'}`}>
             <div className={`relative aspect-video bg-gradient-to-br from-primary/10 via-primary/5 to-background rounded-lg overflow-hidden border border-border ${hasCohost ? 'sm:col-span-2' : ''}`}>
               {isConnected ? (
-                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" data-testid="live-avatar-video" />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
                   <div className="relative">

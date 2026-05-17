@@ -23,6 +23,7 @@ import { ModuleLearningContent } from '@/components/learning/ModuleLearningConte
 import { CourseCurriculumBrowser } from '@/components/learning/CourseCurriculumBrowser';
 import { AITutorAvatar } from '@/components/AITutorAvatar';
 import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
+import { useLiveClassContext } from '@/hooks/useLiveClassContext';
 import confetti from 'canvas-confetti';
 
 export default function CourseLearningPage() {
@@ -94,20 +95,6 @@ export default function CourseLearningPage() {
     enabled: !!courseId && !!user
   });
 
-  // Fetch AI tutor
-  const { data: aiTutor } = useQuery({
-    queryKey: ['ai-tutor-faculty', courseData?.faculty],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('ai_tutors')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!courseData?.faculty
-  });
-
   const modules = courseData?.course_modules || [];
   const sortedModules = [...modules].sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0));
 
@@ -121,6 +108,8 @@ export default function CourseLearningPage() {
 
   const currentModule = sortedModules.find((m: any) => m.id === currentModuleId);
   const currentModuleIndex = sortedModules.findIndex((m: any) => m.id === currentModuleId);
+  const { data: liveCtx } = useLiveClassContext(currentModuleId || undefined);
+  const aiTutor = liveCtx?.tutor ?? null;
 
   // Auto-award certificate when course is 100% complete
   const awardCertificate = useCallback(async () => {
@@ -370,13 +359,16 @@ export default function CourseLearningPage() {
                 moduleId={currentModuleId || undefined}
                 moduleContent={currentModule?.content_md}
                 moduleTitle={currentModule?.title}
-                courseId={courseData?.id}
-                courseTitle={courseData?.title}
-                facultyName={courseData?.faculty}
+                courseId={liveCtx?.courseId || courseData?.id}
+                courseTitle={liveCtx?.courseTitle || courseData?.title}
+                facultyName={liveCtx?.facultyName || courseData?.faculty}
+                programTitle={liveCtx?.programTitle || undefined}
+                studentName={liveCtx?.studentName || undefined}
+                learningObjectives={liveCtx?.learningObjectives || []}
               />
             ) : (
               <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                No AI faculty has been assigned to this course yet. Live lecture is unavailable until a tutor is provisioned for this faculty.
+                {liveCtx?.blockedReason || 'No AI faculty has been assigned to this course yet. Live lecture is unavailable until a tutor is provisioned for this faculty.'}
               </div>
             )}
           </TabsContent>
