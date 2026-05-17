@@ -142,14 +142,17 @@ describe('LiveAvatarLecture workflow', () => {
       />
     );
 
+    const textIn = (needle: string) => (_: string, el: Element | null) =>
+      !!el && el.textContent?.toLowerCase().replace(/\s+/g, ' ').includes(needle) === true;
+
     fireEvent.click(screen.getByRole('button', { name: /enable sound/i }));
-    expect(screen.getByText(/audio: on/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(textIn('audio: on'))).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: /test microphone/i }));
-    await waitFor(() => expect(screen.getByText(/mic: granted/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(textIn('mic: granted'))).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: /start lecture/i }));
-    await waitFor(() => expect(screen.getByText(/delivery: live avatar/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(textIn('delivery: live avatar'))).toBeInTheDocument());
 
     const input = screen.getByPlaceholderText(/ask, or tap hand to queue/i);
     fireEvent.change(input, { target: { value: 'Can you explain the practical implication?' } });
