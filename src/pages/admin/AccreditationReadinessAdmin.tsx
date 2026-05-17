@@ -81,7 +81,7 @@ const AccreditationReadinessAdmin = () => {
             onChange={(e) => setSelected(e.target.value)}
           >
             {programs.map((p) => (
-              <option key={p.id} value={p.id}>{p.title ?? p.name ?? p.id}</option>
+              <option key={p.id} value={p.id}>{p.title ?? p.id}</option>
             ))}
           </select>
         </CardContent>
