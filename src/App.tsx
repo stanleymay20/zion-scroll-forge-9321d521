@@ -79,6 +79,7 @@ const TransferRequestsAdmin = lazy(() => import("./pages/admin/TransferRequestsA
 const AcademicIntegrityAlerts = lazy(() => import("./pages/admin/AcademicIntegrityAlerts"));
 const CurriculumDepthAdmin = lazy(() => import("./pages/admin/CurriculumDepthAdmin"));
 const CurriculumReviewsQueue = lazy(() => import("./pages/faculty/CurriculumReviewsQueue"));
+const RegistrarStandingDashboard = lazy(() => import("./pages/registrar/RegistrarStandingDashboard"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
