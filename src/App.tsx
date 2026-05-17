@@ -77,6 +77,7 @@ const IvyParityAdmin = lazy(() => import("./pages/admin/IvyParityAdmin"));
 const CoursePreviewsAdmin = lazy(() => import("./pages/admin/CoursePreviewsAdmin"));
 const TransferRequestsAdmin = lazy(() => import("./pages/admin/TransferRequestsAdmin"));
 const AcademicIntegrityAlerts = lazy(() => import("./pages/admin/AcademicIntegrityAlerts"));
+const CurriculumDepthAdmin = lazy(() => import("./pages/admin/CurriculumDepthAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
