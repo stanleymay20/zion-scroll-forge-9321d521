@@ -31,7 +31,7 @@ export function PLOAttainmentMatrix({ userId }: Props) {
         p_user_id: userId!,
       });
       if (error) throw error;
-      return data as {
+      return data as unknown as {
         credits_completed: number;
         gpa: number;
         plo_attainment: PLORow[];
