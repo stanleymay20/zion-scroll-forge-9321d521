@@ -39,13 +39,20 @@ interface InstitutionContextType {
 const InstitutionContext = createContext<InstitutionContextType | undefined>(undefined);
 
 export const InstitutionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [activeInstitution, setActiveInstitutionState] = useState<Institution | null>(null);
   const [memberships, setMemberships] = useState<InstitutionMembership[]>([]);
   const [activeRole, setActiveRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadInstitutionData = async () => {
+    // Wait for auth to resolve before deciding. Otherwise the guard sees
+    // loading=false + null institution on the very first render and bounces
+    // the student to /apply.
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
     if (!user) {
       setLoading(false);
       return;
@@ -203,7 +210,7 @@ export const InstitutionProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   useEffect(() => {
     loadInstitutionData();
-  }, [user?.id]);
+  }, [user?.id, authLoading]);
 
   return (
     <InstitutionContext.Provider
