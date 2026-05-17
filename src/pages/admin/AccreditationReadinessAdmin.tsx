@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, AlertTriangle, RefreshCw } from "lucide-react";
 
-type Program = { id: string; title: string | null; name?: string | null };
+type Program = { id: string; title: string | null };
 type Readiness = {
   program_id: string;
   readiness_score: number;
@@ -35,7 +35,7 @@ const AccreditationReadinessAdmin = () => {
     (async () => {
       const { data } = await supabase
         .from("degree_programs")
-        .select("id,title,name")
+        .select("id,title")
         .order("title", { ascending: true });
       const list = (data ?? []) as Program[];
       setPrograms(list);
