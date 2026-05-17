@@ -1560,6 +1560,50 @@ export type Database = {
         }
         Relationships: []
       }
+      claim_evidence_links: {
+        Row: {
+          claim_id: string
+          created_at: string
+          evidence_expires_at: string | null
+          evidence_id: string
+          evidence_summary: string | null
+          evidence_table: string
+          evidence_verified: boolean
+          id: string
+          linked_by: string | null
+        }
+        Insert: {
+          claim_id: string
+          created_at?: string
+          evidence_expires_at?: string | null
+          evidence_id: string
+          evidence_summary?: string | null
+          evidence_table: string
+          evidence_verified?: boolean
+          id?: string
+          linked_by?: string | null
+        }
+        Update: {
+          claim_id?: string
+          created_at?: string
+          evidence_expires_at?: string | null
+          evidence_id?: string
+          evidence_summary?: string | null
+          evidence_table?: string
+          evidence_verified?: boolean
+          id?: string
+          linked_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_evidence_links_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "public_claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_sessions: {
         Row: {
           attendance_count: number | null
@@ -7864,6 +7908,69 @@ export type Database = {
           },
         ]
       }
+      public_claims: {
+        Row: {
+          claim_type: Database["public"]["Enums"]["claim_type"]
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_published: boolean
+          proposed_by: string | null
+          retraction_reason: string | null
+          reviewed_at: string | null
+          reviewer_role: string | null
+          reviewer_user_id: string | null
+          scope_notes: string | null
+          statement: string
+          subject_id: string | null
+          subject_kind: Database["public"]["Enums"]["claim_subject_kind"]
+          subject_label: string
+          updated_at: string
+          verification_state: Database["public"]["Enums"]["claim_verification_state"]
+          verified_at: string | null
+        }
+        Insert: {
+          claim_type: Database["public"]["Enums"]["claim_type"]
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_published?: boolean
+          proposed_by?: string | null
+          retraction_reason?: string | null
+          reviewed_at?: string | null
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          scope_notes?: string | null
+          statement: string
+          subject_id?: string | null
+          subject_kind: Database["public"]["Enums"]["claim_subject_kind"]
+          subject_label: string
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["claim_verification_state"]
+          verified_at?: string | null
+        }
+        Update: {
+          claim_type?: Database["public"]["Enums"]["claim_type"]
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_published?: boolean
+          proposed_by?: string | null
+          retraction_reason?: string | null
+          reviewed_at?: string | null
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          scope_notes?: string | null
+          statement?: string
+          subject_id?: string | null
+          subject_kind?: Database["public"]["Enums"]["claim_subject_kind"]
+          subject_label?: string
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["claim_verification_state"]
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       public_faculty: {
         Row: {
           affiliation: string | null
@@ -7932,6 +8039,50 @@ export type Database = {
           verification_status?: Database["public"]["Enums"]["faculty_verification_status"]
         }
         Relationships: []
+      }
+      public_verification_snapshots: {
+        Row: {
+          claim_id: string
+          created_at: string
+          evidence_count: number
+          id: string
+          reviewer_role: string | null
+          reviewer_user_id: string | null
+          snapshot_payload: Json
+          unexpired_evidence_count: number
+          verification_state: Database["public"]["Enums"]["claim_verification_state"]
+        }
+        Insert: {
+          claim_id: string
+          created_at?: string
+          evidence_count?: number
+          id?: string
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          snapshot_payload?: Json
+          unexpired_evidence_count?: number
+          verification_state: Database["public"]["Enums"]["claim_verification_state"]
+        }
+        Update: {
+          claim_id?: string
+          created_at?: string
+          evidence_count?: number
+          id?: string
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          snapshot_payload?: Json
+          unexpired_evidence_count?: number
+          verification_state?: Database["public"]["Enums"]["claim_verification_state"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_verification_snapshots_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "public_claims"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quality_audit_logs: {
         Row: {
@@ -10730,6 +10881,48 @@ export type Database = {
           },
         ]
       }
+      trust_transparency_reports: {
+        Row: {
+          created_at: string
+          id: string
+          metrics: Json
+          narrative: string | null
+          period_end: string
+          period_start: string
+          published_at: string | null
+          published_by: string | null
+          summary: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metrics?: Json
+          narrative?: string | null
+          period_end: string
+          period_start: string
+          published_at?: string | null
+          published_by?: string | null
+          summary: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metrics?: Json
+          narrative?: string | null
+          period_end?: string
+          period_start?: string
+          published_at?: string | null
+          published_by?: string | null
+          summary?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tuition_billing_cycles: {
         Row: {
           amount_due: number
@@ -11532,6 +11725,10 @@ export type Database = {
         }
         Returns: string
       }
+      is_claim_publicly_visible: {
+        Args: { _claim_id: string }
+        Returns: boolean
+      }
       is_course_valid_for_program: {
         Args: { p_course_id: string; p_program_id: string }
         Returns: boolean
@@ -11585,6 +11782,10 @@ export type Database = {
         Returns: number
       }
       normalize_faculty_name: { Args: { p_name: string }; Returns: string }
+      program_verification_surface: {
+        Args: { _program_id: string }
+        Returns: Json
+      }
       publish_academic_year: { Args: { p_year_id: string }; Returns: boolean }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
@@ -11645,6 +11846,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      snapshot_claim_verification: {
+        Args: { _claim_id: string }
+        Returns: string
       }
       spend_scrollcoin: {
         Args: { p_amount: number; p_desc: string; p_user_id: string }
@@ -11712,6 +11917,34 @@ export type Database = {
         | "practical"
         | "collaborative"
         | "scroll_defense"
+      claim_subject_kind:
+        | "program"
+        | "course"
+        | "faculty"
+        | "institution"
+        | "partnership"
+        | "infrastructure"
+        | "ai_capability"
+      claim_type:
+        | "accreditation"
+        | "faculty"
+        | "curriculum"
+        | "practicum"
+        | "employment"
+        | "research"
+        | "ai_tutor"
+        | "infrastructure"
+        | "partnership"
+        | "transcript_equivalency"
+      claim_verification_state:
+        | "not_yet_verified"
+        | "under_review"
+        | "pilot"
+        | "experimental"
+        | "internal_only"
+        | "verified"
+        | "expired"
+        | "retracted"
       credential_class:
         | "academic_degree"
         | "professional_certificate"
@@ -11910,6 +12143,37 @@ export const Constants = {
         "practical",
         "collaborative",
         "scroll_defense",
+      ],
+      claim_subject_kind: [
+        "program",
+        "course",
+        "faculty",
+        "institution",
+        "partnership",
+        "infrastructure",
+        "ai_capability",
+      ],
+      claim_type: [
+        "accreditation",
+        "faculty",
+        "curriculum",
+        "practicum",
+        "employment",
+        "research",
+        "ai_tutor",
+        "infrastructure",
+        "partnership",
+        "transcript_equivalency",
+      ],
+      claim_verification_state: [
+        "not_yet_verified",
+        "under_review",
+        "pilot",
+        "experimental",
+        "internal_only",
+        "verified",
+        "expired",
+        "retracted",
       ],
       credential_class: [
         "academic_degree",

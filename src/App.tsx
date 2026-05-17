@@ -83,6 +83,10 @@ const RegistrarStandingDashboard = lazy(() => import("./pages/registrar/Registra
 const AccreditationReadinessAdmin = lazy(() => import("./pages/admin/AccreditationReadinessAdmin"));
 const IntegrityCasesAdmin = lazy(() => import("./pages/admin/IntegrityCasesAdmin"));
 const StudentIntegrityCenter = lazy(() => import("./pages/StudentIntegrityCenter"));
+const GovernanceTransparency = lazy(() => import("./pages/GovernanceTransparency"));
+const AccreditationStatus = lazy(() => import("./pages/AccreditationStatus"));
+const ProgramVerification = lazy(() => import("./pages/ProgramVerification"));
+const PublicClaimsAdmin = lazy(() => import("./pages/admin/PublicClaimsAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
@@ -314,6 +318,15 @@ const App = () => (
             <Route path="/trust" element={<PublicLayout />}>
               <Route index element={<TrustCenter />} />
             </Route>
+            <Route path="/governance" element={<PublicLayout />}>
+              <Route index element={<GovernanceTransparency />} />
+            </Route>
+            <Route path="/accreditation-status" element={<PublicLayout />}>
+              <Route index element={<AccreditationStatus />} />
+            </Route>
+            <Route path="/program-verification/:id" element={<PublicLayout />}>
+              <Route index element={<ProgramVerification />} />
+            </Route>
             <Route path="/academic-trust" element={<PublicLayout />}>
               <Route index element={<AcademicTrust />} />
             </Route>
@@ -443,6 +456,7 @@ const App = () => (
               <Route path="registrar/standing" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><RegistrarStandingDashboard /></RoleRoute>} />
               <Route path="admin/accreditation-readiness" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><AccreditationReadinessAdmin /></RoleRoute>} />
               <Route path="admin/integrity-cases" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><IntegrityCasesAdmin /></RoleRoute>} />
+              <Route path="admin/public-claims" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><PublicClaimsAdmin /></RoleRoute>} />
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
