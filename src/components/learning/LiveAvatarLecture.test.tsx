@@ -142,14 +142,23 @@ describe('LiveAvatarLecture workflow', () => {
       />
     );
 
+    const hasText = (needle: string) => (_: string, el: Element | null) => {
+      if (!el) return false;
+      const own = (el.textContent || '').toLowerCase().replace(/\s+/g, ' ');
+      const childMatch = Array.from(el.children).some(
+        (c) => (c.textContent || '').toLowerCase().replace(/\s+/g, ' ').includes(needle)
+      );
+      return own.includes(needle) && !childMatch;
+    };
+
     fireEvent.click(screen.getByRole('button', { name: /enable sound/i }));
-    expect(screen.getByText(/audio: on/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText(hasText('audio: on')).length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getByRole('button', { name: /test microphone/i }));
-    await waitFor(() => expect(screen.getByText(/mic: granted/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(hasText('mic: granted')).length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getByRole('button', { name: /start lecture/i }));
-    await waitFor(() => expect(screen.getByText(/delivery: live avatar/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(hasText('delivery: live avatar')).length).toBeGreaterThan(0));
 
     const input = screen.getByPlaceholderText(/ask, or tap hand to queue/i);
     fireEvent.change(input, { target: { value: 'Can you explain the practical implication?' } });
@@ -169,6 +178,17 @@ describe('LiveAvatarLecture workflow', () => {
     render(<LiveAvatarLecture tutorName="Caleb" tutorSpecialty="Computer Science & AI" />);
     fireEvent.click(screen.getByRole('button', { name: /start lecture/i }));
 
-    await waitFor(() => expect(screen.getByText(/delivery: text tutor only/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getAllByText((_, el) => {
+          if (!el) return false;
+          const own = (el.textContent || '').toLowerCase();
+          const childMatch = Array.from(el.children).some(
+            (c) => (c.textContent || '').toLowerCase().includes('delivery: text tutor only')
+          );
+          return own.includes('delivery: text tutor only') && !childMatch;
+        }).length
+      ).toBeGreaterThan(0)
+    );
   });
 });
