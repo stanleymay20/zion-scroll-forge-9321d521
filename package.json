@@ -11,6 +11,12 @@
     "test": "vitest run",
     "preview": "vite preview"
   },
+  "overrides": {
+    "lodash": "^4.17.21",
+    "socket.io-parser": "^4.2.6",
+    "react-router": "^6.30.3",
+    "react-router-dom": "^6.30.3"
+  },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
@@ -67,7 +73,7 @@
     "react-hook-form": "^7.61.1",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^2.1.9",
-    "react-router-dom": "^6.30.1",
+    "react-router-dom": "^6.30.3",
     "recharts": "^2.15.4",
     "socket.io-client": "^4.8.1",
     "sonner": "^1.7.4",
