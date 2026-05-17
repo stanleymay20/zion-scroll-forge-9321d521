@@ -113,7 +113,7 @@ export const InstitutionProvider: React.FC<{ children: React.ReactNode }> = ({ c
               .maybeSingle();
 
             if (institutionByProfile) {
-              active = institutionByProfile as Institution;
+              active = institutionByProfile as unknown as Institution;
               role = 'student';
             }
           }
