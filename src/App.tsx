@@ -83,6 +83,10 @@ const RegistrarStandingDashboard = lazy(() => import("./pages/registrar/Registra
 const AccreditationReadinessAdmin = lazy(() => import("./pages/admin/AccreditationReadinessAdmin"));
 const IntegrityCasesAdmin = lazy(() => import("./pages/admin/IntegrityCasesAdmin"));
 const StudentIntegrityCenter = lazy(() => import("./pages/StudentIntegrityCenter"));
+const GovernanceTransparency = lazy(() => import("./pages/GovernanceTransparency"));
+const AccreditationStatus = lazy(() => import("./pages/AccreditationStatus"));
+const ProgramVerification = lazy(() => import("./pages/ProgramVerification"));
+const PublicClaimsAdmin = lazy(() => import("./pages/admin/PublicClaimsAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
