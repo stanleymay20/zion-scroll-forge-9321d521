@@ -152,6 +152,8 @@ serve(async (req) => {
       facultyName: faculty_name ?? null,
       moduleTitle,
       moduleContent,
+      teachingModeBlock: pedagogy.modeInstructions,
+      memorySummary: renderMemorySummary(memory),
     });
 
     const aiMessages = [
@@ -206,7 +208,7 @@ serve(async (req) => {
       session_id,
       sender_type: "tutor",
       content: assistantMessage,
-      metadata: { model: "google/gemini-2.5-pro", rubric: "ivy_plus_v1" },
+      metadata: { model: "google/gemini-2.5-pro", rubric: "ivy_plus_v1", mode: pedagogy.mode },
     });
 
     await supabase
@@ -214,7 +216,46 @@ serve(async (req) => {
       .update({ total_messages: (history?.length ?? 0) + 1 })
       .eq("id", session_id);
 
-    return json({ assistant_message: assistantMessage });
+    // ─── PR2: persist memory + open intervention alert if triggered ───
+    if (courseIdForMemory) {
+      const nextTopics = [
+        ...(moduleTitle ? [moduleTitle] : []),
+        ...(pedagogy.nextMemory.last_topics || []),
+      ].slice(0, 6);
+      await supabase.from("tutor_student_memory").upsert({
+        user_id: user.id,
+        course_id: courseIdForMemory,
+        ...pedagogy.nextMemory,
+        last_topics: nextTopics,
+        last_interaction_at: new Date().toISOString(),
+      }, { onConflict: "user_id,course_id" });
+
+      if (pedagogy.shouldIntervene) {
+        // Only open one OPEN alert per (user, course)
+        const { data: existing } = await supabase
+          .from("student_intervention_alerts")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("course_id", courseIdForMemory)
+          .eq("status", "open")
+          .maybeSingle();
+        if (!existing) {
+          await supabase.from("student_intervention_alerts").insert({
+            user_id: user.id,
+            course_id: courseIdForMemory,
+            trigger_reason: pedagogy.interventionReason ?? "Repeated low assessment scores.",
+            recommended_action: "Faculty check-in; tutor switched to revision mode.",
+            metadata: { source: "ai-tutor-chat", mode: pedagogy.mode },
+          });
+        }
+      }
+    }
+
+    return json({
+      assistant_message: assistantMessage,
+      teaching_mode: pedagogy.mode,
+      intervention_opened: pedagogy.shouldIntervene,
+    });
   } catch (error: any) {
     if (error instanceof ValidationError) {
       return createValidationErrorResponse(error, corsHeaders);
