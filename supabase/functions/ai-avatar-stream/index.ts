@@ -2,6 +2,13 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { buildTutorSystemPrompt, formatForTTS, type TutorTone, type WarmthLevel } from "../_shared/tutor-persona.ts";
+import {
+  decidePedagogy,
+  renderMemorySummary,
+  EMPTY_MEMORY,
+  type TeachingMode,
+  type TutorStudentMemory,
+} from "../_shared/tutor-pedagogy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,6 +88,8 @@ serve(async (req) => {
         courseTitle, programTitle, facultyName, moduleTitle,
         studentName, learningObjectives,
         tone, warmth,
+        // PR2 — pedagogy
+        userId, courseId, intent, modeOverride, lastAssessmentScore,
       } = body;
 
       if (!stream_id || !session_id || !text) {
@@ -95,6 +104,25 @@ serve(async (req) => {
         );
       }
 
+      // ─── PR2: load tutor_student_memory (best-effort) ───
+      let memory: TutorStudentMemory = { ...EMPTY_MEMORY };
+      if (userId && courseId) {
+        const { data: memRow } = await supabase
+          .from("tutor_student_memory")
+          .select("misconceptions,strengths,weak_areas,last_topics,preferred_pace,current_mode,consecutive_low_scores,intervention_flag")
+          .eq("user_id", userId)
+          .eq("course_id", courseId)
+          .maybeSingle();
+        if (memRow) memory = { ...EMPTY_MEMORY, ...(memRow as any) };
+      }
+
+      const pedagogy = decidePedagogy({
+        intent: typeof intent === "string" ? intent : null,
+        modeOverride: (modeOverride as TeachingMode | null) ?? null,
+        lastAssessmentScore: typeof lastAssessmentScore === "number" ? lastAssessmentScore : null,
+        memory,
+      });
+
       const systemPrompt = buildTutorSystemPrompt({
         mode: "spoken",
         tone: tone as TutorTone | TutorTone[] | undefined,
@@ -108,6 +136,8 @@ serve(async (req) => {
         moduleTitle,
         learningObjectives,
         moduleContent,
+        teachingModeBlock: pedagogy.modeInstructions,
+        memorySummary: renderMemorySummary(memory),
       });
 
       const chatMessages = [
@@ -247,12 +277,48 @@ serve(async (req) => {
         }
       }
 
+      // ─── PR2: persist memory + open intervention alert if triggered ───
+      if (userId && courseId) {
+        const nextTopics = [
+          ...(moduleTitle ? [moduleTitle] : []),
+          ...(pedagogy.nextMemory.last_topics || []),
+        ].slice(0, 6);
+        await supabase.from("tutor_student_memory").upsert({
+          user_id: userId,
+          course_id: courseId,
+          ...pedagogy.nextMemory,
+          last_topics: nextTopics,
+          last_interaction_at: new Date().toISOString(),
+        }, { onConflict: "user_id,course_id" });
+
+        if (pedagogy.shouldIntervene) {
+          const { data: existing } = await supabase
+            .from("student_intervention_alerts")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("course_id", courseId)
+            .eq("status", "open")
+            .maybeSingle();
+          if (!existing) {
+            await supabase.from("student_intervention_alerts").insert({
+              user_id: userId,
+              course_id: courseId,
+              trigger_reason: pedagogy.interventionReason ?? "Repeated low assessment scores.",
+              recommended_action: "Faculty check-in; tutor switched to revision mode.",
+              metadata: { source: "ai-avatar-stream", mode: pedagogy.mode },
+            });
+          }
+        }
+      }
+
       return new Response(
         JSON.stringify({
           message: aiMessage,
           audio_base64: audioBase64,
           tts_available: ttsAvailable,
           did_talk: didTalkResult,
+          teaching_mode: pedagogy.mode,
+          intervention_opened: pedagogy.shouldIntervene,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
