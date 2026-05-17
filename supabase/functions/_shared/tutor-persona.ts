@@ -35,6 +35,10 @@ export interface TutorPersonaInput {
   moduleTitle?: string | null;
   learningObjectives?: string[];
   moduleContent?: string | null;    // already trimmed by caller
+  /** PR2 — pedagogy engine: mode-specific instruction block. */
+  teachingModeBlock?: string | null;
+  /** PR2 — rendered memory summary (strengths / weak areas / pace). */
+  memorySummary?: string | null;
 }
 
 const WARMTH_BLOCKS: Record<WarmthLevel, string> = {
@@ -154,6 +158,9 @@ export function buildTutorSystemPrompt(input: TutorPersonaInput): string {
     HUMAN_VOICE_RULES,
     "",
     RESPONSE_SHAPE,
+    "",
+    input.teachingModeBlock ? input.teachingModeBlock : "",
+    input.memorySummary ? "\n" + input.memorySummary : "",
     "",
     delivery,
     grounding,
