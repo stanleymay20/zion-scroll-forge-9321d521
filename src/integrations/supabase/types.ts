@@ -488,6 +488,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "accreditation_blueprint_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
+          {
             foreignKeyName: "accreditation_blueprint_prerequisite_slot_id_fkey"
             columns: ["prerequisite_slot_id"]
             isOneToOne: false
@@ -2700,6 +2707,13 @@ export type Database = {
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "curriculum_depth_scores_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: true
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
         ]
       }
       degree_analytics: {
@@ -2847,6 +2861,13 @@ export type Database = {
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "degree_applications_degree_id_fkey"
+            columns: ["degree_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
         ]
       }
       degree_course_requirements: {
@@ -2908,6 +2929,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "degree_course_requirements_degree_id_fkey"
+            columns: ["degree_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
           },
           {
             foreignKeyName: "degree_course_requirements_prerequisite_course_id_fkey"
@@ -3038,6 +3066,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "degree_program_courses_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
           },
         ]
       }
@@ -3171,6 +3206,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "degree_programs_rebuilt_from_id_fkey"
+            columns: ["rebuilt_from_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
           },
         ]
       }
@@ -4052,6 +4094,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_transferred_from_program_id_fkey"
+            columns: ["transferred_from_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
           },
           {
             foreignKeyName: "enrollments_user_id_fkey"
@@ -4991,6 +5040,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "graduation_candidates_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
           },
         ]
       }
@@ -7524,6 +7580,13 @@ export type Database = {
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "practicum_requirements_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
         ]
       }
       prayer_journal: {
@@ -7788,6 +7851,13 @@ export type Database = {
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "program_accreditation_targets_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
         ]
       }
       program_assignment_confirmations: {
@@ -7842,6 +7912,13 @@ export type Database = {
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "program_assignment_confirmations_requested_program_id_fkey"
+            columns: ["requested_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
         ]
       }
       program_canonical_faculty: {
@@ -7885,6 +7962,13 @@ export type Database = {
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "program_canonical_faculty_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: true
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
         ]
       }
       program_learning_outcomes: {
@@ -7926,6 +8010,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_learning_outcomes_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
           },
         ]
       }
@@ -8012,6 +8103,13 @@ export type Database = {
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "program_scroll_distinctions_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
         ]
       }
       program_transfer_requests: {
@@ -8076,6 +8174,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "program_transfer_requests_from_program_id_fkey"
+            columns: ["from_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
+          {
             foreignKeyName: "program_transfer_requests_to_program_id_fkey"
             columns: ["to_program_id"]
             isOneToOne: false
@@ -8088,6 +8193,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_transfer_requests_to_program_id_fkey"
+            columns: ["to_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
           },
         ]
       }
@@ -9753,6 +9865,13 @@ export type Database = {
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "student_degree_enrollments_degree_id_fkey"
+            columns: ["degree_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
         ]
       }
       student_documents: {
@@ -10153,6 +10272,13 @@ export type Database = {
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "student_qualifications_scroll_degree_id_fkey"
+            columns: ["scroll_degree_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
         ]
       }
       student_skills: {
@@ -10307,6 +10433,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
           },
         ]
       }
@@ -11011,6 +11144,13 @@ export type Database = {
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "thesis_dissertation_rules_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
         ]
       }
       transactions: {
@@ -11710,6 +11850,48 @@ export type Database = {
         }
         Relationships: []
       }
+      program_public_render_state: {
+        Row: {
+          accreditation_status: string | null
+          faculty: string | null
+          institutional_layer:
+            | Database["public"]["Enums"]["institutional_layer"]
+            | null
+          lifecycle_status: string | null
+          program_id: string | null
+          program_status: string | null
+          public_status: Json | null
+          scroll_level: string | null
+          title: string | null
+        }
+        Insert: {
+          accreditation_status?: string | null
+          faculty?: string | null
+          institutional_layer?:
+            | Database["public"]["Enums"]["institutional_layer"]
+            | null
+          lifecycle_status?: string | null
+          program_id?: string | null
+          program_status?: string | null
+          public_status?: never
+          scroll_level?: string | null
+          title?: string | null
+        }
+        Update: {
+          accreditation_status?: string | null
+          faculty?: string | null
+          institutional_layer?:
+            | Database["public"]["Enums"]["institutional_layer"]
+            | null
+          lifecycle_status?: string | null
+          program_id?: string | null
+          program_status?: string | null
+          public_status?: never
+          scroll_level?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       student_academic_profiles: {
         Row: {
           academic_level: string | null
@@ -11747,6 +11929,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "degree_programs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
           },
         ]
       }
@@ -11960,6 +12149,10 @@ export type Database = {
             }[]
           }
       check_seal_criteria: { Args: { p_course_id: string }; Returns: Json }
+      compute_program_public_status: {
+        Args: { p_program_id: string }
+        Returns: Json
+      }
       create_notification: {
         Args: {
           p_body: string
