@@ -496,6 +496,66 @@ export type Database = {
           },
         ]
       }
+      accreditation_evidence: {
+        Row: {
+          attribution_user_id: string | null
+          control_id: string
+          created_at: string
+          description: string | null
+          evidence_expiry_date: string | null
+          evidence_type: string
+          framework: string | null
+          id: string
+          last_reviewed_at: string | null
+          metadata: Json
+          program_id: string | null
+          review_due_at: string | null
+          reviewed_by: string | null
+          source_url: string | null
+          title: string
+          updated_at: string
+          verification_state: Database["public"]["Enums"]["evidence_verification_state"]
+        }
+        Insert: {
+          attribution_user_id?: string | null
+          control_id: string
+          created_at?: string
+          description?: string | null
+          evidence_expiry_date?: string | null
+          evidence_type: string
+          framework?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          metadata?: Json
+          program_id?: string | null
+          review_due_at?: string | null
+          reviewed_by?: string | null
+          source_url?: string | null
+          title: string
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["evidence_verification_state"]
+        }
+        Update: {
+          attribution_user_id?: string | null
+          control_id?: string
+          created_at?: string
+          description?: string | null
+          evidence_expiry_date?: string | null
+          evidence_type?: string
+          framework?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          metadata?: Json
+          program_id?: string | null
+          review_due_at?: string | null
+          reviewed_by?: string | null
+          source_url?: string | null
+          title?: string
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["evidence_verification_state"]
+        }
+        Relationships: []
+      }
       achievements: {
         Row: {
           category: string
@@ -1141,6 +1201,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      assessment_effectiveness_reviews: {
+        Row: {
+          action_plan: string | null
+          created_at: string
+          findings: string
+          id: string
+          plo_attainment_summary: Json
+          program_id: string
+          review_due_at: string | null
+          reviewed_at: string
+          reviewed_by: string
+          term_id: string | null
+          updated_at: string
+          verification_state: Database["public"]["Enums"]["evidence_verification_state"]
+        }
+        Insert: {
+          action_plan?: string | null
+          created_at?: string
+          findings: string
+          id?: string
+          plo_attainment_summary?: Json
+          program_id: string
+          review_due_at?: string | null
+          reviewed_at?: string
+          reviewed_by: string
+          term_id?: string | null
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["evidence_verification_state"]
+        }
+        Update: {
+          action_plan?: string | null
+          created_at?: string
+          findings?: string
+          id?: string
+          plo_attainment_summary?: Json
+          program_id?: string
+          review_due_at?: string | null
+          reviewed_at?: string
+          reviewed_by?: string
+          term_id?: string | null
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["evidence_verification_state"]
+        }
+        Relationships: []
       }
       assessment_question_pools: {
         Row: {
@@ -3917,6 +4022,54 @@ export type Database = {
           },
         ]
       }
+      external_partnerships: {
+        Row: {
+          contact_email: string | null
+          created_at: string
+          evidence_expiry_date: string | null
+          id: string
+          last_reviewed_at: string | null
+          mou_url: string | null
+          partner_name: string
+          partner_type: string | null
+          review_due_at: string | null
+          scope: string | null
+          updated_at: string
+          verification_state: Database["public"]["Enums"]["evidence_verification_state"]
+          verified_by: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          created_at?: string
+          evidence_expiry_date?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          mou_url?: string | null
+          partner_name: string
+          partner_type?: string | null
+          review_due_at?: string | null
+          scope?: string | null
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["evidence_verification_state"]
+          verified_by?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          created_at?: string
+          evidence_expiry_date?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          mou_url?: string | null
+          partner_name?: string
+          partner_type?: string | null
+          review_due_at?: string | null
+          scope?: string | null
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["evidence_verification_state"]
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
       external_standard_mappings: {
         Row: {
           alignment_notes: string | null
@@ -3996,6 +4149,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      faculty_credentials: {
+        Row: {
+          created_at: string
+          credential_type: string
+          document_url: string | null
+          evidence_expiry_date: string | null
+          faculty_user_id: string
+          field: string | null
+          id: string
+          issued_date: string | null
+          issuing_institution: string
+          last_reviewed_at: string | null
+          level: string | null
+          notes: string | null
+          review_due_at: string | null
+          title: string
+          updated_at: string
+          verification_state: Database["public"]["Enums"]["evidence_verification_state"]
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          credential_type: string
+          document_url?: string | null
+          evidence_expiry_date?: string | null
+          faculty_user_id: string
+          field?: string | null
+          id?: string
+          issued_date?: string | null
+          issuing_institution: string
+          last_reviewed_at?: string | null
+          level?: string | null
+          notes?: string | null
+          review_due_at?: string | null
+          title: string
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["evidence_verification_state"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          credential_type?: string
+          document_url?: string | null
+          evidence_expiry_date?: string | null
+          faculty_user_id?: string
+          field?: string | null
+          id?: string
+          issued_date?: string | null
+          issuing_institution?: string
+          last_reviewed_at?: string | null
+          level?: string | null
+          notes?: string | null
+          review_due_at?: string | null
+          title?: string
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["evidence_verification_state"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
       }
       faculty_curriculum_reviews: {
         Row: {
@@ -6583,6 +6799,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      practicum_providers: {
+        Row: {
+          address: string | null
+          capacity: number | null
+          created_at: string
+          evidence_expiry_date: string | null
+          id: string
+          last_reviewed_at: string | null
+          notes: string | null
+          review_due_at: string | null
+          site_name: string
+          supervisor_email: string | null
+          supervisor_name: string | null
+          updated_at: string
+          verification_state: Database["public"]["Enums"]["evidence_verification_state"]
+          verified_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          capacity?: number | null
+          created_at?: string
+          evidence_expiry_date?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          notes?: string | null
+          review_due_at?: string | null
+          site_name: string
+          supervisor_email?: string | null
+          supervisor_name?: string | null
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["evidence_verification_state"]
+          verified_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          capacity?: number | null
+          created_at?: string
+          evidence_expiry_date?: string | null
+          id?: string
+          last_reviewed_at?: string | null
+          notes?: string | null
+          review_due_at?: string | null
+          site_name?: string
+          supervisor_email?: string | null
+          supervisor_name?: string | null
+          updated_at?: string
+          verification_state?: Database["public"]["Enums"]["evidence_verification_state"]
+          verified_by?: string | null
+        }
+        Relationships: []
       }
       practicum_requirements: {
         Row: {
@@ -10760,6 +11027,7 @@ export type Database = {
       }
     }
     Functions: {
+      accreditation_readiness: { Args: { _program_id: string }; Returns: Json }
       accreditation_readiness_score: {
         Args: { p_program_id: string }
         Returns: number
@@ -11128,6 +11396,11 @@ export type Database = {
         | "active_public"
         | "pilot_private"
         | "internal_development"
+      evidence_verification_state:
+        | "pending"
+        | "verified"
+        | "expired"
+        | "rejected"
       faculty_category:
         | "founding_faculty"
         | "visiting_scholar"
@@ -11324,6 +11597,12 @@ export const Constants = {
         "active_public",
         "pilot_private",
         "internal_development",
+      ],
+      evidence_verification_state: [
+        "pending",
+        "verified",
+        "expired",
+        "rejected",
       ],
       faculty_category: [
         "founding_faculty",
