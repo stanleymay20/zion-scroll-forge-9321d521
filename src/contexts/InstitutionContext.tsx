@@ -210,7 +210,7 @@ export const InstitutionProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   useEffect(() => {
     loadInstitutionData();
-  }, [user?.id]);
+  }, [user?.id, authLoading]);
 
   return (
     <InstitutionContext.Provider
