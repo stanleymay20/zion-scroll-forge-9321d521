@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Download, Award, Coins, GraduationCap, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import { PLOAttainmentMatrix } from '@/components/transcript/PLOAttainmentMatrix';
 
 export default function Transcript() {
   const { user } = useAuth();
@@ -179,6 +180,9 @@ export default function Transcript() {
           </CardContent>
         </Card>
       </div>
+
+      {/* PR3 — Program Learning Outcome attainment from graded attempts */}
+      <PLOAttainmentMatrix userId={user?.id ?? null} />
 
       {/* Enrolled & Completed Courses */}
       <Card>
