@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Helmet } from "react-helmet-async";
+import { useEffect as useTitleEffect } from "react";
 
 type Bucket = { standing: string; count: number };
 
