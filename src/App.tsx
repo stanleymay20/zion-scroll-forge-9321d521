@@ -332,6 +332,18 @@ const App = () => (
             <Route path="/program-verification/:id" element={<PublicLayout />}>
               <Route index element={<ProgramVerification />} />
             </Route>
+            <Route path="/outcomes" element={<PublicLayout />}>
+              <Route index element={<Outcomes />} />
+            </Route>
+            <Route path="/employment-methodology" element={<PublicLayout />}>
+              <Route index element={<EmploymentMethodology />} />
+            </Route>
+            <Route path="/research-impact" element={<PublicLayout />}>
+              <Route index element={<ResearchImpact />} />
+            </Route>
+            <Route path="/graduate-success" element={<PublicLayout />}>
+              <Route index element={<GraduateSuccess />} />
+            </Route>
             <Route path="/academic-trust" element={<PublicLayout />}>
               <Route index element={<AcademicTrust />} />
             </Route>
