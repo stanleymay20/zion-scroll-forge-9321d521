@@ -352,6 +352,7 @@ export default function CourseLearningPage() {
           <TabsContent value="avatar">
             {aiTutor ? (
               <LiveAvatarLecture
+                userId={liveCtx?.userId || user?.id}
                 tutorName={aiTutor.name}
                 tutorSpecialty={aiTutor.specialty}
                 tutorAvatar={aiTutor.avatar_image_url}
