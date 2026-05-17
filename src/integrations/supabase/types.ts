@@ -1726,6 +1726,75 @@ export type Database = {
           },
         ]
       }
+      cohort_outcome_metrics: {
+        Row: {
+          cohort_year: number
+          computed_at: string
+          computed_by: string | null
+          employer_verified_count: number
+          excluded_cohorts: string | null
+          field_aligned_count: number
+          id: string
+          insufficient_evidence_reason: string | null
+          is_public: boolean
+          median_time_to_employment_days: number | null
+          methodology_notes: string | null
+          practicum_completion_count: number
+          program_id: string | null
+          program_name: string
+          reporting_window_end: string
+          reporting_window_start: string
+          research_outputs_count: number
+          self_reported_count: number
+          total_graduates: number
+          verified_sample_size: number
+        }
+        Insert: {
+          cohort_year: number
+          computed_at?: string
+          computed_by?: string | null
+          employer_verified_count?: number
+          excluded_cohorts?: string | null
+          field_aligned_count?: number
+          id?: string
+          insufficient_evidence_reason?: string | null
+          is_public?: boolean
+          median_time_to_employment_days?: number | null
+          methodology_notes?: string | null
+          practicum_completion_count?: number
+          program_id?: string | null
+          program_name: string
+          reporting_window_end: string
+          reporting_window_start: string
+          research_outputs_count?: number
+          self_reported_count?: number
+          total_graduates?: number
+          verified_sample_size?: number
+        }
+        Update: {
+          cohort_year?: number
+          computed_at?: string
+          computed_by?: string | null
+          employer_verified_count?: number
+          excluded_cohorts?: string | null
+          field_aligned_count?: number
+          id?: string
+          insufficient_evidence_reason?: string | null
+          is_public?: boolean
+          median_time_to_employment_days?: number | null
+          methodology_notes?: string | null
+          practicum_completion_count?: number
+          program_id?: string | null
+          program_name?: string
+          reporting_window_end?: string
+          reporting_window_start?: string
+          research_outputs_count?: number
+          self_reported_count?: number
+          total_graduates?: number
+          verified_sample_size?: number
+        }
+        Relationships: []
+      }
       community_posts: {
         Row: {
           comments_count: number
@@ -3757,6 +3826,83 @@ export type Database = {
         }
         Relationships: []
       }
+      employment_verifications: {
+        Row: {
+          country: string | null
+          created_at: string
+          employer_name: string
+          employment_type: string | null
+          end_date: string | null
+          evidence_source: string | null
+          graduate_outcome_id: string | null
+          id: string
+          is_field_aligned: boolean | null
+          job_title: string
+          recheck_due_at: string | null
+          rejection_reason: string | null
+          reviewer_role: string | null
+          reviewer_user_id: string | null
+          start_date: string | null
+          updated_at: string
+          user_id: string
+          verification_method: string | null
+          verification_state: Database["public"]["Enums"]["employment_verification_state"]
+          verified_at: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          employer_name: string
+          employment_type?: string | null
+          end_date?: string | null
+          evidence_source?: string | null
+          graduate_outcome_id?: string | null
+          id?: string
+          is_field_aligned?: boolean | null
+          job_title: string
+          recheck_due_at?: string | null
+          rejection_reason?: string | null
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          start_date?: string | null
+          updated_at?: string
+          user_id: string
+          verification_method?: string | null
+          verification_state?: Database["public"]["Enums"]["employment_verification_state"]
+          verified_at?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          employer_name?: string
+          employment_type?: string | null
+          end_date?: string | null
+          evidence_source?: string | null
+          graduate_outcome_id?: string | null
+          id?: string
+          is_field_aligned?: boolean | null
+          job_title?: string
+          recheck_due_at?: string | null
+          rejection_reason?: string | null
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          start_date?: string | null
+          updated_at?: string
+          user_id?: string
+          verification_method?: string | null
+          verification_state?: Database["public"]["Enums"]["employment_verification_state"]
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employment_verifications_graduate_outcome_id_fkey"
+            columns: ["graduate_outcome_id"]
+            isOneToOne: false
+            referencedRelation: "graduate_outcomes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollment_records: {
         Row: {
           course_id: string | null
@@ -4703,6 +4849,60 @@ export type Database = {
           description?: string
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      graduate_outcomes: {
+        Row: {
+          cohort_year: number
+          created_at: string
+          final_gpa: number | null
+          graduation_date: string | null
+          id: string
+          is_graduated: boolean
+          notes: string | null
+          program_id: string | null
+          program_name: string
+          reviewed_at: string | null
+          reviewer_role: string | null
+          reviewer_user_id: string | null
+          status: Database["public"]["Enums"]["outcome_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cohort_year: number
+          created_at?: string
+          final_gpa?: number | null
+          graduation_date?: string | null
+          id?: string
+          is_graduated?: boolean
+          notes?: string | null
+          program_id?: string | null
+          program_name: string
+          reviewed_at?: string | null
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          status?: Database["public"]["Enums"]["outcome_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cohort_year?: number
+          created_at?: string
+          final_gpa?: number | null
+          graduation_date?: string | null
+          id?: string
+          is_graduated?: boolean
+          notes?: string | null
+          program_id?: string | null
+          program_name?: string
+          reviewed_at?: string | null
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          status?: Database["public"]["Enums"]["outcome_status"]
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -6904,6 +7104,45 @@ export type Database = {
         }
         Relationships: []
       }
+      outcome_evidence_links: {
+        Row: {
+          created_at: string
+          evidence_kind: string
+          evidence_summary: string | null
+          evidence_url: string | null
+          id: string
+          outcome_id: string
+          outcome_table: string
+          reviewed: boolean
+          reviewed_at: string | null
+          reviewed_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          evidence_kind: string
+          evidence_summary?: string | null
+          evidence_url?: string | null
+          id?: string
+          outcome_id: string
+          outcome_table: string
+          reviewed?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          evidence_kind?: string
+          evidence_summary?: string | null
+          evidence_url?: string | null
+          id?: string
+          outcome_id?: string
+          outcome_table?: string
+          reviewed?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Relationships: []
+      }
       payment_methods: {
         Row: {
           brand: string | null
@@ -7130,6 +7369,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      practicum_outcomes: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          hours_completed: number | null
+          id: string
+          practicum_provider_id: string | null
+          provider_name: string
+          provider_signoff_at: string | null
+          provider_signoff_contact: string | null
+          reviewer_role: string | null
+          reviewer_user_id: string | null
+          role_description: string | null
+          signed_off_by_provider: boolean
+          start_date: string | null
+          status: Database["public"]["Enums"]["outcome_status"]
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          hours_completed?: number | null
+          id?: string
+          practicum_provider_id?: string | null
+          provider_name: string
+          provider_signoff_at?: string | null
+          provider_signoff_contact?: string | null
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          role_description?: string | null
+          signed_off_by_provider?: boolean
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["outcome_status"]
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          hours_completed?: number | null
+          id?: string
+          practicum_provider_id?: string | null
+          provider_name?: string
+          provider_signoff_at?: string | null
+          provider_signoff_contact?: string | null
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          role_description?: string | null
+          signed_off_by_provider?: boolean
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["outcome_status"]
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: []
       }
       practicum_providers: {
         Row: {
@@ -8335,6 +8634,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      research_outputs: {
+        Row: {
+          citation_count: number
+          created_at: string
+          doi: string | null
+          id: string
+          output_type: Database["public"]["Enums"]["research_output_type"]
+          peer_review_state: Database["public"]["Enums"]["peer_review_state"]
+          program_id: string | null
+          published_date: string | null
+          reviewer_role: string | null
+          reviewer_user_id: string | null
+          status: Database["public"]["Enums"]["outcome_status"]
+          title: string
+          updated_at: string
+          url: string | null
+          user_id: string
+          venue: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          citation_count?: number
+          created_at?: string
+          doi?: string | null
+          id?: string
+          output_type: Database["public"]["Enums"]["research_output_type"]
+          peer_review_state?: Database["public"]["Enums"]["peer_review_state"]
+          program_id?: string | null
+          published_date?: string | null
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          status?: Database["public"]["Enums"]["outcome_status"]
+          title: string
+          updated_at?: string
+          url?: string | null
+          user_id: string
+          venue?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          citation_count?: number
+          created_at?: string
+          doi?: string | null
+          id?: string
+          output_type?: Database["public"]["Enums"]["research_output_type"]
+          peer_review_state?: Database["public"]["Enums"]["peer_review_state"]
+          program_id?: string | null
+          published_date?: string | null
+          reviewer_role?: string | null
+          reviewer_user_id?: string | null
+          status?: Database["public"]["Enums"]["outcome_status"]
+          title?: string
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+          venue?: string | null
+          verified_at?: string | null
+        }
+        Relationships: []
       }
       research_publications: {
         Row: {
@@ -11799,6 +12158,16 @@ export type Database = {
         Args: { _term_id: string; _user_id: string }
         Returns: Json
       }
+      recompute_cohort_outcomes: {
+        Args: {
+          _cohort_year: number
+          _program_id: string
+          _publish?: boolean
+          _window_end: string
+          _window_start: string
+        }
+        Returns: string
+      }
       recompute_program_accreditation_status: {
         Args: never
         Returns: {
@@ -11962,6 +12331,12 @@ export type Database = {
         | "active_public"
         | "pilot_private"
         | "internal_development"
+      employment_verification_state:
+        | "self_reported"
+        | "employer_verified"
+        | "partially_verified"
+        | "expired"
+        | "rejected"
       evidence_verification_state:
         | "pending"
         | "verified"
@@ -11988,6 +12363,26 @@ export type Database = {
         | "career_counseling"
         | "prophetic_activation"
         | "scroll_alignment"
+      outcome_status:
+        | "pending"
+        | "reviewed"
+        | "verified"
+        | "rejected"
+        | "retracted"
+        | "expired"
+      peer_review_state:
+        | "not_reviewed"
+        | "under_review"
+        | "peer_reviewed"
+        | "retracted"
+      research_output_type:
+        | "paper"
+        | "conference"
+        | "repository"
+        | "patent"
+        | "public_demo"
+        | "dataset"
+        | "thesis"
       scroll_degree_level:
         | "scroll_certificate"
         | "scroll_diploma"
@@ -12195,6 +12590,13 @@ export const Constants = {
         "pilot_private",
         "internal_development",
       ],
+      employment_verification_state: [
+        "self_reported",
+        "employer_verified",
+        "partially_verified",
+        "expired",
+        "rejected",
+      ],
       evidence_verification_state: [
         "pending",
         "verified",
@@ -12224,6 +12626,29 @@ export const Constants = {
         "career_counseling",
         "prophetic_activation",
         "scroll_alignment",
+      ],
+      outcome_status: [
+        "pending",
+        "reviewed",
+        "verified",
+        "rejected",
+        "retracted",
+        "expired",
+      ],
+      peer_review_state: [
+        "not_reviewed",
+        "under_review",
+        "peer_reviewed",
+        "retracted",
+      ],
+      research_output_type: [
+        "paper",
+        "conference",
+        "repository",
+        "patent",
+        "public_demo",
+        "dataset",
+        "thesis",
       ],
       scroll_degree_level: [
         "scroll_certificate",
