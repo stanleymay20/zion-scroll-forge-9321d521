@@ -743,6 +743,9 @@ export function LiveAvatarLecture({
           <Badge variant={courseTitle ? 'secondary' : 'destructive'}>
             {courseTitle ? `Course: ${courseTitle}` : 'No course context'}
           </Badge>
+          <Badge variant={deliveryMode === 'avatar' || deliveryMode === 'audio' ? 'secondary' : deliveryMode === 'text' ? 'outline' : 'destructive'}>
+            Delivery: {deliveryMode === 'avatar' ? 'live avatar' : deliveryMode === 'audio' ? 'audio tutor' : deliveryMode === 'text' ? 'text tutor only' : 'offline'}
+          </Badge>
           {programTitle && <Badge variant="outline">Program: {programTitle}</Badge>}
           {facultyName && <Badge variant="outline">Faculty: {facultyName}</Badge>}
           <Badge variant={audioUnlocked && !isMuted ? 'secondary' : 'outline'}>
@@ -786,7 +789,7 @@ export function LiveAvatarLecture({
           <div className={`grid gap-2 ${hasCohost ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1'}`}>
             <div className={`relative aspect-video bg-gradient-to-br from-primary/10 via-primary/5 to-background rounded-lg overflow-hidden border border-border ${hasCohost ? 'sm:col-span-2' : ''}`}>
               {isConnected ? (
-                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" data-testid="live-avatar-video" />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
                   <div className="relative">
