@@ -87,6 +87,11 @@ const GovernanceTransparency = lazy(() => import("./pages/GovernanceTransparency
 const AccreditationStatus = lazy(() => import("./pages/AccreditationStatus"));
 const ProgramVerification = lazy(() => import("./pages/ProgramVerification"));
 const PublicClaimsAdmin = lazy(() => import("./pages/admin/PublicClaimsAdmin"));
+const Outcomes = lazy(() => import("./pages/Outcomes"));
+const EmploymentMethodology = lazy(() => import("./pages/EmploymentMethodology"));
+const ResearchImpact = lazy(() => import("./pages/ResearchImpact"));
+const GraduateSuccess = lazy(() => import("./pages/GraduateSuccess"));
+const OutcomesAdmin = lazy(() => import("./pages/admin/OutcomesAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
@@ -327,6 +332,18 @@ const App = () => (
             <Route path="/program-verification/:id" element={<PublicLayout />}>
               <Route index element={<ProgramVerification />} />
             </Route>
+            <Route path="/outcomes" element={<PublicLayout />}>
+              <Route index element={<Outcomes />} />
+            </Route>
+            <Route path="/employment-methodology" element={<PublicLayout />}>
+              <Route index element={<EmploymentMethodology />} />
+            </Route>
+            <Route path="/research-impact" element={<PublicLayout />}>
+              <Route index element={<ResearchImpact />} />
+            </Route>
+            <Route path="/graduate-success" element={<PublicLayout />}>
+              <Route index element={<GraduateSuccess />} />
+            </Route>
             <Route path="/academic-trust" element={<PublicLayout />}>
               <Route index element={<AcademicTrust />} />
             </Route>
@@ -457,6 +474,7 @@ const App = () => (
               <Route path="admin/accreditation-readiness" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><AccreditationReadinessAdmin /></RoleRoute>} />
               <Route path="admin/integrity-cases" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><IntegrityCasesAdmin /></RoleRoute>} />
               <Route path="admin/public-claims" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><PublicClaimsAdmin /></RoleRoute>} />
+              <Route path="admin/outcomes" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><OutcomesAdmin /></RoleRoute>} />
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
