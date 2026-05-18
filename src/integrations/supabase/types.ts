@@ -337,28 +337,58 @@ export type Database = {
       }
       academic_terms: {
         Row: {
+          add_drop_ends_on: string | null
+          code: string | null
           created_at: string | null
+          created_by: string | null
           end_date: string
+          ends_on: string
           id: string
           is_active: boolean | null
           name: string
+          notes: string | null
           start_date: string
+          starts_on: string
+          status: Database["public"]["Enums"]["academic_term_status"]
+          term_type: Database["public"]["Enums"]["academic_term_type"]
+          updated_at: string
+          withdraw_ends_on: string | null
         }
         Insert: {
+          add_drop_ends_on?: string | null
+          code?: string | null
           created_at?: string | null
+          created_by?: string | null
           end_date: string
+          ends_on: string
           id?: string
           is_active?: boolean | null
           name: string
+          notes?: string | null
           start_date: string
+          starts_on: string
+          status?: Database["public"]["Enums"]["academic_term_status"]
+          term_type?: Database["public"]["Enums"]["academic_term_type"]
+          updated_at?: string
+          withdraw_ends_on?: string | null
         }
         Update: {
+          add_drop_ends_on?: string | null
+          code?: string | null
           created_at?: string | null
+          created_by?: string | null
           end_date?: string
+          ends_on?: string
           id?: string
           is_active?: boolean | null
           name?: string
+          notes?: string | null
           start_date?: string
+          starts_on?: string
+          status?: Database["public"]["Enums"]["academic_term_status"]
+          term_type?: Database["public"]["Enums"]["academic_term_type"]
+          updated_at?: string
+          withdraw_ends_on?: string | null
         }
         Relationships: []
       }
