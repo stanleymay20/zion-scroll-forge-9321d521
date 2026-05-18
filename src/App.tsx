@@ -349,7 +349,9 @@ const App = () => (
             <Route path="/research-impact" element={<PublicLayout />}>
               <Route index element={<ResearchImpact />} />
             </Route>
-            <Route path="/graduate-success" element={<PublicLayout />}>
+            <Route path="/public-defenses" element={<PublicLayout />}>
+              <Route index element={<PublicDefenseCalendar />} />
+            </Route>
               <Route index element={<GraduateSuccess />} />
             </Route>
             <Route path="/academic-trust" element={<PublicLayout />}>
