@@ -105,6 +105,9 @@ const FacultyGovernanceAdmin = lazy(() => import("./pages/admin/FacultyGovernanc
 const StudentTranscript = lazy(() => import("./pages/StudentTranscript"));
 const TranscriptVerification = lazy(() => import("./pages/TranscriptVerification"));
 const AcademicCalendarAdmin = lazy(() => import("./pages/admin/AcademicCalendarAdmin"));
+const MyCredentials = lazy(() => import("./pages/MyCredentials"));
+const CredentialVerification = lazy(() => import("./pages/CredentialVerification"));
+const CredentialIssuanceAdmin = lazy(() => import("./pages/admin/CredentialIssuanceAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
@@ -363,6 +366,9 @@ const App = () => (
             <Route path="/verify-transcript" element={<PublicLayout />}>
               <Route index element={<TranscriptVerification />} />
             </Route>
+            <Route path="/verify-credential" element={<PublicLayout />}>
+              <Route index element={<CredentialVerification />} />
+            </Route>
             <Route path="/graduate-success" element={<PublicLayout />}>
               <Route index element={<GraduateSuccess />} />
             </Route>
@@ -505,8 +511,10 @@ const App = () => (
               <Route path="admin/practicum" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><PracticumAdmin /></RoleRoute>} />
               <Route path="faculty/credentials" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><FacultyCredentialsCenter /></RoleRoute>} />
               <Route path="admin/faculty-governance" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><FacultyGovernanceAdmin /></RoleRoute>} />
-              <Route path="transcript" element={<StudentTranscript />} />
+              <Route path="my-transcript" element={<StudentTranscript />} />
               <Route path="admin/academic-calendar" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><AcademicCalendarAdmin /></RoleRoute>} />
+              <Route path="my-credentials" element={<MyCredentials />} />
+              <Route path="admin/credentials" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><CredentialIssuanceAdmin /></RoleRoute>} />
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
