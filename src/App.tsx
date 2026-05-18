@@ -371,6 +371,9 @@ const App = () => (
             <Route path="/verify-credential" element={<PublicLayout />}>
               <Route index element={<CredentialVerification />} />
             </Route>
+            <Route path="/retention" element={<PublicLayout />}>
+              <Route index element={<RetentionPublic />} />
+            </Route>
             <Route path="/graduate-success" element={<PublicLayout />}>
               <Route index element={<GraduateSuccess />} />
             </Route>
@@ -517,6 +520,7 @@ const App = () => (
               <Route path="admin/academic-calendar" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><AcademicCalendarAdmin /></RoleRoute>} />
               <Route path="my-credentials" element={<MyCredentials />} />
               <Route path="admin/credentials" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><CredentialIssuanceAdmin /></RoleRoute>} />
+              <Route path="admin/analytics" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><AnalyticsAdmin /></RoleRoute>} />
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
