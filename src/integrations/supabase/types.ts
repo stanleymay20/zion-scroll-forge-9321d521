@@ -1399,6 +1399,42 @@ export type Database = {
           },
         ]
       }
+      at_risk_signals: {
+        Row: {
+          detail: string | null
+          detected_at: string
+          id: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          signal_kind: string
+          student_id: string
+        }
+        Insert: {
+          detail?: string | null
+          detected_at?: string
+          id?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          signal_kind: string
+          student_id: string
+        }
+        Update: {
+          detail?: string | null
+          detected_at?: string
+          id?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          signal_kind?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
       billing_addresses: {
         Row: {
           city: string
@@ -9787,6 +9823,63 @@ export type Database = {
         }
         Relationships: []
       }
+      retention_snapshots: {
+        Row: {
+          cohort_size: number
+          cohort_year: number
+          completion_rate: number | null
+          computed_at: string
+          computed_by: string | null
+          degree_id: string | null
+          graduated: number
+          id: string
+          insufficient_reason: string | null
+          is_publishable: boolean
+          median_gpa: number | null
+          methodology_notes: string | null
+          program_label: string
+          retention_rate: number | null
+          still_enrolled: number
+          withdrawn: number
+        }
+        Insert: {
+          cohort_size: number
+          cohort_year: number
+          completion_rate?: number | null
+          computed_at?: string
+          computed_by?: string | null
+          degree_id?: string | null
+          graduated?: number
+          id?: string
+          insufficient_reason?: string | null
+          is_publishable?: boolean
+          median_gpa?: number | null
+          methodology_notes?: string | null
+          program_label: string
+          retention_rate?: number | null
+          still_enrolled?: number
+          withdrawn?: number
+        }
+        Update: {
+          cohort_size?: number
+          cohort_year?: number
+          completion_rate?: number | null
+          computed_at?: string
+          computed_by?: string | null
+          degree_id?: string | null
+          graduated?: number
+          id?: string
+          insufficient_reason?: string | null
+          is_publishable?: boolean
+          median_gpa?: number | null
+          methodology_notes?: string | null
+          program_label?: string
+          retention_rate?: number | null
+          still_enrolled?: number
+          withdrawn?: number
+        }
+        Relationships: []
+      }
       reward_ledger: {
         Row: {
           amount: number
@@ -13647,6 +13740,33 @@ export type Database = {
         Args: { p_program_id: string }
         Returns: Json
       }
+      compute_retention_snapshot: {
+        Args: { p_cohort_year: number; p_degree_id: string; p_label?: string }
+        Returns: {
+          cohort_size: number
+          cohort_year: number
+          completion_rate: number | null
+          computed_at: string
+          computed_by: string | null
+          degree_id: string | null
+          graduated: number
+          id: string
+          insufficient_reason: string | null
+          is_publishable: boolean
+          median_gpa: number | null
+          methodology_notes: string | null
+          program_label: string
+          retention_rate: number | null
+          still_enrolled: number
+          withdrawn: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "retention_snapshots"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       compute_student_gpa: {
         Args: { p_student_id: string }
         Returns: {
@@ -13860,6 +13980,7 @@ export type Database = {
         Args: { _term_id: string; _user_id: string }
         Returns: Json
       }
+      recompute_at_risk_signals: { Args: never; Returns: number }
       recompute_cohort_outcomes: {
         Args: {
           _cohort_year: number
