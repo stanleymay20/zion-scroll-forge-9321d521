@@ -337,28 +337,58 @@ export type Database = {
       }
       academic_terms: {
         Row: {
+          add_drop_ends_on: string | null
+          code: string | null
           created_at: string | null
-          end_date: string
+          created_by: string | null
+          end_date: string | null
+          ends_on: string | null
           id: string
           is_active: boolean | null
           name: string
-          start_date: string
+          notes: string | null
+          start_date: string | null
+          starts_on: string | null
+          status: Database["public"]["Enums"]["academic_term_status"]
+          term_type: Database["public"]["Enums"]["academic_term_type"]
+          updated_at: string
+          withdraw_ends_on: string | null
         }
         Insert: {
+          add_drop_ends_on?: string | null
+          code?: string | null
           created_at?: string | null
-          end_date: string
+          created_by?: string | null
+          end_date?: string | null
+          ends_on?: string | null
           id?: string
           is_active?: boolean | null
           name: string
-          start_date: string
+          notes?: string | null
+          start_date?: string | null
+          starts_on?: string | null
+          status?: Database["public"]["Enums"]["academic_term_status"]
+          term_type?: Database["public"]["Enums"]["academic_term_type"]
+          updated_at?: string
+          withdraw_ends_on?: string | null
         }
         Update: {
+          add_drop_ends_on?: string | null
+          code?: string | null
           created_at?: string | null
-          end_date?: string
+          created_by?: string | null
+          end_date?: string | null
+          ends_on?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
-          start_date?: string
+          notes?: string | null
+          start_date?: string | null
+          starts_on?: string | null
+          status?: Database["public"]["Enums"]["academic_term_status"]
+          term_type?: Database["public"]["Enums"]["academic_term_type"]
+          updated_at?: string
+          withdraw_ends_on?: string | null
         }
         Relationships: []
       }
@@ -2045,6 +2075,48 @@ export type Database = {
             referencedColumns: ["course_id"]
           },
         ]
+      }
+      course_credit_standards: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          contact_hours: number
+          course_id: string
+          created_at: string
+          credit_hours: number
+          id: string
+          level: string
+          out_of_class_hours: number
+          rationale: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          contact_hours: number
+          course_id: string
+          created_at?: string
+          credit_hours: number
+          id?: string
+          level?: string
+          out_of_class_hours?: number
+          rationale?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          contact_hours?: number
+          course_id?: string
+          created_at?: string
+          credit_hours?: number
+          id?: string
+          level?: string
+          out_of_class_hours?: number
+          rationale?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       course_evidence_requirements: {
         Row: {
@@ -5019,6 +5091,65 @@ export type Database = {
           },
         ]
       }
+      grade_records: {
+        Row: {
+          course_id: string
+          created_at: string
+          credit_hours: number
+          finalized_at: string | null
+          grade_points: number | null
+          id: string
+          letter_grade: string | null
+          notes: string | null
+          posted_at: string | null
+          posted_by: string | null
+          status: Database["public"]["Enums"]["grade_status"]
+          student_id: string
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          credit_hours: number
+          finalized_at?: string | null
+          grade_points?: number | null
+          id?: string
+          letter_grade?: string | null
+          notes?: string | null
+          posted_at?: string | null
+          posted_by?: string | null
+          status?: Database["public"]["Enums"]["grade_status"]
+          student_id: string
+          term_id: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          credit_hours?: number
+          finalized_at?: string | null
+          grade_points?: number | null
+          id?: string
+          letter_grade?: string | null
+          notes?: string | null
+          posted_at?: string | null
+          posted_by?: string | null
+          status?: Database["public"]["Enums"]["grade_status"]
+          student_id?: string
+          term_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grade_records_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grades: {
         Row: {
           feedback: string | null
@@ -7272,6 +7403,51 @@ export type Database = {
           start_time?: string
           tutor_name?: string
           tutor_specialty?: string
+        }
+        Relationships: []
+      }
+      official_transcripts: {
+        Row: {
+          created_at: string
+          gpa: number | null
+          id: string
+          issued_at: string
+          issued_by: string | null
+          kind: Database["public"]["Enums"]["transcript_kind"]
+          revoke_reason: string | null
+          revoked_at: string | null
+          snapshot: Json
+          student_id: string
+          total_credit_hours: number
+          verification_code: string
+        }
+        Insert: {
+          created_at?: string
+          gpa?: number | null
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          kind?: Database["public"]["Enums"]["transcript_kind"]
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          snapshot: Json
+          student_id: string
+          total_credit_hours?: number
+          verification_code?: string
+        }
+        Update: {
+          created_at?: string
+          gpa?: number | null
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          kind?: Database["public"]["Enums"]["transcript_kind"]
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          snapshot?: Json
+          student_id?: string
+          total_credit_hours?: number
+          verification_code?: string
         }
         Relationships: []
       }
@@ -11669,6 +11845,50 @@ export type Database = {
           },
         ]
       }
+      term_enrollments: {
+        Row: {
+          course_id: string
+          created_at: string
+          dropped_at: string | null
+          enrolled_at: string
+          id: string
+          status: string
+          student_id: string
+          term_id: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          dropped_at?: string | null
+          enrolled_at?: string
+          id?: string
+          status?: string
+          student_id: string
+          term_id: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          dropped_at?: string | null
+          enrolled_at?: string
+          id?: string
+          status?: string
+          student_id?: string
+          term_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "term_enrollments_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       testimonies: {
         Row: {
           approved_at: string | null
@@ -13314,6 +13534,13 @@ export type Database = {
         Args: { p_program_id: string }
         Returns: Json
       }
+      compute_student_gpa: {
+        Args: { p_student_id: string }
+        Returns: {
+          gpa: number
+          total_credit_hours: number
+        }[]
+      }
       compute_thesis_defense_outcome: {
         Args: { p_defense_id: string }
         Returns: Database["public"]["Enums"]["thesis_recommendation"]
@@ -13637,6 +13864,18 @@ export type Database = {
         Args: { _domain_code: string; _faculty_user_id: string }
         Returns: Json
       }
+      verify_official_transcript: {
+        Args: { code: string }
+        Returns: {
+          gpa: number
+          issued_at: string
+          kind: Database["public"]["Enums"]["transcript_kind"]
+          revoke_reason: string
+          revoked: boolean
+          total_credit_hours: number
+          verification_code: string
+        }[]
+      }
       waitlist_position: { Args: { p_student_id: string }; Returns: number }
       withdraw_transfer_request: {
         Args: { p_request_id: string }
@@ -13644,6 +13883,19 @@ export type Database = {
       }
     }
     Enums: {
+      academic_term_status:
+        | "planned"
+        | "open"
+        | "in_session"
+        | "closed"
+        | "archived"
+      academic_term_type:
+        | "fall"
+        | "spring"
+        | "summer"
+        | "winter"
+        | "trimester"
+        | "custom"
       app_role: "student" | "faculty" | "admin" | "superadmin" | "registrar"
       assessment_type:
         | "academic"
@@ -13722,6 +13974,12 @@ export type Database = {
         | "advisory_faculty"
         | "seminar_faculty"
       faculty_verification_status: "pending" | "verified" | "retired"
+      grade_status:
+        | "in_progress"
+        | "provisional"
+        | "final"
+        | "withdrawn"
+        | "incomplete"
       institutional_layer:
         | "accreditation_track"
         | "research_innovation"
@@ -13854,6 +14112,7 @@ export type Database = {
         | "major_revisions"
         | "fail"
         | "abstain"
+      transcript_kind: "unofficial" | "official"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -13981,6 +14240,21 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      academic_term_status: [
+        "planned",
+        "open",
+        "in_session",
+        "closed",
+        "archived",
+      ],
+      academic_term_type: [
+        "fall",
+        "spring",
+        "summer",
+        "winter",
+        "trimester",
+        "custom",
+      ],
       app_role: ["student", "faculty", "admin", "superadmin", "registrar"],
       assessment_type: [
         "academic",
@@ -14070,6 +14344,13 @@ export const Constants = {
         "seminar_faculty",
       ],
       faculty_verification_status: ["pending", "verified", "retired"],
+      grade_status: [
+        "in_progress",
+        "provisional",
+        "final",
+        "withdrawn",
+        "incomplete",
+      ],
       institutional_layer: [
         "accreditation_track",
         "research_innovation",
@@ -14220,6 +14501,7 @@ export const Constants = {
         "fail",
         "abstain",
       ],
+      transcript_kind: ["unofficial", "official"],
     },
   },
 } as const
