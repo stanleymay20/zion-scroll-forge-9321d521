@@ -44,6 +44,7 @@ interface QueuedQuestion {
 }
 
 interface LiveAvatarLectureProps {
+  userId?: string;
   tutorName: string;
   tutorSpecialty: string;
   tutorAvatar?: string | null;
