@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Helmet } from "react-helmet-async";
+
 
 interface Term { id: string; name: string; code: string | null; }
 interface Row {
@@ -60,52 +60,3 @@ export default function FacultyLoadAdmin() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
-      <Helmet><title>Faculty Load Admin — Scroll University</title></Helmet>
-      <h1 className="font-display text-3xl text-burgundy mb-2">Faculty Load Intelligence</h1>
-      <p className="text-muted-foreground mb-6">
-        Term-bound productivity snapshots. Snapshots are append-only and cannot be edited or deleted.
-        GPA aggregates are suppressed when fewer than 5 graded students exist.
-      </p>
-
-      <Card className="mb-6">
-        <CardHeader><CardTitle className="text-base">Snapshot Term</CardTitle></CardHeader>
-        <CardContent className="flex gap-3 items-end flex-wrap">
-          <div className="flex-1 min-w-64">
-            <Select value={termId} onValueChange={setTermId}>
-              <SelectTrigger><SelectValue placeholder="Select academic term" /></SelectTrigger>
-              <SelectContent>
-                {terms.map(t => (
-                  <SelectItem key={t.id} value={t.id}>{t.code ? `${t.code} — ` : ""}{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button onClick={snapshot} disabled={!termId || busy}>
-            {busy ? "Snapshotting…" : "Snapshot All Faculty"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {rows.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">
-          {termId ? "No snapshots for this term yet." : "Choose a term."}
-        </CardContent></Card>
-      ) : (
-        <div className="space-y-2">
-          {rows.map(r => (
-            <Card key={r.id}>
-              <CardContent className="py-3 grid grid-cols-2 md:grid-cols-7 gap-3 text-sm items-center">
-                <div className="col-span-2 font-mono text-xs truncate">{r.faculty_user_id}</div>
-                <div><span className="text-muted-foreground">Courses </span>{r.course_count}</div>
-                <div><span className="text-muted-foreground">CH </span>{Number(r.total_credit_hours).toFixed(1)}</div>
-                <div><span className="text-muted-foreground">Stu </span>{r.student_count}</div>
-                <div><span className="text-muted-foreground">μGPA </span>{r.mean_gpa ?? "—"}</div>
-                <div className="text-xs text-muted-foreground">{new Date(r.snapshot_at).toLocaleDateString()}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}

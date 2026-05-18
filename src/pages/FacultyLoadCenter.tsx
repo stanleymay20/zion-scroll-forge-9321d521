@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Helmet } from "react-helmet-async";
+
 
 interface Snapshot {
   id: string;
@@ -38,9 +38,6 @@ export default function FacultyLoadCenter() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-5xl">
-      <Helmet>
-        <title>My Teaching Load — Scroll University</title>
-      </Helmet>
       <h1 className="font-display text-3xl text-burgundy mb-2">My Teaching Load</h1>
       <p className="text-muted-foreground mb-6">
         Append-only snapshots of your courses, credit hours, and graded outcomes.
