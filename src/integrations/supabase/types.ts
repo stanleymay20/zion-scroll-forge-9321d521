@@ -341,14 +341,14 @@ export type Database = {
           code: string | null
           created_at: string | null
           created_by: string | null
-          end_date: string
-          ends_on: string
+          end_date: string | null
+          ends_on: string | null
           id: string
           is_active: boolean | null
           name: string
           notes: string | null
-          start_date: string
-          starts_on: string
+          start_date: string | null
+          starts_on: string | null
           status: Database["public"]["Enums"]["academic_term_status"]
           term_type: Database["public"]["Enums"]["academic_term_type"]
           updated_at: string
@@ -359,14 +359,14 @@ export type Database = {
           code?: string | null
           created_at?: string | null
           created_by?: string | null
-          end_date: string
-          ends_on: string
+          end_date?: string | null
+          ends_on?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           notes?: string | null
-          start_date: string
-          starts_on: string
+          start_date?: string | null
+          starts_on?: string | null
           status?: Database["public"]["Enums"]["academic_term_status"]
           term_type?: Database["public"]["Enums"]["academic_term_type"]
           updated_at?: string
@@ -377,14 +377,14 @@ export type Database = {
           code?: string | null
           created_at?: string | null
           created_by?: string | null
-          end_date?: string
-          ends_on?: string
+          end_date?: string | null
+          ends_on?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           notes?: string | null
-          start_date?: string
-          starts_on?: string
+          start_date?: string | null
+          starts_on?: string | null
           status?: Database["public"]["Enums"]["academic_term_status"]
           term_type?: Database["public"]["Enums"]["academic_term_type"]
           updated_at?: string
