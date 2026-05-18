@@ -100,6 +100,8 @@ const ThesisGovernanceAdmin = lazy(() => import("./pages/admin/ThesisGovernanceA
 const StudentPracticumCenter = lazy(() => import("./pages/StudentPracticumCenter"));
 const SupervisorPortal = lazy(() => import("./pages/SupervisorPortal"));
 const PracticumAdmin = lazy(() => import("./pages/admin/PracticumAdmin"));
+const FacultyCredentialsCenter = lazy(() => import("./pages/FacultyCredentialsCenter"));
+const FacultyGovernanceAdmin = lazy(() => import("./pages/admin/FacultyGovernanceAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
