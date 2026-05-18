@@ -486,6 +486,9 @@ const App = () => (
               <Route path="admin/integrity-cases" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><IntegrityCasesAdmin /></RoleRoute>} />
               <Route path="admin/public-claims" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><PublicClaimsAdmin /></RoleRoute>} />
               <Route path="admin/outcomes" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><OutcomesAdmin /></RoleRoute>} />
+              <Route path="admin/thesis-governance" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><ThesisGovernanceAdmin /></RoleRoute>} />
+              <Route path="faculty/committee" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><ThesisCommitteePortal /></RoleRoute>} />
+              <Route path="thesis" element={<StudentThesisCenter />} />
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
