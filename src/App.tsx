@@ -105,6 +105,9 @@ const FacultyGovernanceAdmin = lazy(() => import("./pages/admin/FacultyGovernanc
 const StudentTranscript = lazy(() => import("./pages/StudentTranscript"));
 const TranscriptVerification = lazy(() => import("./pages/TranscriptVerification"));
 const AcademicCalendarAdmin = lazy(() => import("./pages/admin/AcademicCalendarAdmin"));
+const MyCredentials = lazy(() => import("./pages/MyCredentials"));
+const CredentialVerification = lazy(() => import("./pages/CredentialVerification"));
+const CredentialIssuanceAdmin = lazy(() => import("./pages/admin/CredentialIssuanceAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
