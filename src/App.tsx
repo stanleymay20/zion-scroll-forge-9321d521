@@ -93,6 +93,10 @@ const EmploymentMethodology = lazy(() => import("./pages/EmploymentMethodology")
 const ResearchImpact = lazy(() => import("./pages/ResearchImpact"));
 const GraduateSuccess = lazy(() => import("./pages/GraduateSuccess"));
 const OutcomesAdmin = lazy(() => import("./pages/admin/OutcomesAdmin"));
+const StudentThesisCenter = lazy(() => import("./pages/StudentThesisCenter"));
+const ThesisCommitteePortal = lazy(() => import("./pages/ThesisCommitteePortal"));
+const PublicDefenseCalendar = lazy(() => import("./pages/PublicDefenseCalendar"));
+const ThesisGovernanceAdmin = lazy(() => import("./pages/admin/ThesisGovernanceAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
@@ -345,6 +349,9 @@ const App = () => (
             <Route path="/research-impact" element={<PublicLayout />}>
               <Route index element={<ResearchImpact />} />
             </Route>
+            <Route path="/public-defenses" element={<PublicLayout />}>
+              <Route index element={<PublicDefenseCalendar />} />
+            </Route>
             <Route path="/graduate-success" element={<PublicLayout />}>
               <Route index element={<GraduateSuccess />} />
             </Route>
@@ -479,6 +486,9 @@ const App = () => (
               <Route path="admin/integrity-cases" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><IntegrityCasesAdmin /></RoleRoute>} />
               <Route path="admin/public-claims" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><PublicClaimsAdmin /></RoleRoute>} />
               <Route path="admin/outcomes" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><OutcomesAdmin /></RoleRoute>} />
+              <Route path="admin/thesis-governance" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><ThesisGovernanceAdmin /></RoleRoute>} />
+              <Route path="faculty/committee" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><ThesisCommitteePortal /></RoleRoute>} />
+              <Route path="thesis" element={<StudentThesisCenter />} />
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
