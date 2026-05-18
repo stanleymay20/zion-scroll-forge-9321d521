@@ -497,6 +497,8 @@ const App = () => (
               <Route path="practicum" element={<StudentPracticumCenter />} />
               <Route path="supervisor" element={<SupervisorPortal />} />
               <Route path="admin/practicum" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><PracticumAdmin /></RoleRoute>} />
+              <Route path="faculty/credentials" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><FacultyCredentialsCenter /></RoleRoute>} />
+              <Route path="admin/faculty-governance" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><FacultyGovernanceAdmin /></RoleRoute>} />
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
