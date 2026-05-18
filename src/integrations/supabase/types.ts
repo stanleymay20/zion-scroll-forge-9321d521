@@ -4389,6 +4389,136 @@ export type Database = {
           },
         ]
       }
+      faculty_assignment_audit: {
+        Row: {
+          actor_id: string
+          actor_role: string
+          assignment_id: string
+          created_at: string
+          id: string
+          new_state: Database["public"]["Enums"]["faculty_assignment_state"]
+          prior_state:
+            | Database["public"]["Enums"]["faculty_assignment_state"]
+            | null
+          rationale: string
+        }
+        Insert: {
+          actor_id: string
+          actor_role: string
+          assignment_id: string
+          created_at?: string
+          id?: string
+          new_state: Database["public"]["Enums"]["faculty_assignment_state"]
+          prior_state?:
+            | Database["public"]["Enums"]["faculty_assignment_state"]
+            | null
+          rationale: string
+        }
+        Update: {
+          actor_id?: string
+          actor_role?: string
+          assignment_id?: string
+          created_at?: string
+          id?: string
+          new_state?: Database["public"]["Enums"]["faculty_assignment_state"]
+          prior_state?:
+            | Database["public"]["Enums"]["faculty_assignment_state"]
+            | null
+          rationale?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_assignment_audit_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "faculty_teaching_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faculty_competency_domains: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          domain_code: string
+          domain_label: string
+          faculty_user_id: string
+          id: string
+          level: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          domain_code: string
+          domain_label: string
+          faculty_user_id: string
+          id?: string
+          level?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          domain_code?: string
+          domain_label?: string
+          faculty_user_id?: string
+          id?: string
+          level?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      faculty_credential_verifications: {
+        Row: {
+          action: string
+          created_at: string
+          credential_id: string
+          effective_at: string
+          id: string
+          method: string
+          rationale: string
+          reviewer_id: string
+          reviewer_role: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          credential_id: string
+          effective_at?: string
+          id?: string
+          method: string
+          rationale: string
+          reviewer_id: string
+          reviewer_role: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          credential_id?: string
+          effective_at?: string
+          id?: string
+          method?: string
+          rationale?: string
+          reviewer_id?: string
+          reviewer_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_credential_verifications_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "faculty_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       faculty_credentials: {
         Row: {
           created_at: string
@@ -4609,6 +4739,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      faculty_teaching_assignments: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          block_reason: string | null
+          course_code: string | null
+          course_id: string | null
+          course_title: string
+          created_at: string
+          domain_code: string
+          end_date: string | null
+          faculty_user_id: string
+          id: string
+          start_date: string | null
+          state: Database["public"]["Enums"]["faculty_assignment_state"]
+          term_label: string
+          updated_at: string
+          workload_weight: number
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          block_reason?: string | null
+          course_code?: string | null
+          course_id?: string | null
+          course_title: string
+          created_at?: string
+          domain_code: string
+          end_date?: string | null
+          faculty_user_id: string
+          id?: string
+          start_date?: string | null
+          state?: Database["public"]["Enums"]["faculty_assignment_state"]
+          term_label: string
+          updated_at?: string
+          workload_weight?: number
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          block_reason?: string | null
+          course_code?: string | null
+          course_id?: string | null
+          course_title?: string
+          created_at?: string
+          domain_code?: string
+          end_date?: string | null
+          faculty_user_id?: string
+          id?: string
+          start_date?: string | null
+          state?: Database["public"]["Enums"]["faculty_assignment_state"]
+          term_label?: string
+          updated_at?: string
+          workload_weight?: number
+        }
+        Relationships: []
       }
       faculty_workloads: {
         Row: {
@@ -12775,6 +12962,15 @@ export type Database = {
         }
         Relationships: []
       }
+      faculty_verification_summary: {
+        Row: {
+          approved_faculty_count: number | null
+          domain_code: string | null
+          domain_label: string | null
+          verified_credential_holders: number | null
+        }
+        Relationships: []
+      }
       leaderboard: {
         Row: {
           avatar_url: string | null
@@ -13437,6 +13633,10 @@ export type Database = {
         Args: { p_institution_id: string; p_user_id: string }
         Returns: boolean
       }
+      validate_teaching_assignment: {
+        Args: { _domain_code: string; _faculty_user_id: string }
+        Returns: Json
+      }
       waitlist_position: { Args: { p_student_id: string }; Returns: number }
       withdraw_transfer_request: {
         Args: { p_request_id: string }
@@ -13508,6 +13708,13 @@ export type Database = {
         | "verified"
         | "expired"
         | "rejected"
+      faculty_assignment_state:
+        | "proposed"
+        | "approved"
+        | "active"
+        | "completed"
+        | "cancelled"
+        | "blocked"
       faculty_category:
         | "founding_faculty"
         | "visiting_scholar"
@@ -13846,6 +14053,14 @@ export const Constants = {
         "verified",
         "expired",
         "rejected",
+      ],
+      faculty_assignment_state: [
+        "proposed",
+        "approved",
+        "active",
+        "completed",
+        "cancelled",
+        "blocked",
       ],
       faculty_category: [
         "founding_faculty",
