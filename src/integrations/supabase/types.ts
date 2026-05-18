@@ -2634,6 +2634,38 @@ export type Database = {
           },
         ]
       }
+      credential_revocations: {
+        Row: {
+          credential_id: string
+          id: string
+          reason: string
+          revoked_at: string
+          revoked_by: string | null
+        }
+        Insert: {
+          credential_id: string
+          id?: string
+          reason: string
+          revoked_at?: string
+          revoked_by?: string | null
+        }
+        Update: {
+          credential_id?: string
+          id?: string
+          reason?: string
+          revoked_at?: string
+          revoked_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credential_revocations_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "issued_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credential_verification_log: {
         Row: {
           credential_token: string
@@ -6056,6 +6088,77 @@ export type Database = {
             columns: ["subscription_id"]
             isOneToOne: false
             referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      issued_credentials: {
+        Row: {
+          created_at: string
+          effective_on: string
+          expires_on: string | null
+          id: string
+          issued_at: string
+          issued_by: string | null
+          kind: Database["public"]["Enums"]["issued_credential_kind"]
+          program_id: string | null
+          program_ref: string | null
+          revoke_reason: string | null
+          revoked_at: string | null
+          seal_hash: string
+          snapshot: Json
+          status: Database["public"]["Enums"]["issued_credential_status"]
+          student_id: string
+          supersedes_id: string | null
+          title: string
+          verification_token: string
+        }
+        Insert: {
+          created_at?: string
+          effective_on?: string
+          expires_on?: string | null
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          kind: Database["public"]["Enums"]["issued_credential_kind"]
+          program_id?: string | null
+          program_ref?: string | null
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          seal_hash: string
+          snapshot: Json
+          status?: Database["public"]["Enums"]["issued_credential_status"]
+          student_id: string
+          supersedes_id?: string | null
+          title: string
+          verification_token?: string
+        }
+        Update: {
+          created_at?: string
+          effective_on?: string
+          expires_on?: string | null
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          kind?: Database["public"]["Enums"]["issued_credential_kind"]
+          program_id?: string | null
+          program_ref?: string | null
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          seal_hash?: string
+          snapshot?: Json
+          status?: Database["public"]["Enums"]["issued_credential_status"]
+          student_id?: string
+          supersedes_id?: string | null
+          title?: string
+          verification_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issued_credentials_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "issued_credentials"
             referencedColumns: ["id"]
           },
         ]
@@ -13507,6 +13610,16 @@ export type Database = {
         Args: { _course_id: string; _user_id: string }
         Returns: Json
       }
+      check_credential_eligibility: {
+        Args: {
+          p_kind: Database["public"]["Enums"]["issued_credential_kind"]
+          p_student_id: string
+        }
+        Returns: {
+          eligible: boolean
+          reason: string
+        }[]
+      }
       check_diploma_seal_criteria: {
         Args: { p_course_id: string }
         Returns: Json
@@ -13864,6 +13977,22 @@ export type Database = {
         Args: { _domain_code: string; _faculty_user_id: string }
         Returns: Json
       }
+      verify_issued_credential: {
+        Args: { token: string; verifier_org?: string }
+        Returns: {
+          effective_on: string
+          expires_on: string
+          issued_at: string
+          kind: Database["public"]["Enums"]["issued_credential_kind"]
+          program_ref: string
+          revoke_reason: string
+          revoked: boolean
+          seal_hash: string
+          status: Database["public"]["Enums"]["issued_credential_status"]
+          title: string
+          verification_token: string
+        }[]
+      }
       verify_official_transcript: {
         Args: { code: string }
         Returns: {
@@ -13986,6 +14115,16 @@ export type Database = {
         | "scroll_distinction"
       integrity_alert_severity: "info" | "warning" | "critical"
       integrity_alert_status: "open" | "acknowledged" | "resolved" | "dismissed"
+      issued_credential_kind:
+        | "certificate"
+        | "diploma"
+        | "associate"
+        | "bachelor"
+        | "master"
+        | "doctorate"
+        | "supreme"
+        | "honor"
+      issued_credential_status: "issued" | "revoked" | "expired" | "superseded"
       mentorship_session_type:
         | "initial_consultation"
         | "progress_review"
@@ -14358,6 +14497,17 @@ export const Constants = {
       ],
       integrity_alert_severity: ["info", "warning", "critical"],
       integrity_alert_status: ["open", "acknowledged", "resolved", "dismissed"],
+      issued_credential_kind: [
+        "certificate",
+        "diploma",
+        "associate",
+        "bachelor",
+        "master",
+        "doctorate",
+        "supreme",
+        "honor",
+      ],
+      issued_credential_status: ["issued", "revoked", "expired", "superseded"],
       mentorship_session_type: [
         "initial_consultation",
         "progress_review",
