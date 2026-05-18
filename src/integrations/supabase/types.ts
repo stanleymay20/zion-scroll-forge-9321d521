@@ -7426,6 +7426,228 @@ export type Database = {
           },
         ]
       }
+      practicum_competency_attestations: {
+        Row: {
+          attained_level: string
+          attested_at: string
+          attested_by: string
+          attested_by_role: string
+          competency_code: string
+          competency_label: string
+          created_at: string
+          evidence_notes: string
+          id: string
+          placement_id: string
+        }
+        Insert: {
+          attained_level: string
+          attested_at?: string
+          attested_by: string
+          attested_by_role: string
+          competency_code: string
+          competency_label: string
+          created_at?: string
+          evidence_notes: string
+          id?: string
+          placement_id: string
+        }
+        Update: {
+          attained_level?: string
+          attested_at?: string
+          attested_by?: string
+          attested_by_role?: string
+          competency_code?: string
+          competency_label?: string
+          created_at?: string
+          evidence_notes?: string
+          id?: string
+          placement_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practicum_competency_attestations_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "practicum_placements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practicum_evaluations: {
+        Row: {
+          created_at: string
+          evaluator_id: string
+          evaluator_role: string
+          id: string
+          narrative: string
+          overall_score: number | null
+          placement_id: string
+          recommendation: string
+          rubric: Json
+          submitted_at: string
+        }
+        Insert: {
+          created_at?: string
+          evaluator_id: string
+          evaluator_role: string
+          id?: string
+          narrative: string
+          overall_score?: number | null
+          placement_id: string
+          recommendation: string
+          rubric?: Json
+          submitted_at?: string
+        }
+        Update: {
+          created_at?: string
+          evaluator_id?: string
+          evaluator_role?: string
+          id?: string
+          narrative?: string
+          overall_score?: number | null
+          placement_id?: string
+          recommendation?: string
+          rubric?: Json
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practicum_evaluations_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "practicum_placements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practicum_hour_logs: {
+        Row: {
+          activity_summary: string
+          attestation_note: string | null
+          attested_at: string | null
+          attested_by: string | null
+          competencies_practiced: string[] | null
+          created_at: string
+          hours: number
+          id: string
+          log_date: string
+          placement_id: string
+          status: Database["public"]["Enums"]["practicum_log_status"]
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          activity_summary: string
+          attestation_note?: string | null
+          attested_at?: string | null
+          attested_by?: string | null
+          competencies_practiced?: string[] | null
+          created_at?: string
+          hours: number
+          id?: string
+          log_date: string
+          placement_id: string
+          status?: Database["public"]["Enums"]["practicum_log_status"]
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          activity_summary?: string
+          attestation_note?: string | null
+          attested_at?: string | null
+          attested_by?: string | null
+          competencies_practiced?: string[] | null
+          created_at?: string
+          hours?: number
+          id?: string
+          log_date?: string
+          placement_id?: string
+          status?: Database["public"]["Enums"]["practicum_log_status"]
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practicum_hour_logs_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "practicum_placements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practicum_incidents: {
+        Row: {
+          category: string
+          created_at: string
+          details: string | null
+          id: string
+          occurred_at: string
+          placement_id: string | null
+          reporter_id: string
+          reporter_role: string
+          resolution_summary: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: Database["public"]["Enums"]["practicum_incident_severity"]
+          site_id: string | null
+          status: Database["public"]["Enums"]["practicum_incident_status"]
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          occurred_at?: string
+          placement_id?: string | null
+          reporter_id: string
+          reporter_role: string
+          resolution_summary?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: Database["public"]["Enums"]["practicum_incident_severity"]
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["practicum_incident_status"]
+          summary: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          occurred_at?: string
+          placement_id?: string | null
+          reporter_id?: string
+          reporter_role?: string
+          resolution_summary?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: Database["public"]["Enums"]["practicum_incident_severity"]
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["practicum_incident_status"]
+          summary?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practicum_incidents_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "practicum_placements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practicum_incidents_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "practicum_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       practicum_outcomes: {
         Row: {
           created_at: string
@@ -7485,6 +7707,84 @@ export type Database = {
           verified_at?: string | null
         }
         Relationships: []
+      }
+      practicum_placements: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          completed_hours: number
+          course_id: string | null
+          created_at: string
+          end_date: string | null
+          final_outcome: string | null
+          id: string
+          outcome_computed_at: string | null
+          program_id: string | null
+          required_hours: number
+          site_id: string
+          start_date: string | null
+          status: Database["public"]["Enums"]["practicum_placement_status"]
+          student_id: string
+          supervisor_id: string | null
+          term_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_hours?: number
+          course_id?: string | null
+          created_at?: string
+          end_date?: string | null
+          final_outcome?: string | null
+          id?: string
+          outcome_computed_at?: string | null
+          program_id?: string | null
+          required_hours?: number
+          site_id: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["practicum_placement_status"]
+          student_id: string
+          supervisor_id?: string | null
+          term_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_hours?: number
+          course_id?: string | null
+          created_at?: string
+          end_date?: string | null
+          final_outcome?: string | null
+          id?: string
+          outcome_computed_at?: string | null
+          program_id?: string | null
+          required_hours?: number
+          site_id?: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["practicum_placement_status"]
+          student_id?: string
+          supervisor_id?: string | null
+          term_label?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practicum_placements_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "practicum_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practicum_placements_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "practicum_supervisors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       practicum_providers: {
         Row: {
@@ -7586,6 +7886,172 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "program_public_render_state"
             referencedColumns: ["program_id"]
+          },
+        ]
+      }
+      practicum_site_approvals: {
+        Row: {
+          action: string
+          created_at: string
+          effective_at: string
+          expires_at: string | null
+          id: string
+          rationale: string
+          reviewer_id: string
+          reviewer_role: string
+          site_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          effective_at?: string
+          expires_at?: string | null
+          id?: string
+          rationale: string
+          reviewer_id: string
+          reviewer_role: string
+          site_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          effective_at?: string
+          expires_at?: string | null
+          id?: string
+          rationale?: string
+          reviewer_id?: string
+          reviewer_role?: string
+          site_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practicum_site_approvals_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "practicum_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      practicum_sites: {
+        Row: {
+          address: string | null
+          capacity: number | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          country: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          mou_expires_at: string | null
+          mou_signed_at: string | null
+          name: string
+          safety_reviewed_at: string | null
+          safety_reviewer_id: string | null
+          site_type: string
+          status: Database["public"]["Enums"]["practicum_site_status"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          capacity?: number | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          mou_expires_at?: string | null
+          mou_signed_at?: string | null
+          name: string
+          safety_reviewed_at?: string | null
+          safety_reviewer_id?: string | null
+          site_type: string
+          status?: Database["public"]["Enums"]["practicum_site_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          capacity?: number | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          mou_expires_at?: string | null
+          mou_signed_at?: string | null
+          name?: string
+          safety_reviewed_at?: string | null
+          safety_reviewer_id?: string | null
+          site_type?: string
+          status?: Database["public"]["Enums"]["practicum_site_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      practicum_supervisors: {
+        Row: {
+          created_at: string
+          credentials: string | null
+          email: string
+          full_name: string
+          id: string
+          license_number: string | null
+          license_verified: boolean
+          license_verified_at: string | null
+          license_verified_by: string | null
+          role_title: string | null
+          site_id: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          credentials?: string | null
+          email: string
+          full_name: string
+          id?: string
+          license_number?: string | null
+          license_verified?: boolean
+          license_verified_at?: string | null
+          license_verified_by?: string | null
+          role_title?: string | null
+          site_id: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          credentials?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          license_number?: string | null
+          license_verified?: boolean
+          license_verified_at?: string | null
+          license_verified_by?: string | null
+          role_title?: string | null
+          site_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practicum_supervisors_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "practicum_sites"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -12644,6 +13110,10 @@ export type Database = {
             }[]
           }
       check_seal_criteria: { Args: { p_course_id: string }; Returns: Json }
+      compute_practicum_outcome: {
+        Args: { _placement_id: string }
+        Returns: Json
+      }
       compute_program_public_status: {
         Args: { p_program_id: string }
         Returns: Json
@@ -13071,6 +13541,27 @@ export type Database = {
         | "under_review"
         | "peer_reviewed"
         | "retracted"
+      practicum_incident_severity: "minor" | "moderate" | "serious" | "critical"
+      practicum_incident_status:
+        | "open"
+        | "under_review"
+        | "resolved"
+        | "escalated"
+      practicum_log_status: "submitted" | "attested" | "rejected" | "disputed"
+      practicum_placement_status:
+        | "proposed"
+        | "approved"
+        | "active"
+        | "on_hold"
+        | "completed"
+        | "withdrawn"
+        | "failed"
+      practicum_site_status:
+        | "pending_review"
+        | "approved"
+        | "suspended"
+        | "revoked"
+        | "expired"
       research_output_type:
         | "paper"
         | "conference"
@@ -13393,6 +13884,30 @@ export const Constants = {
         "under_review",
         "peer_reviewed",
         "retracted",
+      ],
+      practicum_incident_severity: ["minor", "moderate", "serious", "critical"],
+      practicum_incident_status: [
+        "open",
+        "under_review",
+        "resolved",
+        "escalated",
+      ],
+      practicum_log_status: ["submitted", "attested", "rejected", "disputed"],
+      practicum_placement_status: [
+        "proposed",
+        "approved",
+        "active",
+        "on_hold",
+        "completed",
+        "withdrawn",
+        "failed",
+      ],
+      practicum_site_status: [
+        "pending_review",
+        "approved",
+        "suspended",
+        "revoked",
+        "expired",
       ],
       research_output_type: [
         "paper",

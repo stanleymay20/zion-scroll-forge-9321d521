@@ -97,6 +97,9 @@ const StudentThesisCenter = lazy(() => import("./pages/StudentThesisCenter"));
 const ThesisCommitteePortal = lazy(() => import("./pages/ThesisCommitteePortal"));
 const PublicDefenseCalendar = lazy(() => import("./pages/PublicDefenseCalendar"));
 const ThesisGovernanceAdmin = lazy(() => import("./pages/admin/ThesisGovernanceAdmin"));
+const StudentPracticumCenter = lazy(() => import("./pages/StudentPracticumCenter"));
+const SupervisorPortal = lazy(() => import("./pages/SupervisorPortal"));
+const PracticumAdmin = lazy(() => import("./pages/admin/PracticumAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
@@ -489,6 +492,9 @@ const App = () => (
               <Route path="admin/thesis-governance" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><ThesisGovernanceAdmin /></RoleRoute>} />
               <Route path="faculty/committee" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><ThesisCommitteePortal /></RoleRoute>} />
               <Route path="thesis" element={<StudentThesisCenter />} />
+              <Route path="practicum" element={<StudentPracticumCenter />} />
+              <Route path="supervisor" element={<SupervisorPortal />} />
+              <Route path="admin/practicum" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><PracticumAdmin /></RoleRoute>} />
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
