@@ -4798,6 +4798,62 @@ export type Database = {
           },
         ]
       }
+      faculty_productivity_snapshots: {
+        Row: {
+          course_count: number
+          faculty_user_id: string
+          finalized_grade_count: number
+          id: string
+          mean_gpa: number | null
+          median_gpa: number | null
+          notes: string | null
+          on_time_post_rate: number | null
+          snapshot_at: string
+          snapshot_by: string | null
+          student_count: number
+          term_id: string
+          total_credit_hours: number
+        }
+        Insert: {
+          course_count?: number
+          faculty_user_id: string
+          finalized_grade_count?: number
+          id?: string
+          mean_gpa?: number | null
+          median_gpa?: number | null
+          notes?: string | null
+          on_time_post_rate?: number | null
+          snapshot_at?: string
+          snapshot_by?: string | null
+          student_count?: number
+          term_id: string
+          total_credit_hours?: number
+        }
+        Update: {
+          course_count?: number
+          faculty_user_id?: string
+          finalized_grade_count?: number
+          id?: string
+          mean_gpa?: number | null
+          median_gpa?: number | null
+          notes?: string | null
+          on_time_post_rate?: number | null
+          snapshot_at?: string
+          snapshot_by?: string | null
+          student_count?: number
+          term_id?: string
+          total_credit_hours?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_productivity_snapshots_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       faculty_profiles: {
         Row: {
           bio: string | null
@@ -13732,6 +13788,17 @@ export type Database = {
             }[]
           }
       check_seal_criteria: { Args: { p_course_id: string }; Returns: Json }
+      compute_faculty_load: {
+        Args: { p_faculty: string; p_term: string }
+        Returns: {
+          course_count: number
+          finalized_grade_count: number
+          mean_gpa: number
+          median_gpa: number
+          student_count: number
+          total_credit_hours: number
+        }[]
+      }
       compute_practicum_outcome: {
         Args: { _placement_id: string }
         Returns: Json
@@ -14039,8 +14106,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      snapshot_all_faculty_for_term: {
+        Args: { p_term: string }
+        Returns: number
+      }
       snapshot_claim_verification: {
         Args: { _claim_id: string }
+        Returns: string
+      }
+      snapshot_faculty_term: {
+        Args: { p_faculty: string; p_term: string }
         Returns: string
       }
       spend_scrollcoin: {
