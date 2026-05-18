@@ -11092,6 +11092,210 @@ export type Database = {
           },
         ]
       }
+      thesis_committee_members: {
+        Row: {
+          committee_id: string
+          created_at: string
+          external_affiliation: string | null
+          id: string
+          is_external: boolean
+          member_id: string
+          responded_at: string | null
+          role: Database["public"]["Enums"]["thesis_committee_role"]
+          state: Database["public"]["Enums"]["thesis_member_state"]
+          updated_at: string
+        }
+        Insert: {
+          committee_id: string
+          created_at?: string
+          external_affiliation?: string | null
+          id?: string
+          is_external?: boolean
+          member_id: string
+          responded_at?: string | null
+          role: Database["public"]["Enums"]["thesis_committee_role"]
+          state?: Database["public"]["Enums"]["thesis_member_state"]
+          updated_at?: string
+        }
+        Update: {
+          committee_id?: string
+          created_at?: string
+          external_affiliation?: string | null
+          id?: string
+          is_external?: boolean
+          member_id?: string
+          responded_at?: string | null
+          role?: Database["public"]["Enums"]["thesis_committee_role"]
+          state?: Database["public"]["Enums"]["thesis_member_state"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thesis_committee_members_committee_id_fkey"
+            columns: ["committee_id"]
+            isOneToOne: false
+            referencedRelation: "thesis_committees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thesis_committees: {
+        Row: {
+          created_at: string
+          formed_at: string
+          formed_by: string | null
+          id: string
+          notes: string | null
+          thesis_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          formed_at?: string
+          formed_by?: string | null
+          id?: string
+          notes?: string | null
+          thesis_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          formed_at?: string
+          formed_by?: string | null
+          id?: string
+          notes?: string | null
+          thesis_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thesis_committees_thesis_id_fkey"
+            columns: ["thesis_id"]
+            isOneToOne: true
+            referencedRelation: "thesis_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thesis_defense_votes: {
+        Row: {
+          cast_at: string
+          created_at: string
+          defense_id: string
+          examiner_id: string
+          examiner_role: Database["public"]["Enums"]["thesis_committee_role"]
+          id: string
+          locked: boolean
+          rationale: string | null
+          vote: Database["public"]["Enums"]["thesis_vote_value"]
+        }
+        Insert: {
+          cast_at?: string
+          created_at?: string
+          defense_id: string
+          examiner_id: string
+          examiner_role: Database["public"]["Enums"]["thesis_committee_role"]
+          id?: string
+          locked?: boolean
+          rationale?: string | null
+          vote: Database["public"]["Enums"]["thesis_vote_value"]
+        }
+        Update: {
+          cast_at?: string
+          created_at?: string
+          defense_id?: string
+          examiner_id?: string
+          examiner_role?: Database["public"]["Enums"]["thesis_committee_role"]
+          id?: string
+          locked?: boolean
+          rationale?: string | null
+          vote?: Database["public"]["Enums"]["thesis_vote_value"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thesis_defense_votes_defense_id_fkey"
+            columns: ["defense_id"]
+            isOneToOne: false
+            referencedRelation: "thesis_defenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thesis_defenses: {
+        Row: {
+          computed_outcome:
+            | Database["public"]["Enums"]["thesis_recommendation"]
+            | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          is_public: boolean | null
+          location: string | null
+          mode: Database["public"]["Enums"]["thesis_defense_mode"]
+          outcome_computed_at: string | null
+          scheduled_at: string
+          scheduled_by: string | null
+          status: Database["public"]["Enums"]["thesis_defense_status"]
+          submission_id: string | null
+          thesis_id: string
+          updated_at: string
+          virtual_link: string | null
+        }
+        Insert: {
+          computed_outcome?:
+            | Database["public"]["Enums"]["thesis_recommendation"]
+            | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          is_public?: boolean | null
+          location?: string | null
+          mode: Database["public"]["Enums"]["thesis_defense_mode"]
+          outcome_computed_at?: string | null
+          scheduled_at: string
+          scheduled_by?: string | null
+          status?: Database["public"]["Enums"]["thesis_defense_status"]
+          submission_id?: string | null
+          thesis_id: string
+          updated_at?: string
+          virtual_link?: string | null
+        }
+        Update: {
+          computed_outcome?:
+            | Database["public"]["Enums"]["thesis_recommendation"]
+            | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          is_public?: boolean | null
+          location?: string | null
+          mode?: Database["public"]["Enums"]["thesis_defense_mode"]
+          outcome_computed_at?: string | null
+          scheduled_at?: string
+          scheduled_by?: string | null
+          status?: Database["public"]["Enums"]["thesis_defense_status"]
+          submission_id?: string | null
+          thesis_id?: string
+          updated_at?: string
+          virtual_link?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thesis_defenses_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "thesis_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thesis_defenses_thesis_id_fkey"
+            columns: ["thesis_id"]
+            isOneToOne: false
+            referencedRelation: "thesis_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thesis_dissertation_rules: {
         Row: {
           created_at: string
@@ -11150,6 +11354,297 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "program_public_render_state"
             referencedColumns: ["program_id"]
+          },
+        ]
+      }
+      thesis_integrity_flags: {
+        Row: {
+          created_at: string
+          description: string
+          detected_by_ai: boolean
+          evidence: Json | null
+          id: string
+          kind: Database["public"]["Enums"]["thesis_integrity_kind"]
+          raised_by: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          state: Database["public"]["Enums"]["thesis_flag_state"]
+          submission_id: string | null
+          thesis_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          detected_by_ai?: boolean
+          evidence?: Json | null
+          id?: string
+          kind: Database["public"]["Enums"]["thesis_integrity_kind"]
+          raised_by?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          state?: Database["public"]["Enums"]["thesis_flag_state"]
+          submission_id?: string | null
+          thesis_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          detected_by_ai?: boolean
+          evidence?: Json | null
+          id?: string
+          kind?: Database["public"]["Enums"]["thesis_integrity_kind"]
+          raised_by?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          state?: Database["public"]["Enums"]["thesis_flag_state"]
+          submission_id?: string | null
+          thesis_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thesis_integrity_flags_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "thesis_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thesis_integrity_flags_thesis_id_fkey"
+            columns: ["thesis_id"]
+            isOneToOne: false
+            referencedRelation: "thesis_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thesis_milestones: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          evidence_url: string | null
+          id: string
+          label: string
+          milestone_key: string
+          notes: string | null
+          required: boolean
+          thesis_id: string
+          updated_at: string
+          verified_by: string | null
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          evidence_url?: string | null
+          id?: string
+          label: string
+          milestone_key: string
+          notes?: string | null
+          required?: boolean
+          thesis_id: string
+          updated_at?: string
+          verified_by?: string | null
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          evidence_url?: string | null
+          id?: string
+          label?: string
+          milestone_key?: string
+          notes?: string | null
+          required?: boolean
+          thesis_id?: string
+          updated_at?: string
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thesis_milestones_thesis_id_fkey"
+            columns: ["thesis_id"]
+            isOneToOne: false
+            referencedRelation: "thesis_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thesis_projects: {
+        Row: {
+          abstract: string | null
+          ai_assistance_disclosure: string | null
+          created_at: string
+          current_stage: string
+          degree_program_id: string | null
+          ethics_approved_at: string | null
+          ethics_required: boolean
+          final_outcome:
+            | Database["public"]["Enums"]["thesis_recommendation"]
+            | null
+          id: string
+          passed_at: string | null
+          project_type: Database["public"]["Enums"]["thesis_project_type"]
+          research_questions: string[] | null
+          self_reported_originality: number | null
+          status: Database["public"]["Enums"]["thesis_status"]
+          student_id: string
+          supervisor_id: string | null
+          title: string
+          updated_at: string
+          verified_similarity_score: number | null
+        }
+        Insert: {
+          abstract?: string | null
+          ai_assistance_disclosure?: string | null
+          created_at?: string
+          current_stage?: string
+          degree_program_id?: string | null
+          ethics_approved_at?: string | null
+          ethics_required?: boolean
+          final_outcome?:
+            | Database["public"]["Enums"]["thesis_recommendation"]
+            | null
+          id?: string
+          passed_at?: string | null
+          project_type: Database["public"]["Enums"]["thesis_project_type"]
+          research_questions?: string[] | null
+          self_reported_originality?: number | null
+          status?: Database["public"]["Enums"]["thesis_status"]
+          student_id: string
+          supervisor_id?: string | null
+          title: string
+          updated_at?: string
+          verified_similarity_score?: number | null
+        }
+        Update: {
+          abstract?: string | null
+          ai_assistance_disclosure?: string | null
+          created_at?: string
+          current_stage?: string
+          degree_program_id?: string | null
+          ethics_approved_at?: string | null
+          ethics_required?: boolean
+          final_outcome?:
+            | Database["public"]["Enums"]["thesis_recommendation"]
+            | null
+          id?: string
+          passed_at?: string | null
+          project_type?: Database["public"]["Enums"]["thesis_project_type"]
+          research_questions?: string[] | null
+          self_reported_originality?: number | null
+          status?: Database["public"]["Enums"]["thesis_status"]
+          student_id?: string
+          supervisor_id?: string | null
+          title?: string
+          updated_at?: string
+          verified_similarity_score?: number | null
+        }
+        Relationships: []
+      }
+      thesis_reviews: {
+        Row: {
+          created_at: string
+          id: string
+          locked: boolean
+          recommendation: Database["public"]["Enums"]["thesis_recommendation"]
+          reviewer_id: string
+          reviewer_role: Database["public"]["Enums"]["thesis_committee_role"]
+          rubric_scores: Json
+          submission_id: string
+          submitted_at: string
+          written_feedback: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          locked?: boolean
+          recommendation: Database["public"]["Enums"]["thesis_recommendation"]
+          reviewer_id: string
+          reviewer_role: Database["public"]["Enums"]["thesis_committee_role"]
+          rubric_scores?: Json
+          submission_id: string
+          submitted_at?: string
+          written_feedback?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          locked?: boolean
+          recommendation?: Database["public"]["Enums"]["thesis_recommendation"]
+          reviewer_id?: string
+          reviewer_role?: Database["public"]["Enums"]["thesis_committee_role"]
+          rubric_scores?: Json
+          submission_id?: string
+          submitted_at?: string
+          written_feedback?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thesis_reviews_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "thesis_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thesis_submissions: {
+        Row: {
+          ai_assistance_disclosure: string | null
+          created_at: string
+          file_url: string | null
+          id: string
+          kind: Database["public"]["Enums"]["thesis_submission_kind"]
+          locked: boolean
+          similarity_score: number | null
+          submitted_at: string
+          submitted_by: string
+          thesis_id: string
+          version: number
+          word_count: number | null
+        }
+        Insert: {
+          ai_assistance_disclosure?: string | null
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["thesis_submission_kind"]
+          locked?: boolean
+          similarity_score?: number | null
+          submitted_at?: string
+          submitted_by: string
+          thesis_id: string
+          version: number
+          word_count?: number | null
+        }
+        Update: {
+          ai_assistance_disclosure?: string | null
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["thesis_submission_kind"]
+          locked?: boolean
+          similarity_score?: number | null
+          submitted_at?: string
+          submitted_by?: string
+          thesis_id?: string
+          version?: number
+          word_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thesis_submissions_thesis_id_fkey"
+            columns: ["thesis_id"]
+            isOneToOne: false
+            referencedRelation: "thesis_projects"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -12153,6 +12648,10 @@ export type Database = {
         Args: { p_program_id: string }
         Returns: Json
       }
+      compute_thesis_defense_outcome: {
+        Args: { p_defense_id: string }
+        Returns: Database["public"]["Enums"]["thesis_recommendation"]
+      }
       create_notification: {
         Args: {
           p_body: string
@@ -12287,6 +12786,10 @@ export type Database = {
       }
       is_registration_open: {
         Args: { p_term_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_thesis_committee_member: {
+        Args: { _thesis_id: string; _user_id: string }
         Returns: boolean
       }
       issue_certificate: {
@@ -12596,6 +13099,63 @@ export type Database = {
         | "expert"
         | "master"
         | "prophet"
+      thesis_committee_role:
+        | "chair"
+        | "supervisor"
+        | "co_supervisor"
+        | "internal_examiner"
+        | "external_examiner"
+        | "observer"
+      thesis_defense_mode:
+        | "oral_public"
+        | "oral_closed"
+        | "virtual_public"
+        | "virtual_closed"
+      thesis_defense_status:
+        | "scheduled"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "postponed"
+      thesis_flag_state:
+        | "open"
+        | "under_review"
+        | "dismissed"
+        | "substantiated"
+        | "remediated"
+      thesis_integrity_kind:
+        | "plagiarism"
+        | "ai_misuse"
+        | "data_integrity"
+        | "authorship"
+        | "other"
+      thesis_member_state: "invited" | "accepted" | "declined" | "removed"
+      thesis_project_type: "capstone" | "thesis" | "dissertation"
+      thesis_recommendation:
+        | "accept"
+        | "accept_with_minor_revisions"
+        | "major_revisions"
+        | "reject"
+      thesis_status:
+        | "proposal_draft"
+        | "proposal_submitted"
+        | "proposal_approved"
+        | "in_progress"
+        | "submitted_for_defense"
+        | "defense_scheduled"
+        | "defended"
+        | "revisions_required"
+        | "passed"
+        | "failed"
+        | "withdrawn"
+        | "archived"
+      thesis_submission_kind: "proposal" | "draft" | "revision" | "final"
+      thesis_vote_value:
+        | "pass"
+        | "pass_with_revisions"
+        | "major_revisions"
+        | "fail"
+        | "abstain"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -12864,6 +13424,71 @@ export const Constants = {
         "expert",
         "master",
         "prophet",
+      ],
+      thesis_committee_role: [
+        "chair",
+        "supervisor",
+        "co_supervisor",
+        "internal_examiner",
+        "external_examiner",
+        "observer",
+      ],
+      thesis_defense_mode: [
+        "oral_public",
+        "oral_closed",
+        "virtual_public",
+        "virtual_closed",
+      ],
+      thesis_defense_status: [
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "postponed",
+      ],
+      thesis_flag_state: [
+        "open",
+        "under_review",
+        "dismissed",
+        "substantiated",
+        "remediated",
+      ],
+      thesis_integrity_kind: [
+        "plagiarism",
+        "ai_misuse",
+        "data_integrity",
+        "authorship",
+        "other",
+      ],
+      thesis_member_state: ["invited", "accepted", "declined", "removed"],
+      thesis_project_type: ["capstone", "thesis", "dissertation"],
+      thesis_recommendation: [
+        "accept",
+        "accept_with_minor_revisions",
+        "major_revisions",
+        "reject",
+      ],
+      thesis_status: [
+        "proposal_draft",
+        "proposal_submitted",
+        "proposal_approved",
+        "in_progress",
+        "submitted_for_defense",
+        "defense_scheduled",
+        "defended",
+        "revisions_required",
+        "passed",
+        "failed",
+        "withdrawn",
+        "archived",
+      ],
+      thesis_submission_kind: ["proposal", "draft", "revision", "final"],
+      thesis_vote_value: [
+        "pass",
+        "pass_with_revisions",
+        "major_revisions",
+        "fail",
+        "abstain",
       ],
     },
   },
