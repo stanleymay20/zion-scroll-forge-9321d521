@@ -48,8 +48,12 @@ export default function AcademicCalendarAdmin() {
 
   const createTerm = async () => {
     const { error } = await supabase.from("academic_terms").insert({
-      code: termForm.code, name: termForm.name,
-      starts_on: termForm.starts_on, ends_on: termForm.ends_on,
+      code: termForm.code,
+      name: termForm.name,
+      starts_on: termForm.starts_on,
+      ends_on: termForm.ends_on,
+      start_date: termForm.starts_on,
+      end_date: termForm.ends_on,
       term_type: termForm.term_type as any,
     });
     if (error) toast.error(error.message); else { toast.success("Term created"); refresh(); }

@@ -102,6 +102,9 @@ const SupervisorPortal = lazy(() => import("./pages/SupervisorPortal"));
 const PracticumAdmin = lazy(() => import("./pages/admin/PracticumAdmin"));
 const FacultyCredentialsCenter = lazy(() => import("./pages/FacultyCredentialsCenter"));
 const FacultyGovernanceAdmin = lazy(() => import("./pages/admin/FacultyGovernanceAdmin"));
+const StudentTranscript = lazy(() => import("./pages/StudentTranscript"));
+const TranscriptVerification = lazy(() => import("./pages/TranscriptVerification"));
+const AcademicCalendarAdmin = lazy(() => import("./pages/admin/AcademicCalendarAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
@@ -499,6 +502,8 @@ const App = () => (
               <Route path="admin/practicum" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><PracticumAdmin /></RoleRoute>} />
               <Route path="faculty/credentials" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><FacultyCredentialsCenter /></RoleRoute>} />
               <Route path="admin/faculty-governance" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><FacultyGovernanceAdmin /></RoleRoute>} />
+              <Route path="transcript" element={<StudentTranscript />} />
+              <Route path="admin/academic-calendar" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><AcademicCalendarAdmin /></RoleRoute>} />
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
