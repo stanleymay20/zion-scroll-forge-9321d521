@@ -360,6 +360,9 @@ const App = () => (
             <Route path="/public-defenses" element={<PublicLayout />}>
               <Route index element={<PublicDefenseCalendar />} />
             </Route>
+            <Route path="/verify-transcript" element={<PublicLayout />}>
+              <Route index element={<TranscriptVerification />} />
+            </Route>
             <Route path="/graduate-success" element={<PublicLayout />}>
               <Route index element={<GraduateSuccess />} />
             </Route>
