@@ -93,6 +93,10 @@ const EmploymentMethodology = lazy(() => import("./pages/EmploymentMethodology")
 const ResearchImpact = lazy(() => import("./pages/ResearchImpact"));
 const GraduateSuccess = lazy(() => import("./pages/GraduateSuccess"));
 const OutcomesAdmin = lazy(() => import("./pages/admin/OutcomesAdmin"));
+const StudentThesisCenter = lazy(() => import("./pages/StudentThesisCenter"));
+const ThesisCommitteePortal = lazy(() => import("./pages/ThesisCommitteePortal"));
+const PublicDefenseCalendar = lazy(() => import("./pages/PublicDefenseCalendar"));
+const ThesisGovernanceAdmin = lazy(() => import("./pages/admin/ThesisGovernanceAdmin"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
