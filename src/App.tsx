@@ -108,6 +108,8 @@ const AcademicCalendarAdmin = lazy(() => import("./pages/admin/AcademicCalendarA
 const MyCredentials = lazy(() => import("./pages/MyCredentials"));
 const CredentialVerification = lazy(() => import("./pages/CredentialVerification"));
 const CredentialIssuanceAdmin = lazy(() => import("./pages/admin/CredentialIssuanceAdmin"));
+const AnalyticsAdmin = lazy(() => import("./pages/admin/AnalyticsAdmin"));
+const RetentionPublic = lazy(() => import("./pages/RetentionPublic"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
 const PersonalizedDashboard = lazy(() => import("./pages/PersonalizedDashboard"));
 const LearningGoals = lazy(() => import("./pages/LearningGoals"));
