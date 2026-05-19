@@ -442,6 +442,45 @@ export type Database = {
           },
         ]
       }
+      account_holds: {
+        Row: {
+          id: string
+          kind: Database["public"]["Enums"]["account_hold_kind"]
+          placed_at: string
+          placed_by: string
+          reason: string
+          release_note: string | null
+          released_at: string | null
+          released_by: string | null
+          status: Database["public"]["Enums"]["account_hold_status"]
+          student_user_id: string
+        }
+        Insert: {
+          id?: string
+          kind: Database["public"]["Enums"]["account_hold_kind"]
+          placed_at?: string
+          placed_by: string
+          reason: string
+          release_note?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          status?: Database["public"]["Enums"]["account_hold_status"]
+          student_user_id: string
+        }
+        Update: {
+          id?: string
+          kind?: Database["public"]["Enums"]["account_hold_kind"]
+          placed_at?: string
+          placed_by?: string
+          reason?: string
+          release_note?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          status?: Database["public"]["Enums"]["account_hold_status"]
+          student_user_id?: string
+        }
+        Relationships: []
+      }
       accreditation_blueprint: {
         Row: {
           course_id: string | null
@@ -5092,6 +5131,72 @@ export type Database = {
             columns: ["institution_id"]
             isOneToOne: false
             referencedRelation: "institutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_aid_awards: {
+        Row: {
+          amount: number
+          currency: string
+          decided_at: string | null
+          disbursed_ledger_id: string | null
+          id: string
+          kind: Database["public"]["Enums"]["aid_award_kind"]
+          notes: string | null
+          offered_at: string
+          offered_by: string
+          revoked_reason: string | null
+          source: string
+          status: Database["public"]["Enums"]["aid_award_status"]
+          student_user_id: string
+          term_id: string | null
+        }
+        Insert: {
+          amount: number
+          currency?: string
+          decided_at?: string | null
+          disbursed_ledger_id?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["aid_award_kind"]
+          notes?: string | null
+          offered_at?: string
+          offered_by: string
+          revoked_reason?: string | null
+          source: string
+          status?: Database["public"]["Enums"]["aid_award_status"]
+          student_user_id: string
+          term_id?: string | null
+        }
+        Update: {
+          amount?: number
+          currency?: string
+          decided_at?: string | null
+          disbursed_ledger_id?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["aid_award_kind"]
+          notes?: string | null
+          offered_at?: string
+          offered_by?: string
+          revoked_reason?: string | null
+          source?: string
+          status?: Database["public"]["Enums"]["aid_award_status"]
+          student_user_id?: string
+          term_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_aid_awards_disbursed_ledger_id_fkey"
+            columns: ["disbursed_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "student_account_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_aid_awards_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
             referencedColumns: ["id"]
           },
         ]
@@ -10817,6 +10922,63 @@ export type Database = {
           },
         ]
       }
+      student_account_ledger: {
+        Row: {
+          amount: number
+          currency: string
+          entry_type: Database["public"]["Enums"]["ledger_entry_type"]
+          id: string
+          memo: string
+          posted_at: string
+          posted_by: string
+          reference_id: string | null
+          reverses_entry_id: string | null
+          student_user_id: string
+          term_id: string | null
+        }
+        Insert: {
+          amount: number
+          currency?: string
+          entry_type: Database["public"]["Enums"]["ledger_entry_type"]
+          id?: string
+          memo: string
+          posted_at?: string
+          posted_by: string
+          reference_id?: string | null
+          reverses_entry_id?: string | null
+          student_user_id: string
+          term_id?: string | null
+        }
+        Update: {
+          amount?: number
+          currency?: string
+          entry_type?: Database["public"]["Enums"]["ledger_entry_type"]
+          id?: string
+          memo?: string
+          posted_at?: string
+          posted_by?: string
+          reference_id?: string | null
+          reverses_entry_id?: string | null
+          student_user_id?: string
+          term_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_account_ledger_reverses_entry_id_fkey"
+            columns: ["reverses_entry_id"]
+            isOneToOne: false
+            referencedRelation: "student_account_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_account_ledger_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_applications: {
         Row: {
           created_at: string | null
@@ -13834,6 +13996,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      compute_student_balance: { Args: { p_student: string }; Returns: number }
       compute_student_gpa: {
         Args: { p_student_id: string }
         Returns: {
@@ -14047,6 +14210,7 @@ export type Database = {
         Args: { _term_id: string; _user_id: string }
         Returns: Json
       }
+      recompute_account_holds: { Args: never; Returns: number }
       recompute_at_risk_signals: { Args: never; Returns: number }
       recompute_cohort_outcomes: {
         Args: {
@@ -14221,6 +14385,20 @@ export type Database = {
         | "winter"
         | "trimester"
         | "custom"
+      account_hold_kind: "financial" | "academic" | "conduct" | "administrative"
+      account_hold_status: "active" | "released"
+      aid_award_kind:
+        | "scholarship"
+        | "grant"
+        | "work_study"
+        | "sponsorship"
+        | "waiver"
+      aid_award_status:
+        | "offered"
+        | "accepted"
+        | "declined"
+        | "disbursed"
+        | "revoked"
       app_role: "student" | "faculty" | "admin" | "superadmin" | "registrar"
       assessment_type:
         | "academic"
@@ -14321,6 +14499,14 @@ export type Database = {
         | "supreme"
         | "honor"
       issued_credential_status: "issued" | "revoked" | "expired" | "superseded"
+      ledger_entry_type:
+        | "tuition_charge"
+        | "fee_charge"
+        | "payment"
+        | "aid_disbursement"
+        | "refund"
+        | "adjustment"
+        | "reversal"
       mentorship_session_type:
         | "initial_consultation"
         | "progress_review"
@@ -14590,6 +14776,22 @@ export const Constants = {
         "trimester",
         "custom",
       ],
+      account_hold_kind: ["financial", "academic", "conduct", "administrative"],
+      account_hold_status: ["active", "released"],
+      aid_award_kind: [
+        "scholarship",
+        "grant",
+        "work_study",
+        "sponsorship",
+        "waiver",
+      ],
+      aid_award_status: [
+        "offered",
+        "accepted",
+        "declined",
+        "disbursed",
+        "revoked",
+      ],
       app_role: ["student", "faculty", "admin", "superadmin", "registrar"],
       assessment_type: [
         "academic",
@@ -14704,6 +14906,15 @@ export const Constants = {
         "honor",
       ],
       issued_credential_status: ["issued", "revoked", "expired", "superseded"],
+      ledger_entry_type: [
+        "tuition_charge",
+        "fee_charge",
+        "payment",
+        "aid_disbursement",
+        "refund",
+        "adjustment",
+        "reversal",
+      ],
       mentorship_session_type: [
         "initial_consultation",
         "progress_review",
