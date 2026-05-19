@@ -110,6 +110,8 @@ const CredentialVerification = lazy(() => import("./pages/CredentialVerification
 const CredentialIssuanceAdmin = lazy(() => import("./pages/admin/CredentialIssuanceAdmin"));
 const FacultyLoadCenter = lazy(() => import("./pages/FacultyLoadCenter"));
 const FacultyLoadAdmin = lazy(() => import("./pages/admin/FacultyLoadAdmin"));
+const MyAccountLedger = lazy(() => import("./pages/MyAccountLedger"));
+const BursarAdmin = lazy(() => import("./pages/admin/BursarAdmin"));
 const AnalyticsAdmin = lazy(() => import("./pages/admin/AnalyticsAdmin"));
 const RetentionPublic = lazy(() => import("./pages/RetentionPublic"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
@@ -524,6 +526,8 @@ const App = () => (
               <Route path="admin/credentials" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><CredentialIssuanceAdmin /></RoleRoute>} />
               <Route path="faculty/load" element={<FacultyLoadCenter />} />
               <Route path="admin/faculty-load" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><FacultyLoadAdmin /></RoleRoute>} />
+              <Route path="my-account" element={<MyAccountLedger />} />
+              <Route path="admin/bursar" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><BursarAdmin /></RoleRoute>} />
               <Route path="admin/analytics" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><AnalyticsAdmin /></RoleRoute>} />
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
