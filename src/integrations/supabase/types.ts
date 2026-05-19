@@ -2039,6 +2039,133 @@ export type Database = {
         }
         Relationships: []
       }
+      conduct_appeals: {
+        Row: {
+          case_id: string
+          filed_at: string
+          grounds: string
+          id: string
+          ruled_at: string | null
+          ruled_by: string | null
+          ruling: string | null
+          status: Database["public"]["Enums"]["conduct_appeal_status"]
+          student_user_id: string
+        }
+        Insert: {
+          case_id: string
+          filed_at?: string
+          grounds: string
+          id?: string
+          ruled_at?: string | null
+          ruled_by?: string | null
+          ruling?: string | null
+          status?: Database["public"]["Enums"]["conduct_appeal_status"]
+          student_user_id: string
+        }
+        Update: {
+          case_id?: string
+          filed_at?: string
+          grounds?: string
+          id?: string
+          ruled_at?: string | null
+          ruled_by?: string | null
+          ruling?: string | null
+          status?: Database["public"]["Enums"]["conduct_appeal_status"]
+          student_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conduct_appeals_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: true
+            referencedRelation: "conduct_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conduct_case_events: {
+        Row: {
+          actor_id: string
+          case_id: string
+          event_kind: string
+          id: string
+          note: string
+          occurred_at: string
+        }
+        Insert: {
+          actor_id: string
+          case_id: string
+          event_kind: string
+          id?: string
+          note: string
+          occurred_at?: string
+        }
+        Update: {
+          actor_id?: string
+          case_id?: string
+          event_kind?: string
+          id?: string
+          note?: string
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conduct_case_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "conduct_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conduct_cases: {
+        Row: {
+          category: string
+          closed_at: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision: Database["public"]["Enums"]["conduct_decision"]
+          decision_rationale: string | null
+          hearing_scheduled_at: string | null
+          id: string
+          reported_by: string
+          status: Database["public"]["Enums"]["conduct_case_status"]
+          student_user_id: string
+          summary: string
+        }
+        Insert: {
+          category: string
+          closed_at?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: Database["public"]["Enums"]["conduct_decision"]
+          decision_rationale?: string | null
+          hearing_scheduled_at?: string | null
+          id?: string
+          reported_by: string
+          status?: Database["public"]["Enums"]["conduct_case_status"]
+          student_user_id: string
+          summary: string
+        }
+        Update: {
+          category?: string
+          closed_at?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: Database["public"]["Enums"]["conduct_decision"]
+          decision_rationale?: string | null
+          hearing_scheduled_at?: string | null
+          id?: string
+          reported_by?: string
+          status?: Database["public"]["Enums"]["conduct_case_status"]
+          student_user_id?: string
+          summary?: string
+        }
+        Relationships: []
+      }
       conversation_members: {
         Row: {
           conversation_id: string
@@ -14435,6 +14562,25 @@ export type Database = {
         | "verified"
         | "expired"
         | "retracted"
+      conduct_appeal_status:
+        | "filed"
+        | "under_review"
+        | "upheld"
+        | "reduced"
+        | "overturned"
+      conduct_case_status:
+        | "reported"
+        | "under_review"
+        | "hearing_scheduled"
+        | "decided"
+        | "closed"
+      conduct_decision:
+        | "pending"
+        | "no_violation"
+        | "warning"
+        | "probation"
+        | "suspension"
+        | "dismissal"
       credential_class:
         | "academic_degree"
         | "professional_certificate"
@@ -14831,6 +14977,28 @@ export const Constants = {
         "verified",
         "expired",
         "retracted",
+      ],
+      conduct_appeal_status: [
+        "filed",
+        "under_review",
+        "upheld",
+        "reduced",
+        "overturned",
+      ],
+      conduct_case_status: [
+        "reported",
+        "under_review",
+        "hearing_scheduled",
+        "decided",
+        "closed",
+      ],
+      conduct_decision: [
+        "pending",
+        "no_violation",
+        "warning",
+        "probation",
+        "suspension",
+        "dismissal",
       ],
       credential_class: [
         "academic_degree",
