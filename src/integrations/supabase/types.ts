@@ -7277,6 +7277,45 @@ export type Database = {
           },
         ]
       }
+      library_resources: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          identifier: string | null
+          kind: Database["public"]["Enums"]["resource_kind"]
+          loan_days: number
+          location: string | null
+          max_renewals: number
+          title: string
+          total_copies: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          identifier?: string | null
+          kind?: Database["public"]["Enums"]["resource_kind"]
+          loan_days?: number
+          location?: string | null
+          max_renewals?: number
+          title: string
+          total_copies?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          identifier?: string | null
+          kind?: Database["public"]["Enums"]["resource_kind"]
+          loan_days?: number
+          location?: string | null
+          max_renewals?: number
+          title?: string
+          total_copies?: number
+        }
+        Relationships: []
+      }
       live_sessions: {
         Row: {
           course_id: string
@@ -7486,6 +7525,41 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_user_dashboard"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      loan_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event_kind: string
+          id: string
+          loan_id: string
+          note: string | null
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_kind: string
+          id?: string
+          loan_id: string
+          note?: string | null
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_kind?: string
+          id?: string
+          loan_id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_events_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "resource_loans"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -10377,6 +10451,56 @@ export type Database = {
           year?: number
         }
         Relationships: []
+      }
+      resource_loans: {
+        Row: {
+          borrower_user_id: string
+          checked_out_at: string | null
+          due_at: string | null
+          id: string
+          notes: string | null
+          renewals: number
+          reserved_at: string
+          resource_id: string
+          returned_at: string | null
+          status: Database["public"]["Enums"]["loan_status"]
+          updated_at: string
+        }
+        Insert: {
+          borrower_user_id: string
+          checked_out_at?: string | null
+          due_at?: string | null
+          id?: string
+          notes?: string | null
+          renewals?: number
+          reserved_at?: string
+          resource_id: string
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["loan_status"]
+          updated_at?: string
+        }
+        Update: {
+          borrower_user_id?: string
+          checked_out_at?: string | null
+          due_at?: string | null
+          id?: string
+          notes?: string | null
+          renewals?: number
+          reserved_at?: string
+          resource_id?: string
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["loan_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_loans_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "library_resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       retention_snapshots: {
         Row: {
@@ -14359,6 +14483,28 @@ export type Database = {
         Args: { _course_id: string; _user_id: string }
         Returns: Json
       }
+      cancel_loan: {
+        Args: { _loan_id: string; _reason: string }
+        Returns: {
+          borrower_user_id: string
+          checked_out_at: string | null
+          due_at: string | null
+          id: string
+          notes: string | null
+          renewals: number
+          reserved_at: string
+          resource_id: string
+          returned_at: string | null
+          status: Database["public"]["Enums"]["loan_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "resource_loans"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       check_credential_eligibility: {
         Args: {
           p_kind: Database["public"]["Enums"]["issued_credential_kind"]
@@ -14388,6 +14534,28 @@ export type Database = {
             }[]
           }
       check_seal_criteria: { Args: { p_course_id: string }; Returns: Json }
+      checkout_loan: {
+        Args: { _loan_id: string }
+        Returns: {
+          borrower_user_id: string
+          checked_out_at: string | null
+          due_at: string | null
+          id: string
+          notes: string | null
+          renewals: number
+          reserved_at: string
+          resource_id: string
+          returned_at: string | null
+          status: Database["public"]["Enums"]["loan_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "resource_loans"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       compute_faculty_load: {
         Args: { p_faculty: string; p_term: string }
         Returns: {
@@ -14640,6 +14808,7 @@ export type Database = {
         }
         Returns: string
       }
+      mark_overdue_loans: { Args: never; Returns: number }
       module_depth_score: { Args: { p_course_id: string }; Returns: Json }
       move_to_dlq: {
         Args: {
@@ -14701,6 +14870,28 @@ export type Database = {
         Args: { p_program_id: string; p_reason: string; p_user_id: string }
         Returns: undefined
       }
+      renew_loan: {
+        Args: { _loan_id: string }
+        Returns: {
+          borrower_user_id: string
+          checked_out_at: string | null
+          due_at: string | null
+          id: string
+          notes: string | null
+          renewals: number
+          reserved_at: string
+          resource_id: string
+          returned_at: string | null
+          status: Database["public"]["Enums"]["loan_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "resource_loans"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       request_section_enrollment: {
         Args: { _section_id: string }
         Returns: {
@@ -14717,6 +14908,28 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "section_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      reserve_resource: {
+        Args: { _resource_id: string }
+        Returns: {
+          borrower_user_id: string
+          checked_out_at: string | null
+          due_at: string | null
+          id: string
+          notes: string | null
+          renewals: number
+          reserved_at: string
+          resource_id: string
+          returned_at: string | null
+          status: Database["public"]["Enums"]["loan_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "resource_loans"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -14744,6 +14957,32 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "academic_integrity_alerts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      resource_available_copies: {
+        Args: { _resource_id: string }
+        Returns: number
+      }
+      return_loan: {
+        Args: { _loan_id: string }
+        Returns: {
+          borrower_user_id: string
+          checked_out_at: string | null
+          due_at: string | null
+          id: string
+          notes: string | null
+          renewals: number
+          reserved_at: string
+          resource_id: string
+          returned_at: string | null
+          status: Database["public"]["Enums"]["loan_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "resource_loans"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -15021,6 +15260,12 @@ export type Database = {
         | "refund"
         | "adjustment"
         | "reversal"
+      loan_status:
+        | "reserved"
+        | "checked_out"
+        | "returned"
+        | "overdue"
+        | "canceled"
       mentorship_session_type:
         | "initial_consultation"
         | "progress_review"
@@ -15070,6 +15315,7 @@ export type Database = {
         | "public_demo"
         | "dataset"
         | "thesis"
+      resource_kind: "book" | "equipment" | "room" | "media" | "other"
       scroll_degree_level:
         | "scroll_certificate"
         | "scroll_diploma"
@@ -15477,6 +15723,13 @@ export const Constants = {
         "adjustment",
         "reversal",
       ],
+      loan_status: [
+        "reserved",
+        "checked_out",
+        "returned",
+        "overdue",
+        "canceled",
+      ],
       mentorship_session_type: [
         "initial_consultation",
         "progress_review",
@@ -15533,6 +15786,7 @@ export const Constants = {
         "dataset",
         "thesis",
       ],
+      resource_kind: ["book", "equipment", "room", "media", "other"],
       scroll_degree_level: [
         "scroll_certificate",
         "scroll_diploma",
