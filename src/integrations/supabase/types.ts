@@ -2720,6 +2720,51 @@ export type Database = {
           },
         ]
       }
+      course_sections: {
+        Row: {
+          active: boolean
+          course_code: string
+          course_title: string | null
+          created_at: string
+          credit_hours: number
+          id: string
+          instructor_user_id: string | null
+          meeting_info: string | null
+          seat_capacity: number
+          section_code: string
+          term_label: string
+          waitlist_capacity: number
+        }
+        Insert: {
+          active?: boolean
+          course_code: string
+          course_title?: string | null
+          created_at?: string
+          credit_hours?: number
+          id?: string
+          instructor_user_id?: string | null
+          meeting_info?: string | null
+          seat_capacity?: number
+          section_code: string
+          term_label: string
+          waitlist_capacity?: number
+        }
+        Update: {
+          active?: boolean
+          course_code?: string
+          course_title?: string | null
+          created_at?: string
+          credit_hours?: number
+          id?: string
+          instructor_user_id?: string | null
+          meeting_info?: string | null
+          seat_capacity?: number
+          section_code?: string
+          term_label?: string
+          waitlist_capacity?: number
+        }
+        Relationships: []
+      }
       courses: {
         Row: {
           career_track: string[] | null
@@ -4401,6 +4446,41 @@ export type Database = {
             columns: ["graduate_outcome_id"]
             isOneToOne: false
             referencedRelation: "graduate_outcomes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollment_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          enrollment_id: string
+          event_kind: string
+          id: string
+          note: string | null
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          enrollment_id: string
+          event_kind: string
+          id?: string
+          note?: string | null
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          enrollment_id?: string
+          event_kind?: string
+          id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_events_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "section_enrollments"
             referencedColumns: ["id"]
           },
         ]
@@ -10110,6 +10190,39 @@ export type Database = {
           },
         ]
       }
+      registration_periods: {
+        Row: {
+          closes_at: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          opens_at: string
+          term_label: string
+          tier: string
+        }
+        Insert: {
+          closes_at: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          opens_at: string
+          term_label: string
+          tier?: string
+        }
+        Update: {
+          closes_at?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          opens_at?: string
+          term_label?: string
+          tier?: string
+        }
+        Relationships: []
+      }
       registration_windows: {
         Row: {
           audience: string
@@ -10829,6 +10942,50 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      section_enrollments: {
+        Row: {
+          created_at: string
+          dropped_at: string | null
+          enrolled_at: string | null
+          id: string
+          section_id: string
+          status: Database["public"]["Enums"]["section_enrollment_status"]
+          student_user_id: string
+          updated_at: string
+          waitlist_position: number | null
+        }
+        Insert: {
+          created_at?: string
+          dropped_at?: string | null
+          enrolled_at?: string | null
+          id?: string
+          section_id: string
+          status?: Database["public"]["Enums"]["section_enrollment_status"]
+          student_user_id: string
+          updated_at?: string
+          waitlist_position?: number | null
+        }
+        Update: {
+          created_at?: string
+          dropped_at?: string | null
+          enrolled_at?: string | null
+          id?: string
+          section_id?: string
+          status?: Database["public"]["Enums"]["section_enrollment_status"]
+          student_user_id?: string
+          updated_at?: string
+          waitlist_position?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_enrollments_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "course_sections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       semesters: {
         Row: {
@@ -14348,6 +14505,26 @@ export type Database = {
           session_title: string
         }[]
       }
+      drop_section_enrollment: {
+        Args: { _enrollment_id: string; _reason: string }
+        Returns: {
+          created_at: string
+          dropped_at: string | null
+          enrolled_at: string | null
+          id: string
+          section_id: string
+          status: Database["public"]["Enums"]["section_enrollment_status"]
+          student_user_id: string
+          updated_at: string
+          waitlist_position: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "section_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       earn_scrollcoin: {
         Args: { p_amount: number; p_desc: string; p_user_id: string }
         Returns: undefined
@@ -14523,6 +14700,26 @@ export type Database = {
       registrar_assign_program: {
         Args: { p_program_id: string; p_reason: string; p_user_id: string }
         Returns: undefined
+      }
+      request_section_enrollment: {
+        Args: { _section_id: string }
+        Returns: {
+          created_at: string
+          dropped_at: string | null
+          enrolled_at: string | null
+          id: string
+          section_id: string
+          status: Database["public"]["Enums"]["section_enrollment_status"]
+          student_user_id: string
+          updated_at: string
+          waitlist_position: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "section_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       resolve_integrity_alert: {
         Args: { p_alert_id: string; p_resolution_reason: string }
@@ -14879,6 +15076,12 @@ export type Database = {
         | "sman"
         | "dsgei"
         | "sef"
+      section_enrollment_status:
+        | "requested"
+        | "enrolled"
+        | "waitlisted"
+        | "dropped"
+        | "withdrawn"
       skill_proficiency_level:
         | "novice"
         | "beginner"
@@ -15329,6 +15532,13 @@ export const Constants = {
         "sman",
         "dsgei",
         "sef",
+      ],
+      section_enrollment_status: [
+        "requested",
+        "enrolled",
+        "waitlisted",
+        "dropped",
+        "withdrawn",
       ],
       skill_proficiency_level: [
         "novice",
