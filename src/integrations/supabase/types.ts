@@ -14877,7 +14877,13 @@ export type Database = {
         | "declined"
         | "disbursed"
         | "revoked"
-      app_role: "student" | "faculty" | "admin" | "superadmin" | "registrar"
+      app_role:
+        | "student"
+        | "faculty"
+        | "admin"
+        | "superadmin"
+        | "registrar"
+        | "librarian"
       assessment_type:
         | "academic"
         | "prophetic"
@@ -15306,7 +15312,14 @@ export const Constants = {
         "disbursed",
         "revoked",
       ],
-      app_role: ["student", "faculty", "admin", "superadmin", "registrar"],
+      app_role: [
+        "student",
+        "faculty",
+        "admin",
+        "superadmin",
+        "registrar",
+        "librarian",
+      ],
       assessment_type: [
         "academic",
         "prophetic",
