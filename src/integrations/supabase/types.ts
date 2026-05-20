@@ -709,6 +709,36 @@ export type Database = {
           },
         ]
       }
+      advising_assignments: {
+        Row: {
+          active: boolean
+          advisor_user_id: string
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          notes: string | null
+          student_user_id: string
+        }
+        Insert: {
+          active?: boolean
+          advisor_user_id: string
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          notes?: string | null
+          student_user_id: string
+        }
+        Update: {
+          active?: boolean
+          advisor_user_id?: string
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          notes?: string | null
+          student_user_id?: string
+        }
+        Relationships: []
+      }
       ai_conversations: {
         Row: {
           context_summary: string | null
@@ -3258,6 +3288,130 @@ export type Database = {
             referencedColumns: ["course_id"]
           },
         ]
+      }
+      degree_plan_items: {
+        Row: {
+          course_code: string
+          course_title: string | null
+          created_at: string
+          credit_hours: number
+          id: string
+          notes: string | null
+          plan_id: string
+          required: boolean
+          sequence: number
+          term_label: string
+        }
+        Insert: {
+          course_code: string
+          course_title?: string | null
+          created_at?: string
+          credit_hours?: number
+          id?: string
+          notes?: string | null
+          plan_id: string
+          required?: boolean
+          sequence?: number
+          term_label: string
+        }
+        Update: {
+          course_code?: string
+          course_title?: string | null
+          created_at?: string
+          credit_hours?: number
+          id?: string
+          notes?: string | null
+          plan_id?: string
+          required?: boolean
+          sequence?: number
+          term_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "degree_plan_items_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "degree_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      degree_plan_reviews: {
+        Row: {
+          action: Database["public"]["Enums"]["degree_plan_review_action"]
+          actor_id: string
+          created_at: string
+          id: string
+          plan_id: string
+          rationale: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["degree_plan_review_action"]
+          actor_id: string
+          created_at?: string
+          id?: string
+          plan_id: string
+          rationale: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["degree_plan_review_action"]
+          actor_id?: string
+          created_at?: string
+          id?: string
+          plan_id?: string
+          rationale?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "degree_plan_reviews_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "degree_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      degree_plans: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["degree_plan_status"]
+          student_user_id: string
+          submitted_at: string | null
+          target_term: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["degree_plan_status"]
+          student_user_id: string
+          submitted_at?: string | null
+          target_term?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["degree_plan_status"]
+          student_user_id?: string
+          submitted_at?: string | null
+          target_term?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       degree_prerequisites: {
         Row: {
@@ -14594,6 +14748,17 @@ export type Database = {
         | "faculty_review"
         | "accreditation_review"
         | "approved"
+      degree_plan_review_action:
+        | "submitted"
+        | "approved"
+        | "rejected"
+        | "returned"
+      degree_plan_status:
+        | "draft"
+        | "submitted"
+        | "approved"
+        | "rejected"
+        | "archived"
       degree_program_status:
         | "active_public"
         | "pilot_private"
@@ -15014,6 +15179,19 @@ export const Constants = {
         "faculty_review",
         "accreditation_review",
         "approved",
+      ],
+      degree_plan_review_action: [
+        "submitted",
+        "approved",
+        "rejected",
+        "returned",
+      ],
+      degree_plan_status: [
+        "draft",
+        "submitted",
+        "approved",
+        "rejected",
+        "archived",
       ],
       degree_program_status: [
         "active_public",
