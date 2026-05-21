@@ -8336,6 +8336,254 @@ export type Database = {
         }
         Relationships: []
       }
+      placement_evaluations: {
+        Row: {
+          competence: number
+          created_at: string
+          evaluator_user_id: string
+          id: string
+          initiative: number
+          narrative: string
+          outcome: string
+          placement_id: string
+          professionalism: number
+          spiritual_alignment: number
+        }
+        Insert: {
+          competence: number
+          created_at?: string
+          evaluator_user_id: string
+          id?: string
+          initiative: number
+          narrative: string
+          outcome: string
+          placement_id: string
+          professionalism: number
+          spiritual_alignment: number
+        }
+        Update: {
+          competence?: number
+          created_at?: string
+          evaluator_user_id?: string
+          id?: string
+          initiative?: number
+          narrative?: string
+          outcome?: string
+          placement_id?: string
+          professionalism?: number
+          spiritual_alignment?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "placement_evaluations_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: true
+            referencedRelation: "placements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      placement_events: {
+        Row: {
+          actor_user_id: string
+          created_at: string
+          detail: string | null
+          event_type: string
+          from_status: string | null
+          id: string
+          placement_id: string
+          to_status: string | null
+        }
+        Insert: {
+          actor_user_id: string
+          created_at?: string
+          detail?: string | null
+          event_type: string
+          from_status?: string | null
+          id?: string
+          placement_id: string
+          to_status?: string | null
+        }
+        Update: {
+          actor_user_id?: string
+          created_at?: string
+          detail?: string | null
+          event_type?: string
+          from_status?: string | null
+          id?: string
+          placement_id?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "placement_events_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "placements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      placement_hours_logs: {
+        Row: {
+          created_at: string
+          hours: number
+          id: string
+          log_date: string
+          narrative: string | null
+          placement_id: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hours: number
+          id?: string
+          log_date: string
+          narrative?: string | null
+          placement_id: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hours?: number
+          id?: string
+          log_date?: string
+          narrative?: string | null
+          placement_id?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "placement_hours_logs_placement_id_fkey"
+            columns: ["placement_id"]
+            isOneToOne: false
+            referencedRelation: "placements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      placement_sites: {
+        Row: {
+          active: boolean
+          contact_email: string | null
+          contact_name: string | null
+          country: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          sector: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          contact_email?: string | null
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          sector?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          contact_email?: string | null
+          contact_name?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          sector?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      placements: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          completed_at: string | null
+          created_at: string
+          end_date: string | null
+          hours_logged: number
+          hours_target: number
+          id: string
+          role_title: string
+          site_id: string
+          start_date: string | null
+          status: string
+          student_user_id: string
+          supervisor_external_email: string | null
+          supervisor_user_id: string | null
+          term: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          end_date?: string | null
+          hours_logged?: number
+          hours_target?: number
+          id?: string
+          role_title: string
+          site_id: string
+          start_date?: string | null
+          status?: string
+          student_user_id: string
+          supervisor_external_email?: string | null
+          supervisor_user_id?: string | null
+          term?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          end_date?: string | null
+          hours_logged?: number
+          hours_target?: number
+          id?: string
+          role_title?: string
+          site_id?: string
+          start_date?: string | null
+          status?: string
+          student_user_id?: string
+          supervisor_external_email?: string | null
+          supervisor_user_id?: string | null
+          term?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "placements_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "placement_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_owners: {
         Row: {
           created_at: string | null

@@ -122,6 +122,8 @@ const LibraryCatalog = lazy(() => import("./pages/LibraryCatalog"));
 const LibraryAdmin = lazy(() => import("./pages/admin/LibraryAdmin"));
 const Scholarships = lazy(() => import("./pages/Scholarships"));
 const ScholarshipsAdmin = lazy(() => import("./pages/admin/ScholarshipsAdmin"));
+const MyPlacements = lazy(() => import("./pages/MyPlacements"));
+const PlacementsAdmin = lazy(() => import("./pages/admin/PlacementsAdmin"));
 const AnalyticsAdmin = lazy(() => import("./pages/admin/AnalyticsAdmin"));
 const RetentionPublic = lazy(() => import("./pages/RetentionPublic"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
@@ -548,6 +550,9 @@ const App = () => (
               <Route path="admin/library" element={<RoleRoute allowedRoles={["admin","superadmin","librarian"]}><LibraryAdmin /></RoleRoute>} />
               <Route path="scholarships/apply" element={<Scholarships />} />
               <Route path="admin/scholarships" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><ScholarshipsAdmin /></RoleRoute>} />
+              <Route path="my-placements" element={<MyPlacements />} />
+              <Route path="admin/placements" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><PlacementsAdmin /></RoleRoute>} />
+
 
 
               <Route path="admin/analytics" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><AnalyticsAdmin /></RoleRoute>} />
