@@ -120,6 +120,8 @@ const CourseRegistration = lazy(() => import("./pages/CourseRegistration"));
 const RegistrationAdmin = lazy(() => import("./pages/admin/RegistrationAdmin"));
 const LibraryCatalog = lazy(() => import("./pages/LibraryCatalog"));
 const LibraryAdmin = lazy(() => import("./pages/admin/LibraryAdmin"));
+const Scholarships = lazy(() => import("./pages/Scholarships"));
+const ScholarshipsAdmin = lazy(() => import("./pages/admin/ScholarshipsAdmin"));
 const AnalyticsAdmin = lazy(() => import("./pages/admin/AnalyticsAdmin"));
 const RetentionPublic = lazy(() => import("./pages/RetentionPublic"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
