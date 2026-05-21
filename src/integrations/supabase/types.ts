@@ -10636,6 +10636,196 @@ export type Database = {
           },
         ]
       }
+      scholarship_application_reviews: {
+        Row: {
+          application_id: string
+          created_at: string
+          from_status: string | null
+          id: string
+          rationale: string
+          reviewer_user_id: string
+          to_status: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          rationale: string
+          reviewer_user_id: string
+          to_status: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          rationale?: string
+          reviewer_user_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scholarship_application_reviews_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "scholarship_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scholarship_applications: {
+        Row: {
+          applicant_user_id: string
+          created_at: string
+          decided_at: string | null
+          essay: string | null
+          id: string
+          requested_amount: number | null
+          scholarship_id: string
+          status: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          applicant_user_id: string
+          created_at?: string
+          decided_at?: string | null
+          essay?: string | null
+          id?: string
+          requested_amount?: number | null
+          scholarship_id: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          applicant_user_id?: string
+          created_at?: string
+          decided_at?: string | null
+          essay?: string | null
+          id?: string
+          requested_amount?: number | null
+          scholarship_id?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scholarship_applications_scholarship_id_fkey"
+            columns: ["scholarship_id"]
+            isOneToOne: false
+            referencedRelation: "scholarships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scholarship_awards: {
+        Row: {
+          amount: number
+          application_id: string
+          awarded_at: string
+          awarded_by: string
+          awardee_user_id: string
+          currency: string
+          id: string
+          notes: string | null
+          scholarship_id: string
+          term: string | null
+        }
+        Insert: {
+          amount: number
+          application_id: string
+          awarded_at?: string
+          awarded_by: string
+          awardee_user_id: string
+          currency?: string
+          id?: string
+          notes?: string | null
+          scholarship_id: string
+          term?: string | null
+        }
+        Update: {
+          amount?: number
+          application_id?: string
+          awarded_at?: string
+          awarded_by?: string
+          awardee_user_id?: string
+          currency?: string
+          id?: string
+          notes?: string | null
+          scholarship_id?: string
+          term?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scholarship_awards_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: true
+            referencedRelation: "scholarship_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scholarship_awards_scholarship_id_fkey"
+            columns: ["scholarship_id"]
+            isOneToOne: false
+            referencedRelation: "scholarships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scholarships: {
+        Row: {
+          award_amount: number
+          closes_at: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string | null
+          eligibility: string | null
+          id: string
+          name: string
+          opens_at: string | null
+          sponsor: string | null
+          status: string
+          total_slots: number
+          updated_at: string
+        }
+        Insert: {
+          award_amount?: number
+          closes_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          eligibility?: string | null
+          id?: string
+          name: string
+          opens_at?: string | null
+          sponsor?: string | null
+          status?: string
+          total_slots?: number
+          updated_at?: string
+        }
+        Update: {
+          award_amount?: number
+          closes_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string | null
+          eligibility?: string | null
+          id?: string
+          name?: string
+          opens_at?: string | null
+          sponsor?: string | null
+          status?: string
+          total_slots?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       scripture_memory: {
         Row: {
           id: string
