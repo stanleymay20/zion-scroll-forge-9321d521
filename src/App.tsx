@@ -550,6 +550,9 @@ const App = () => (
               <Route path="admin/library" element={<RoleRoute allowedRoles={["admin","superadmin","librarian"]}><LibraryAdmin /></RoleRoute>} />
               <Route path="scholarships/apply" element={<Scholarships />} />
               <Route path="admin/scholarships" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><ScholarshipsAdmin /></RoleRoute>} />
+              <Route path="my-placements" element={<MyPlacements />} />
+              <Route path="admin/placements" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><PlacementsAdmin /></RoleRoute>} />
+
 
 
               <Route path="admin/analytics" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><AnalyticsAdmin /></RoleRoute>} />
