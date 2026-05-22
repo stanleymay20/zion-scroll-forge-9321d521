@@ -15745,6 +15745,7 @@ export type Database = {
         | "registrar"
         | "librarian"
         | "career_advisor"
+        | "housing_officer"
       assessment_type:
         | "academic"
         | "prophetic"
@@ -16188,6 +16189,7 @@ export const Constants = {
         "registrar",
         "librarian",
         "career_advisor",
+        "housing_officer",
       ],
       assessment_type: [
         "academic",
