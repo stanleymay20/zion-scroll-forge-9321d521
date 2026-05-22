@@ -4373,6 +4373,48 @@ export type Database = {
         }
         Relationships: []
       }
+      employers: {
+        Row: {
+          contact_email: string | null
+          contact_name: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_user_id: string | null
+          status: string
+          updated_at: string
+          verified: boolean
+          website: string | null
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_user_id?: string | null
+          status?: string
+          updated_at?: string
+          verified?: boolean
+          website?: string | null
+        }
+        Update: {
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_user_id?: string | null
+          status?: string
+          updated_at?: string
+          verified?: boolean
+          website?: string | null
+        }
+        Relationships: []
+      }
       employment_verifications: {
         Row: {
           country: string | null
@@ -6717,6 +6759,147 @@ export type Database = {
             columns: ["supersedes_id"]
             isOneToOne: false
             referencedRelation: "issued_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_application_events: {
+        Row: {
+          actor_id: string | null
+          application_id: string
+          created_at: string
+          from_status: string | null
+          id: string
+          rationale: string | null
+          to_status: string
+        }
+        Insert: {
+          actor_id?: string | null
+          application_id: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          rationale?: string | null
+          to_status: string
+        }
+        Update: {
+          actor_id?: string | null
+          application_id?: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          rationale?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_application_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "job_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_applications: {
+        Row: {
+          applicant_id: string
+          cover_letter: string | null
+          created_at: string
+          decided_at: string | null
+          id: string
+          posting_id: string
+          resume_url: string | null
+          status: string
+          submitted_at: string
+          updated_at: string
+        }
+        Insert: {
+          applicant_id: string
+          cover_letter?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          posting_id: string
+          resume_url?: string | null
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+        }
+        Update: {
+          applicant_id?: string
+          cover_letter?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          posting_id?: string
+          resume_url?: string | null
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_applications_posting_id_fkey"
+            columns: ["posting_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_postings: {
+        Row: {
+          apply_by: string | null
+          compensation: string | null
+          created_at: string
+          description: string
+          employer_id: string
+          id: string
+          kind: string
+          location: string | null
+          posted_by: string | null
+          remote: boolean
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          apply_by?: string | null
+          compensation?: string | null
+          created_at?: string
+          description: string
+          employer_id: string
+          id?: string
+          kind: string
+          location?: string | null
+          posted_by?: string | null
+          remote?: boolean
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          apply_by?: string | null
+          compensation?: string | null
+          created_at?: string
+          description?: string
+          employer_id?: string
+          id?: string
+          kind?: string
+          location?: string | null
+          posted_by?: string | null
+          remote?: boolean
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_postings_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
             referencedColumns: ["id"]
           },
         ]
