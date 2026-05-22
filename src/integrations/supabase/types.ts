@@ -6153,6 +6153,53 @@ export type Database = {
           },
         ]
       }
+      housing_applications: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          id: string
+          notes: string | null
+          preferred_hall_id: string | null
+          preferred_room_type: string | null
+          status: string
+          student_user_id: string
+          term: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          notes?: string | null
+          preferred_hall_id?: string | null
+          preferred_room_type?: string | null
+          status?: string
+          student_user_id: string
+          term: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          notes?: string | null
+          preferred_hall_id?: string | null
+          preferred_room_type?: string | null
+          status?: string
+          student_user_id?: string
+          term?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "housing_applications_preferred_hall_id_fkey"
+            columns: ["preferred_hall_id"]
+            isOneToOne: false
+            referencedRelation: "residence_halls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       institution_members: {
         Row: {
           created_at: string | null
@@ -7742,6 +7789,59 @@ export type Database = {
             columns: ["loan_id"]
             isOneToOne: false
             referencedRelation: "resource_loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_requests: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          created_at: string
+          details: string | null
+          id: string
+          priority: string
+          reporter_id: string
+          resolved_at: string | null
+          room_id: string
+          status: string
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          category: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          priority?: string
+          reporter_id: string
+          resolved_at?: string | null
+          room_id: string
+          status?: string
+          summary: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          priority?: string
+          reporter_id?: string
+          resolved_at?: string | null
+          room_id?: string
+          status?: string
+          summary?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_requests_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
             referencedColumns: ["id"]
           },
         ]
@@ -10883,6 +10983,39 @@ export type Database = {
         }
         Relationships: []
       }
+      residence_halls: {
+        Row: {
+          active: boolean
+          campus: string | null
+          created_at: string
+          description: string | null
+          gender_policy: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          campus?: string | null
+          created_at?: string
+          description?: string | null
+          gender_policy?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          campus?: string | null
+          created_at?: string
+          description?: string | null
+          gender_policy?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       resource_loans: {
         Row: {
           borrower_user_id: string
@@ -11034,6 +11167,97 @@ export type Database = {
           key?: string
         }
         Relationships: []
+      }
+      room_assignments: {
+        Row: {
+          assigned_at: string
+          checked_in_at: string | null
+          checked_out_at: string | null
+          created_at: string
+          id: string
+          room_id: string
+          status: string
+          student_user_id: string
+          term: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          checked_in_at?: string | null
+          checked_out_at?: string | null
+          created_at?: string
+          id?: string
+          room_id: string
+          status?: string
+          student_user_id: string
+          term: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          checked_in_at?: string | null
+          checked_out_at?: string | null
+          created_at?: string
+          id?: string
+          room_id?: string
+          status?: string
+          student_user_id?: string
+          term?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_assignments_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          active: boolean
+          capacity: number
+          created_at: string
+          hall_id: string
+          id: string
+          room_number: string
+          room_type: string
+          term_rate: number | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          capacity: number
+          created_at?: string
+          hall_id: string
+          id?: string
+          room_number: string
+          room_type: string
+          term_rate?: number | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          capacity?: number
+          created_at?: string
+          hall_id?: string
+          id?: string
+          room_number?: string
+          room_type?: string
+          term_rate?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_hall_id_fkey"
+            columns: ["hall_id"]
+            isOneToOne: false
+            referencedRelation: "residence_halls"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rubric_criteria: {
         Row: {
@@ -15745,6 +15969,7 @@ export type Database = {
         | "registrar"
         | "librarian"
         | "career_advisor"
+        | "housing_officer"
       assessment_type:
         | "academic"
         | "prophetic"
@@ -16188,6 +16413,7 @@ export const Constants = {
         "registrar",
         "librarian",
         "career_advisor",
+        "housing_officer",
       ],
       assessment_type: [
         "academic",
