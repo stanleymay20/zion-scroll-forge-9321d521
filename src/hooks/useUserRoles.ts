@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-export type AppRole = 'admin' | 'superadmin' | 'faculty' | 'student' | 'moderator' | 'user' | 'registrar' | 'librarian';
+export type AppRole = 'admin' | 'superadmin' | 'faculty' | 'student' | 'moderator' | 'user' | 'registrar' | 'librarian' | 'career_advisor';
 
 interface UseUserRolesReturn {
   roles: AppRole[];
