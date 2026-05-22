@@ -15561,6 +15561,7 @@ export type Database = {
         | "superadmin"
         | "registrar"
         | "librarian"
+        | "career_advisor"
       assessment_type:
         | "academic"
         | "prophetic"
@@ -16003,6 +16004,7 @@ export const Constants = {
         "superadmin",
         "registrar",
         "librarian",
+        "career_advisor",
       ],
       assessment_type: [
         "academic",
