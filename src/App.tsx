@@ -561,6 +561,7 @@ const App = () => (
               <Route path="admin/careers" element={<RoleRoute allowedRoles={["admin","superadmin","career_advisor"]}><CareerJobsAdmin /></RoleRoute>} />
               <Route path="my-housing" element={<MyHousing />} />
               <Route path="admin/housing" element={<RoleRoute allowedRoles={["admin","superadmin","housing_officer"]}><HousingAdmin /></RoleRoute>} />
+              <Route path="admin/learning-readiness" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LearningReadiness /></RoleRoute>} />
 
 
 
