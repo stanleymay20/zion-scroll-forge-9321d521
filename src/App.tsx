@@ -128,6 +128,7 @@ const CareerJobs = lazy(() => import("./pages/CareerJobs"));
 const CareerJobsAdmin = lazy(() => import("./pages/admin/CareerJobsAdmin"));
 const MyHousing = lazy(() => import("./pages/MyHousing"));
 const HousingAdmin = lazy(() => import("./pages/admin/HousingAdmin"));
+const LearningReadiness = lazy(() => import("./pages/admin/LearningReadiness"));
 const AnalyticsAdmin = lazy(() => import("./pages/admin/AnalyticsAdmin"));
 const RetentionPublic = lazy(() => import("./pages/RetentionPublic"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
