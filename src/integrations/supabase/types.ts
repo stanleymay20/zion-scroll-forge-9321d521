@@ -15251,6 +15251,22 @@ export type Database = {
           },
         ]
       }
+      v_learning_readiness: {
+        Row: {
+          assignments_total: number | null
+          courses_total: number | null
+          courses_with_faculty: number | null
+          courses_with_upcoming_sessions: number | null
+          modules_total: number | null
+          modules_verified: number | null
+          quiz_pools: number | null
+          quizzes_total: number | null
+          tutors_total: number | null
+          tutors_with_faculty: number | null
+          upcoming_sessions: number | null
+        }
+        Relationships: []
+      }
       v_scroll_analytics_daily: {
         Row: {
           date: string | null
