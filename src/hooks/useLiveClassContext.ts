@@ -94,6 +94,25 @@ export function useLiveClassContext(moduleId?: string) {
           .maybeSingle();
         if (data) tutor = data as any;
       }
+      // Fallback A: resolve faculty name → faculties.id → tutor
+      if (!tutor && course.faculty) {
+        const { data: fac } = await supabase
+          .from('faculties')
+          .select('id')
+          .ilike('name', course.faculty)
+          .limit(1)
+          .maybeSingle();
+        if (fac?.id) {
+          const { data } = await supabase
+            .from('ai_tutors')
+            .select('id,name,specialty,avatar_image_url')
+            .eq('faculty_id', fac.id)
+            .limit(1)
+            .maybeSingle();
+          if (data) tutor = data as any;
+        }
+      }
+      // Fallback B: specialty substring match
       if (!tutor && course.faculty) {
         const { data } = await supabase
           .from('ai_tutors')

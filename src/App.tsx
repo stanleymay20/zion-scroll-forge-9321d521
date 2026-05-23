@@ -128,6 +128,7 @@ const CareerJobs = lazy(() => import("./pages/CareerJobs"));
 const CareerJobsAdmin = lazy(() => import("./pages/admin/CareerJobsAdmin"));
 const MyHousing = lazy(() => import("./pages/MyHousing"));
 const HousingAdmin = lazy(() => import("./pages/admin/HousingAdmin"));
+const LearningReadiness = lazy(() => import("./pages/admin/LearningReadiness"));
 const AnalyticsAdmin = lazy(() => import("./pages/admin/AnalyticsAdmin"));
 const RetentionPublic = lazy(() => import("./pages/RetentionPublic"));
 const LearningProfileOnboarding = lazy(() => import("./pages/LearningProfileOnboarding"));
@@ -560,6 +561,7 @@ const App = () => (
               <Route path="admin/careers" element={<RoleRoute allowedRoles={["admin","superadmin","career_advisor"]}><CareerJobsAdmin /></RoleRoute>} />
               <Route path="my-housing" element={<MyHousing />} />
               <Route path="admin/housing" element={<RoleRoute allowedRoles={["admin","superadmin","housing_officer"]}><HousingAdmin /></RoleRoute>} />
+              <Route path="admin/learning-readiness" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LearningReadiness /></RoleRoute>} />
 
 
 
