@@ -364,8 +364,9 @@ export function LiveAvatarLecture({
         toast.success('🎥 Live lecture started');
 
         // Track-arrival watchdog: if no remote video frames after the device-specific deadline,
-        // demote to voice/text truthfully so the user is never stuck.
-        setTimeout(() => {
+        // demote to voice/text truthfully so the user is never stuck. Cancelled in ontrack.
+        if (trackWatchdogRef.current) clearTimeout(trackWatchdogRef.current);
+        trackWatchdogRef.current = setTimeout(() => {
           if (!videoRef.current?.srcObject) {
             peerConnectionRef.current?.close();
             peerConnectionRef.current = null;
@@ -376,6 +377,7 @@ export function LiveAvatarLecture({
               description: 'Continuing in voice/text mode.',
             });
           }
+          trackWatchdogRef.current = null;
         }, connectionDeadlineMs);
       }
 
