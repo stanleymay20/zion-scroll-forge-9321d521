@@ -115,10 +115,18 @@ export function createDidProvider(): AvatarProvider {
 
     async sendIceCandidate(streamId, sessionId, candidate) {
       if (!apiKey) return;
+      const normalizedCandidate = candidate && typeof candidate === "object"
+        ? {
+            candidate: (candidate as Record<string, unknown>).candidate ?? null,
+            sdpMid: (candidate as Record<string, unknown>).sdpMid ?? null,
+            sdpMLineIndex: (candidate as Record<string, unknown>).sdpMLineIndex ?? null,
+            usernameFragment: (candidate as Record<string, unknown>).usernameFragment ?? null,
+          }
+        : { candidate: candidate ?? null, sdpMid: null, sdpMLineIndex: null, usernameFragment: null };
       await fetch(`https://api.d-id.com/talks/streams/${streamId}/ice`, {
         method: "POST",
         headers: { Authorization: auth(), "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId, candidate }),
+        body: JSON.stringify({ session_id: sessionId, ...normalizedCandidate }),
       });
     },
 
