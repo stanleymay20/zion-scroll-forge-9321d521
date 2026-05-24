@@ -291,6 +291,11 @@ export function LiveAvatarLecture({
 
         pc.ontrack = (event) => {
           if (videoRef.current && event.streams[0]) {
+            // First media track arrived — cancel the demotion watchdog.
+            if (trackWatchdogRef.current) {
+              clearTimeout(trackWatchdogRef.current);
+              trackWatchdogRef.current = null;
+            }
             // Start muted to satisfy autoplay, then unmute right after play()
             // so D-ID's lip-synced audio plays in sync with the video.
             videoRef.current.muted = true;
@@ -298,6 +303,7 @@ export function LiveAvatarLecture({
             videoRef.current.playsInline = true;
             videoRef.current.srcObject = event.streams[0];
             setHasAvatarStream(true);
+            setDeliveryMode('avatar');
             videoRef.current.play()
               .then(() => {
                 if (videoRef.current && audioUnlockedRef.current && !isMutedRef.current) {
