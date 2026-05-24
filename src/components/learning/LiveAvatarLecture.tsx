@@ -124,6 +124,7 @@ export function LiveAvatarLecture({
   // the same click gesture that sets it) can play without waiting for React state.
   const audioUnlockedRef = useRef(false);
   const isMutedRef = useRef(false);
+  const trackWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -246,7 +247,9 @@ export function LiveAvatarLecture({
       if (sid) setSessionId(sid);
 
       const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
-      const connectionDeadlineMs = isMobile ? 8000 : 15000;
+      // D-ID typically needs 8–15s after sdp_answer before the first avatar
+      // video frame arrives. Give mobile 20s and desktop 30s before demoting.
+      const connectionDeadlineMs = isMobile ? 20000 : 30000;
       const { data, error } = await withTimeout(
         supabase.functions.invoke('ai-avatar-stream', {
           body: {
@@ -288,6 +291,11 @@ export function LiveAvatarLecture({
 
         pc.ontrack = (event) => {
           if (videoRef.current && event.streams[0]) {
+            // First media track arrived — cancel the demotion watchdog.
+            if (trackWatchdogRef.current) {
+              clearTimeout(trackWatchdogRef.current);
+              trackWatchdogRef.current = null;
+            }
             // Start muted to satisfy autoplay, then unmute right after play()
             // so D-ID's lip-synced audio plays in sync with the video.
             videoRef.current.muted = true;
@@ -295,6 +303,7 @@ export function LiveAvatarLecture({
             videoRef.current.playsInline = true;
             videoRef.current.srcObject = event.streams[0];
             setHasAvatarStream(true);
+            setDeliveryMode('avatar');
             videoRef.current.play()
               .then(() => {
                 if (videoRef.current && audioUnlockedRef.current && !isMutedRef.current) {
@@ -355,8 +364,9 @@ export function LiveAvatarLecture({
         toast.success('🎥 Live lecture started');
 
         // Track-arrival watchdog: if no remote video frames after the device-specific deadline,
-        // demote to voice/text truthfully so the user is never stuck.
-        setTimeout(() => {
+        // demote to voice/text truthfully so the user is never stuck. Cancelled in ontrack.
+        if (trackWatchdogRef.current) clearTimeout(trackWatchdogRef.current);
+        trackWatchdogRef.current = setTimeout(() => {
           if (!videoRef.current?.srcObject) {
             peerConnectionRef.current?.close();
             peerConnectionRef.current = null;
@@ -367,6 +377,7 @@ export function LiveAvatarLecture({
               description: 'Continuing in voice/text mode.',
             });
           }
+          trackWatchdogRef.current = null;
         }, connectionDeadlineMs);
       }
 
@@ -422,6 +433,10 @@ export function LiveAvatarLecture({
       }).eq('id', sessionId);
     }
 
+    if (trackWatchdogRef.current) {
+      clearTimeout(trackWatchdogRef.current);
+      trackWatchdogRef.current = null;
+    }
     peerConnectionRef.current?.close();
     peerConnectionRef.current = null;
     streamIdRef.current = null;
@@ -806,6 +821,9 @@ export function LiveAvatarLecture({
                     if (!isConnected && !isConnecting) return 'Ready';
                     if (isConnecting) return 'Reconnecting';
                     if (hasAvatarStream) return 'Live Avatar';
+                    // Stream session was created but video frames haven't
+                    // arrived yet — show truthful negotiating state.
+                    if (deliveryMode === 'avatar' && trackWatchdogRef.current) return 'Negotiating video…';
                     if (deliveryMode === 'audio') return 'Voice Tutor';
                     if (deliveryMode === 'text') return 'Text Tutor';
                     if (!audioUnlocked) return 'Audio Disabled';
