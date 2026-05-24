@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { CompanionResources } from './CompanionResources';
 import { getUserFriendlyError } from "@/lib/errors";
+import { resolveTutorAvatarUrl } from '@/lib/tutorAvatar';
 
 type SpeakerRole = 'user' | 'host' | 'cohost' | 'system';
 
@@ -85,12 +86,7 @@ export function LiveAvatarLecture({
   learningObjectives,
 }: LiveAvatarLectureProps) {
   const resolvedTutorAvatar = useMemo(() => {
-    if (!tutorAvatar) return null;
-    if (/^https?:\/\//i.test(tutorAvatar)) return tutorAvatar;
-    if (typeof window !== 'undefined' && tutorAvatar.startsWith('/')) {
-      return new URL(tutorAvatar, window.location.origin).toString();
-    }
-    return tutorAvatar;
+    return resolveTutorAvatarUrl(tutorAvatar);
   }, [tutorAvatar]);
 
   const hasCohost = Boolean(cohostName);
