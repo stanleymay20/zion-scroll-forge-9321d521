@@ -699,9 +699,10 @@ export function LiveAvatarLecture({
           // synced audio plays from the <video> element
         } else if (data.audio_base64 && !isMutedRef.current && audioUnlockedRef.current) {
           setDeliveryMode((prev) => (prev === 'avatar' ? prev : 'audio'));
-          playAudio(data.audio_base64);
+          playAudio(data.audio_base64, activeSid);
         } else if (deliveryMode !== 'avatar') {
           setDeliveryMode('text');
+          if (!voiceLoopEnabledRef.current) scheduleAutoContinue(activeSid);
         }
       } catch (err: any) {
         console.error('Avatar talk error:', err);
@@ -714,7 +715,26 @@ export function LiveAvatarLecture({
   [messages, moduleContent, tutorId, isMuted, sessionId, cohostName, cohostSpecialty, cohostId, tutorName]
   );
 
-  const playAudio = (base64Audio: string) => {
+  const scheduleAutoContinue = useCallback((sid?: string) => {
+    cancelAutoContinue();
+    if (voiceLoopEnabledRef.current || !isConnectedRef.current || isDisconnectingRef.current) return;
+    if (consecutiveAutoTurnsRef.current >= 3) return;
+
+    autoContinueTimeoutRef.current = window.setTimeout(() => {
+      if (voiceLoopEnabledRef.current || !isConnectedRef.current || isDisconnectingRef.current || isLoadingRef.current || isSpeakingRef.current || isRecordingVoiceRef.current) {
+        return;
+      }
+      consecutiveAutoTurnsRef.current += 1;
+      void sendToAvatar(
+        'Continue the live lecture naturally from the last teaching point. Speak like a real lecturer, not a chatbot. Advance the lesson in 2-4 concise sentences, then end with a brief reflective prompt only if appropriate.',
+        'host',
+        sid,
+        true,
+      );
+    }, 1400);
+  }, [cancelAutoContinue, sendToAvatar]);
+
+  const playAudio = (base64Audio: string, sid?: string) => {
     setIsSpeaking(true);
     const audio = new Audio(`data:audio/mpeg;base64,${base64Audio}`);
     audioRef.current = audio;
@@ -727,6 +747,8 @@ export function LiveAvatarLecture({
             void startVoiceInput();
           }
         }, 120);
+      } else {
+        scheduleAutoContinue(sid);
       }
     };
     audio.onended = maybeResumeVoiceLoop;
@@ -741,6 +763,8 @@ export function LiveAvatarLecture({
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
     const text = input.trim();
+    consecutiveAutoTurnsRef.current = 0;
+    cancelAutoContinue();
     setInput('');
     const userMsg: Message = { role: 'user', content: text, timestamp: new Date() };
     setMessages((prev) => [...prev, userMsg]);
@@ -1558,11 +1582,21 @@ export function LiveAvatarLecture({
         <div className="flex gap-2 w-full">
           <Button
             size="icon"
-            variant={isRecordingVoice ? 'destructive' : 'outline'}
-            onClick={isRecordingVoice ? stopVoiceInput : startVoiceInput}
-            disabled={!isConnected || isLoading}
+            variant={isRecordingVoice || isVoiceLoopEnabled ? 'destructive' : 'outline'}
+            onClick={() => {
+              if (isRecordingVoice || isVoiceLoopEnabled) {
+                stopVoiceInput();
+                return;
+              }
+              voiceLoopEnabledRef.current = true;
+              setIsVoiceLoopEnabled(true);
+              consecutiveAutoTurnsRef.current = 0;
+              cancelAutoContinue();
+              void startVoiceInput();
+            }}
+            disabled={!isConnected || isLoading || isDisconnecting}
             className="shrink-0"
-            title="Voice input"
+            title={isRecordingVoice || isVoiceLoopEnabled ? 'Stop live listening' : 'Start live listening'}
           >
             {isRecordingVoice ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </Button>
