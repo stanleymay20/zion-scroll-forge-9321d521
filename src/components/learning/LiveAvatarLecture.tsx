@@ -775,11 +775,11 @@ export function LiveAvatarLecture({
           const base64 = (reader.result as string).split(',')[1];
           if (!base64) return;
           try {
-            const { data: voiceData, error } = await supabase.functions.invoke('ai-tutor-voice', {
-              body: { session_id: `live-${moduleId}`, audio_base64: base64 },
+            const { data: transcriptionData, error: transcriptionError } = await supabase.functions.invoke('ai-avatar-stream', {
+              body: { action: 'transcribe_audio', audio_base64: base64 },
             });
-            const transcript = typeof voiceData?.transcript === 'string' ? voiceData.transcript.trim() : '';
-            if (error || !transcript || transcript.length < 3 || /^(you|thank you|thanks|okay|ok)\.?$/i.test(transcript)) {
+            const transcript = typeof transcriptionData?.transcript === 'string' ? transcriptionData.transcript.trim() : '';
+            if (transcriptionError || !transcript || transcript.length < 3 || /^(you|thank you|thanks|okay|ok)\.?$/i.test(transcript)) {
               toast.error('Voice not recognized. Please type your question.');
               return;
             }
