@@ -143,11 +143,23 @@ export function LiveAvatarLecture({
   const micStreamRef = useRef<MediaStream | null>(null);
   const voiceMonitorCleanupRef = useRef<(() => void) | null>(null);
   const silenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoContinueTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const consecutiveAutoTurnsRef = useRef(0);
   const voiceLoopEnabledRef = useRef(false);
   const isTranscribingVoiceRef = useRef(false);
   const recorderMimeTypeRef = useRef('audio/webm');
+  const isConnectedRef = useRef(false);
+  const isLoadingRef = useRef(false);
+  const isSpeakingRef = useRef(false);
+  const isRecordingVoiceRef = useRef(false);
+  const isDisconnectingRef = useRef(false);
   useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
   useEffect(() => { voiceLoopEnabledRef.current = isVoiceLoopEnabled; }, [isVoiceLoopEnabled]);
+  useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
+  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+  useEffect(() => { isSpeakingRef.current = isSpeaking; }, [isSpeaking]);
+  useEffect(() => { isRecordingVoiceRef.current = isRecordingVoice; }, [isRecordingVoice]);
+  useEffect(() => { isDisconnectingRef.current = isDisconnecting; }, [isDisconnecting]);
   useEffect(() => {
     isMutedRef.current = isMuted;
     // Keep the live-avatar <video> element's audio in sync with the mute button.
@@ -250,6 +262,11 @@ export function LiveAvatarLecture({
       clearTimeout(silenceTimeoutRef.current);
       silenceTimeoutRef.current = null;
     }
+    if (autoContinueTimeoutRef.current) {
+      clearTimeout(autoContinueTimeoutRef.current);
+      autoContinueTimeoutRef.current = null;
+    }
+    consecutiveAutoTurnsRef.current = 0;
 
     voiceMonitorCleanupRef.current?.();
     voiceMonitorCleanupRef.current = null;
@@ -305,6 +322,13 @@ export function LiveAvatarLecture({
     setActiveSpeaker(null);
     setMicLevel(0);
     setDeliveryMode('offline');
+  }, []);
+
+  const cancelAutoContinue = useCallback(() => {
+    if (autoContinueTimeoutRef.current) {
+      clearTimeout(autoContinueTimeoutRef.current);
+      autoContinueTimeoutRef.current = null;
+    }
   }, []);
 
   const connectStream = useCallback(async () => {
