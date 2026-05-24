@@ -60,6 +60,8 @@ describe('LiveAvatarLecture workflow', () => {
       ontrack: ((event: { streams: MediaStream[] }) => void) | null = null;
       onicecandidate: ((event: { candidate: null }) => void) | null = null;
       onconnectionstatechange: (() => void) | null = null;
+      oniceconnectionstatechange: (() => void) | null = null;
+      addTransceiver() { return {}; }
       async setRemoteDescription() {}
       async createAnswer() { return { type: 'answer', sdp: 'fake-sdp' }; }
       async setLocalDescription() {}
