@@ -279,14 +279,21 @@ export function LiveAvatarLecture({
 
         pc.ontrack = (event) => {
           if (videoRef.current && event.streams[0]) {
+            // Start muted to satisfy autoplay, then unmute right after play()
+            // so D-ID's lip-synced audio plays in sync with the video.
             videoRef.current.muted = true;
             videoRef.current.autoplay = true;
             videoRef.current.playsInline = true;
             videoRef.current.srcObject = event.streams[0];
             setHasAvatarStream(true);
-            videoRef.current.play().catch((playErr) => {
-              console.error('Video autoplay error:', playErr);
-            });
+            videoRef.current.play()
+              .then(() => {
+                if (videoRef.current && audioUnlockedRef.current && !isMutedRef.current) {
+                  videoRef.current.muted = false;
+                  videoRef.current.volume = 1;
+                }
+              })
+              .catch((playErr) => console.error('Video autoplay error:', playErr));
           }
         };
 
