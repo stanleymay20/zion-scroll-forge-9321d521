@@ -113,6 +113,8 @@ export function LiveAvatarLecture({
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const streamIdRef = useRef<string | null>(null);
   const sessionStreamRef = useRef<string | null>(null);
+  const providerKindRef = useRef<string | null>(null);
+  const auditSessionIdRef = useRef<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const screenRecorderRef = useRef<MediaRecorder | null>(null);
@@ -224,16 +226,28 @@ export function LiveAvatarLecture({
       const sid = await createSession();
       if (sid) setSessionId(sid);
 
+      const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
       const { data, error } = await supabase.functions.invoke('ai-avatar-stream', {
-        body: { action: 'create_stream' },
+        body: {
+          action: 'create_stream',
+          lecture_mode: 'live',
+          is_mobile: isMobile,
+          course_id: courseId ?? null,
+          module_id: moduleId ?? null,
+          tutor_id: tutorId ?? null,
+        },
       });
       if (error) throw error;
 
-      if (data?.fallback) {
-        // Provider unavailable — keep session going in audio/text mode.
+      providerKindRef.current = data?.provider_kind ?? null;
+      auditSessionIdRef.current = data?.audit_session_id ?? null;
+
+      const hasRealtime = Boolean(data?.stream_id && data?.session_id && data?.offer);
+      if (!hasRealtime) {
+        // Truthful fallback path — provider returned no realtime channel.
         avatarFallback = true;
-        fallbackReason = data.reason || 'AVATAR_PROVIDER_UNAVAILABLE';
-        setDeliveryMode(data.mode === 'audio' ? 'audio' : 'text');
+        fallbackReason = data?.reason || 'AVATAR_PROVIDER_UNAVAILABLE';
+        setDeliveryMode(data?.mode === 'audio' ? 'audio' : 'text');
         setIsConnected(true);
         toast.message('Live video avatar unavailable', {
           description: 'Continuing in voice/text mode.',
@@ -266,6 +280,7 @@ export function LiveAvatarLecture({
                 stream_id: streamIdRef.current,
                 session_id: sessionStreamRef.current,
                 candidate: event.candidate,
+                provider_kind: providerKindRef.current,
               },
             });
           }
@@ -290,6 +305,7 @@ export function LiveAvatarLecture({
             stream_id: data.stream_id,
             session_id: data.session_id,
             answer,
+            provider_kind: providerKindRef.current,
           },
         });
 
@@ -328,13 +344,16 @@ export function LiveAvatarLecture({
   const disconnectStream = useCallback(async () => {
     if (isRecording) await stopRecording();
 
-    if (streamIdRef.current) {
+    if (streamIdRef.current || auditSessionIdRef.current) {
       try {
         await supabase.functions.invoke('ai-avatar-stream', {
           body: {
             action: 'destroy_stream',
             stream_id: streamIdRef.current,
             session_id: sessionStreamRef.current,
+            provider_kind: providerKindRef.current,
+            audit_session_id: auditSessionIdRef.current,
+            end_reason: 'student_left',
           },
         });
       } catch (e) { console.error('Disconnect error:', e); }
@@ -350,6 +369,8 @@ export function LiveAvatarLecture({
     peerConnectionRef.current = null;
     streamIdRef.current = null;
     sessionStreamRef.current = null;
+    providerKindRef.current = null;
+    auditSessionIdRef.current = null;
     setIsConnected(false);
     setHasAvatarStream(false);
     setDeliveryMode('offline');
@@ -379,6 +400,8 @@ export function LiveAvatarLecture({
             action: 'talk',
             stream_id: streamIdRef.current,
             session_id: sessionStreamRef.current,
+            provider_kind: providerKindRef.current,
+            audit_session_id: auditSessionIdRef.current,
             text: speaker === 'cohost'
               ? `As co-lecturer ${cohostName} (${cohostSpecialty}), respond to: ${text}`
               : text,
@@ -390,6 +413,7 @@ export function LiveAvatarLecture({
             tutorId: speakerVoiceId,
             tutorName: speakerName,
             tutorSpecialty: speaker === 'cohost' ? cohostSpecialty : tutorSpecialty,
+            courseId,
             courseTitle,
             programTitle,
             facultyName,
