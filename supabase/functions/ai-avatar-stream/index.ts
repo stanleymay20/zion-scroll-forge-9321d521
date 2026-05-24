@@ -6,7 +6,7 @@ import {
   decidePedagogy, renderMemorySummary, EMPTY_MEMORY,
   type TeachingMode, type TutorStudentMemory,
 } from "../_shared/tutor-pedagogy.ts";
-import { healthAll, orchestrateCreate, providerByKind } from "../_shared/avatar-providers/registry.ts";
+import { healthAll, orchestrateCreate, providerByKind, probeSovereign } from "../_shared/avatar-providers/registry.ts";
 import type { LectureMode } from "../_shared/avatar-providers/types.ts";
 
 const corsHeaders = {
@@ -96,6 +96,16 @@ serve(async (req) => {
             estimated_cost_usd: 0,
           }));
           if (events.length) await supabase.from("live_lecture_events").insert(events);
+          // Shadow probe: log sovereign readiness without affecting selection.
+          try {
+            const sov = await probeSovereign();
+            await supabase.from("live_lecture_events").insert({
+              session_id: sessionRowId!,
+              event_type: "sovereign_shadow_probe",
+              payload: { healthy: sov.healthy, reason: sov.reason ?? null, kind: sov.kind },
+              estimated_cost_usd: 0,
+            });
+          } catch (e) { console.error("sovereign shadow probe failed", e); }
         } catch (e) { console.error("audit events insert failed", e); }
       }
 
