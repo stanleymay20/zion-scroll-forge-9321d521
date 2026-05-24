@@ -3,13 +3,16 @@
  * student study pipeline is wired end-to-end. All numbers come from
  * the v_learning_readiness view (no hardcoding).
  */
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PageTemplate } from '@/components/layout/PageTemplate';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
+import { CheckCircle2, AlertTriangle, Loader2, Sparkles } from 'lucide-react';
 
 type Readiness = {
   courses_total: number;
