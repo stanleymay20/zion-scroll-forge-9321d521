@@ -3,13 +3,16 @@
  * student study pipeline is wired end-to-end. All numbers come from
  * the v_learning_readiness view (no hardcoding).
  */
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PageTemplate } from '@/components/layout/PageTemplate';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
+import { CheckCircle2, AlertTriangle, Loader2, Sparkles } from 'lucide-react';
 
 type Readiness = {
   courses_total: number;
@@ -71,7 +74,10 @@ function Row({
 }
 
 export default function LearningReadiness() {
-  const { data, isLoading, error } = useQuery({
+  const [seeding, setSeeding] = useState(false);
+  const [lastRun, setLastRun] = useState<string | null>(null);
+
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['learning-readiness'],
     queryFn: async (): Promise<Readiness> => {
       const { data, error } = await supabase
@@ -83,6 +89,27 @@ export default function LearningReadiness() {
     },
     refetchInterval: 30_000,
   });
+
+  const runSeed = async () => {
+    setSeeding(true);
+    try {
+      const { data: res, error: err } = await supabase.functions.invoke(
+        'seed-quiz-questions',
+        { body: { batch_size: 10 } },
+      );
+      if (err) throw err;
+      setLastRun(
+        `Seeded ${res.processed_quizzes ?? 0} quizzes + ${res.processed_assignments ?? 0} assignments. ${res.errors?.length ? `${res.errors.length} errors.` : ''}`,
+      );
+      toast({ title: 'Batch complete', description: 'Run again to seed more.' });
+      await refetch();
+    } catch (e: any) {
+      toast({ title: 'Seed failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setSeeding(false);
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -174,6 +201,33 @@ export default function LearningReadiness() {
             hint="Quizzes need question pools before students can attempt them."
           />
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="h-4 w-4" /> Seed quiz question pools
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Generates 5 MCQs per module via Lovable AI for quizzes and quiz-type
+              assignments that still have empty pools. Processes ~10 of each per
+              click; run repeatedly until the quiz row above hits 100%.
+            </p>
+            <Button onClick={runSeed} disabled={seeding}>
+              {seeding ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Seeding…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" /> Run batch (10 quizzes + 10 assignments)
+                </>
+              )}
+            </Button>
+            {lastRun && <p className="text-xs text-muted-foreground">{lastRun}</p>}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
