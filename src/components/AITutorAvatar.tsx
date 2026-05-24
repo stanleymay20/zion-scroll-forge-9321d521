@@ -13,6 +13,7 @@ import { ReadyPlayerMeAvatar } from '@/components/ReadyPlayerMeAvatar';
 import { CollaborativeWhiteboard } from '@/components/CollaborativeWhiteboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getUserFriendlyError } from "@/lib/errors";
+import { resolveTutorAvatarUrl } from '@/lib/tutorAvatar';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -37,6 +38,7 @@ export const AITutorAvatar = ({
   moduleId,
   moduleContent
 }: AITutorAvatarProps) => {
+  const resolvedTutorAvatar = resolveTutorAvatarUrl(tutorAvatar);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -265,7 +267,7 @@ export const AITutorAvatar = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar className={`h-12 w-12 border-2 border-primary ${isSpeaking ? 'animate-pulse ring-4 ring-primary/50' : ''}`}>
-              <AvatarImage src={tutorAvatar} />
+              <AvatarImage src={resolvedTutorAvatar} />
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {tutorName.charAt(0)}
               </AvatarFallback>
