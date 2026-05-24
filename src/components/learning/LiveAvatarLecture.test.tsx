@@ -175,7 +175,13 @@ describe('LiveAvatarLecture workflow', () => {
   it('shows truthful text fallback when avatar stream creation fails', async () => {
     invokeMock.mockImplementationOnce(() => Promise.resolve({ data: null, error: new Error('provider unavailable') }));
 
-    render(<LiveAvatarLecture tutorName="Caleb" tutorSpecialty="Computer Science & AI" />);
+    render(
+      <LiveAvatarLecture
+        tutorName="Caleb"
+        tutorSpecialty="Computer Science & AI"
+        courseTitle="AI Ethics & Responsible Systems"
+      />
+    );
     fireEvent.click(screen.getByRole('button', { name: /start lecture/i }));
 
     await waitFor(() =>
