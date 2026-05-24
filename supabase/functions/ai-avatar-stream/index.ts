@@ -105,6 +105,7 @@ serve(async (req) => {
         lectureMode, isMobile, budgetCeilingUsd,
         preferredLanguage: body.language ?? null,
         facultyVoiceId: body.faculty_voice_id ?? null,
+        avatarImageUrl: body.avatar_image_url ?? null,
       });
 
       // Persist a session row (audit-first; never blocks the user)
