@@ -233,10 +233,11 @@ export function LiveAvatarLecture({
     let fallbackReason: string | null = null;
 
     try {
-      const sid = await createSession();
+      const sid = await withTimeout(createSession(), 8000, 'CREATE_AUDIT_SESSION');
       if (sid) setSessionId(sid);
 
       const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
+      const connectionDeadlineMs = isMobile ? 8000 : 15000;
       const { data, error } = await withTimeout(
         supabase.functions.invoke('ai-avatar-stream', {
           body: {
@@ -337,16 +338,20 @@ export function LiveAvatarLecture({
         setDeliveryMode('avatar');
         toast.success('🎥 Live lecture started');
 
-        // Track-arrival watchdog: if no remote video frames after 15s,
+        // Track-arrival watchdog: if no remote video frames after the device-specific deadline,
         // demote to voice/text truthfully so the user is never stuck.
         setTimeout(() => {
           if (!videoRef.current?.srcObject) {
+            peerConnectionRef.current?.close();
+            peerConnectionRef.current = null;
             setDeliveryMode((prev) => (prev === 'avatar' ? 'audio' : prev));
+            setHasAvatarStream(false);
+            setIsConnecting(false);
             toast.message('Live video did not arrive', {
               description: 'Continuing in voice/text mode.',
             });
           }
-        }, 15000);
+        }, connectionDeadlineMs);
       }
 
 
