@@ -191,7 +191,28 @@ export function LiveAvatarLecture({
   };
 
   const connectStream = useCallback(async () => {
+    // Guardrail: do not allow start without verified course context.
+    if (!courseTitle) {
+      toast.error('No assigned live class found for your program.');
+      return;
+    }
     setIsConnecting(true);
+
+    // Unlock browser audio inside the same user gesture (autoplay policy).
+    // Safe to call repeatedly.
+    try {
+      const probe = new Audio();
+      probe.muted = true;
+      probe.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+      await probe.play().catch(() => {});
+      probe.pause();
+      setAudioUnlocked(true);
+      setIsMuted(false);
+    } catch { /* ignore */ }
+
+    let avatarFallback = false;
+    let fallbackReason: string | null = null;
+
     try {
       const sid = await createSession();
       if (sid) setSessionId(sid);
@@ -201,67 +222,78 @@ export function LiveAvatarLecture({
       });
       if (error) throw error;
 
-      streamIdRef.current = data.stream_id;
-      sessionStreamRef.current = data.session_id;
+      if (data?.fallback) {
+        // Provider unavailable — keep session going in audio/text mode.
+        avatarFallback = true;
+        fallbackReason = data.reason || 'AVATAR_PROVIDER_UNAVAILABLE';
+        setDeliveryMode(data.mode === 'audio' ? 'audio' : 'text');
+        setIsConnected(true);
+        toast.message('Live video avatar unavailable', {
+          description: 'Continuing in voice/text mode.',
+        });
+      } else {
+        streamIdRef.current = data.stream_id;
+        sessionStreamRef.current = data.session_id;
 
-      const pc = new RTCPeerConnection({
-        iceServers: data.ice_servers || [{ urls: 'stun:stun.l.google.com:19302' }],
-      });
-      peerConnectionRef.current = pc;
+        const pc = new RTCPeerConnection({
+          iceServers: data.ice_servers || [{ urls: 'stun:stun.l.google.com:19302' }],
+        });
+        peerConnectionRef.current = pc;
 
-      pc.ontrack = (event) => {
-        if (videoRef.current && event.streams[0]) {
-          videoRef.current.muted = true;
-          videoRef.current.srcObject = event.streams[0];
-          videoRef.current.play().catch((playErr) => {
-            console.error('Video autoplay error:', playErr);
-          });
-        }
-      };
+        pc.ontrack = (event) => {
+          if (videoRef.current && event.streams[0]) {
+            videoRef.current.muted = false;
+            videoRef.current.srcObject = event.streams[0];
+            videoRef.current.play().catch((playErr) => {
+              console.error('Video autoplay error:', playErr);
+            });
+          }
+        };
 
-      pc.onicecandidate = async (event) => {
-        if (event.candidate && streamIdRef.current && sessionStreamRef.current) {
-          await supabase.functions.invoke('ai-avatar-stream', {
-            body: {
-              action: 'ice_candidate',
-              stream_id: streamIdRef.current,
-              session_id: sessionStreamRef.current,
-              candidate: event.candidate,
-            },
-          });
-        }
-      };
+        pc.onicecandidate = async (event) => {
+          if (event.candidate && streamIdRef.current && sessionStreamRef.current) {
+            await supabase.functions.invoke('ai-avatar-stream', {
+              body: {
+                action: 'ice_candidate',
+                stream_id: streamIdRef.current,
+                session_id: sessionStreamRef.current,
+                candidate: event.candidate,
+              },
+            });
+          }
+        };
 
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'connected') {
-          setIsConnected(true);
-          setIsConnecting(false);
-        } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-          setIsConnected(false);
-        }
-      };
+        pc.onconnectionstatechange = () => {
+          if (pc.connectionState === 'connected') {
+            setIsConnected(true);
+            setIsConnecting(false);
+          } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+            setIsConnected(false);
+          }
+        };
 
-      await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
 
-      await supabase.functions.invoke('ai-avatar-stream', {
-        body: {
-          action: 'sdp_answer',
-          stream_id: data.stream_id,
-          session_id: data.session_id,
-          answer,
-        },
-      });
+        await supabase.functions.invoke('ai-avatar-stream', {
+          body: {
+            action: 'sdp_answer',
+            stream_id: data.stream_id,
+            session_id: data.session_id,
+            answer,
+          },
+        });
 
-      setIsConnected(true);
-      setDeliveryMode('avatar');
-      toast.success('🎥 Live lecture started');
+        setIsConnected(true);
+        setDeliveryMode('avatar');
+        toast.success('🎥 Live lecture started');
+      }
 
-      const courseLabel = courseTitle
-        ? `${courseTitle}${moduleTitle ? ` — module "${moduleTitle}"` : ''}`
-        : (moduleTitle || 'this session');
-      const programBit = programTitle ? ` in ${programTitle}${facultyName ? ` (${facultyName})` : ''}` : '';
+      const courseLabel = `${courseTitle}${moduleTitle ? ` — module "${moduleTitle}"` : ''}`;
+      const programBit = programTitle
+        ? ` in ${programTitle}${facultyName ? ` (${facultyName})` : ''}`
+        : facultyName ? ` (${facultyName})` : '';
       const namePart = studentName ? `, ${studentName}` : '';
       const cohostLine = hasCohost
         ? ` Briefly introduce your co-lecturer ${cohostName}${cohostSpecialty ? ` (${cohostSpecialty})` : ''}, then invite the student in.`
@@ -277,14 +309,13 @@ export function LiveAvatarLecture({
     } catch (err: any) {
       console.error('Stream connection error:', err);
       setDeliveryMode('text');
-      toast.error('Failed to connect avatar stream. Switching to truthful tutor fallback.');
-      setShowVideo(false);
+      toast.error('Live class connection failed. Text tutor still available.');
       setIsConnected(true);
     } finally {
       setIsConnecting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleContent, hasCohost, cohostName, cohostSpecialty, moduleTitle, tutorName]);
+  }, [moduleContent, hasCohost, cohostName, cohostSpecialty, moduleTitle, tutorName, courseTitle, programTitle, facultyName, studentName]);
 
   const disconnectStream = useCallback(async () => {
     if (isRecording) await stopRecording();
