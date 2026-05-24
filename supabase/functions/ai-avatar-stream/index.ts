@@ -57,6 +57,43 @@ serve(async (req) => {
 
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
+    if (action === "transcribe_audio") {
+      const audioBase64 = typeof body.audio_base64 === "string" ? body.audio_base64 : "";
+      if (!audioBase64) return json({ error: "audio_base64 is required" }, 400);
+
+      let audioBytes: Uint8Array;
+      try {
+        audioBytes = Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0));
+      } catch {
+        return json({ error: "audio_base64 is not valid base64" }, 400);
+      }
+
+      const transcriptionResponse = await fetch("https://ai.gateway.lovable.dev/v1/audio/transcriptions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "audio/webm",
+        },
+        body: audioBytes,
+      });
+
+      if (transcriptionResponse.status === 429) {
+        return json({ error: "RATE_LIMITED", message: "Rate limited." }, 429);
+      }
+      if (transcriptionResponse.status === 402) {
+        return json({ error: "CREDITS_REQUIRED", message: "AI credits exhausted." }, 402);
+      }
+      if (!transcriptionResponse.ok) {
+        const detail = await transcriptionResponse.text().catch(() => "");
+        console.error("transcribe_audio failed", transcriptionResponse.status, detail);
+        return json({ error: "TRANSCRIPTION_FAILED" }, 502);
+      }
+
+      const { text } = await transcriptionResponse.json();
+      const transcript = typeof text === "string" ? text.trim() : "";
+      return json({ transcript });
+    }
+
     // ── create_stream: orchestrate + audit ──────────────────────────────────
     if (action === "create_stream") {
       const lectureMode: LectureMode = (body.lecture_mode as LectureMode) ?? "live";
