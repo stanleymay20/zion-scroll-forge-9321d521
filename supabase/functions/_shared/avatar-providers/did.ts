@@ -73,15 +73,29 @@ export function createDidProvider(): AvatarProvider {
           reason: "AVATAR_PROVIDER_UNCONFIGURED", estimatedCostPerMinuteUsd: COST_PER_MIN_USD };
       }
       try {
-        const r = await fetch("https://api.d-id.com/talks/streams", {
-          method: "POST",
-          headers: { Authorization: auth(), "Content-Type": "application/json" },
-          body: JSON.stringify({
-            source_url: input.avatarImageUrl || "https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg",
-            driver_url: "bank://lively",
-            config: { stitch: true, fluent: true },
-          }),
-        });
+        const createStream = async (sourceUrl?: string | null) => {
+          return await fetch("https://api.d-id.com/talks/streams", {
+            method: "POST",
+            headers: { Authorization: auth(), "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source_url: sourceUrl || "https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg",
+              driver_url: "bank://lively",
+              config: { stitch: true, fluent: true },
+            }),
+          });
+        };
+
+        let r = await createStream(input.avatarImageUrl);
+        if (!r.ok && input.avatarImageUrl && r.status === 400) {
+          const detail = await r.text().catch(() => "");
+          console.warn("D-ID rejected custom source avatar; retrying with safe default", {
+            avatarImageUrl: input.avatarImageUrl,
+            status: r.status,
+            detail,
+          });
+          r = await createStream(null);
+        }
+
         if (!r.ok) {
           const reason =
             r.status === 402 ? "AVATAR_PROVIDER_CREDITS_EXHAUSTED" :
