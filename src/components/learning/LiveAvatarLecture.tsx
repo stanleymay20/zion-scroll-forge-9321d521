@@ -433,6 +433,10 @@ export function LiveAvatarLecture({
       }).eq('id', sessionId);
     }
 
+    if (trackWatchdogRef.current) {
+      clearTimeout(trackWatchdogRef.current);
+      trackWatchdogRef.current = null;
+    }
     peerConnectionRef.current?.close();
     peerConnectionRef.current = null;
     streamIdRef.current = null;
