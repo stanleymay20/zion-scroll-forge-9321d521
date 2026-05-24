@@ -278,7 +278,9 @@ export function LiveAvatarLecture({
 
         pc.ontrack = (event) => {
           if (videoRef.current && event.streams[0]) {
-            videoRef.current.muted = false;
+            videoRef.current.muted = true;
+            videoRef.current.autoplay = true;
+            videoRef.current.playsInline = true;
             videoRef.current.srcObject = event.streams[0];
             setHasAvatarStream(true);
             videoRef.current.play().catch((playErr) => {
@@ -331,6 +333,7 @@ export function LiveAvatarLecture({
         // Mark connected so the "Connecting…" panel disappears even if the
         // remote video track never arrives. UI will show truthful fallback.
         setIsConnected(true);
+        setIsConnecting(false);
         setDeliveryMode('avatar');
         toast.success('🎥 Live lecture started');
 
@@ -362,7 +365,7 @@ export function LiveAvatarLecture({
         `but to understand how this work shapes wise, faithful, and excellent thinking. Take a breath — we'll go step by step." ` +
         `Then in one or two short sentences, name the single most important thing you want them to take away from this session, ` +
         `and end with one gentle question that invites them to start.${cohostLine}`;
-      await sendToAvatar(intro, 'host', sid || undefined, true);
+      void sendToAvatar(intro, 'host', sid || undefined, true);
     } catch (err: any) {
       console.error('Stream connection error:', err);
       setDeliveryMode('text');
@@ -428,33 +431,37 @@ export function LiveAvatarLecture({
         const speakerName = speaker === 'cohost' ? cohostName : tutorName;
         const speakerVoiceId = speaker === 'cohost' ? cohostId : tutorId;
 
-        const { data, error } = await supabase.functions.invoke('ai-avatar-stream', {
-          body: {
-            action: 'talk',
-            stream_id: streamIdRef.current,
-            session_id: sessionStreamRef.current,
-            provider_kind: providerKindRef.current,
-            audit_session_id: auditSessionIdRef.current,
-            text: speaker === 'cohost'
-              ? `As co-lecturer ${cohostName} (${cohostSpecialty}), respond to: ${text}`
-              : text,
-            messages: messages.map((m) => ({
-              role: m.role === 'user' ? 'user' : 'assistant',
-              content: `${m.speakerName ? `[${m.speakerName}] ` : ''}${m.content}`,
-            })),
-            moduleContent: moduleContent?.substring(0, 3000),
-            tutorId: speakerVoiceId,
-            tutorName: speakerName,
-            tutorSpecialty: speaker === 'cohost' ? cohostSpecialty : tutorSpecialty,
-            courseId,
-            courseTitle,
-            programTitle,
-            facultyName,
-            moduleTitle,
-            studentName,
-            learningObjectives,
-          },
-        });
+        const { data, error } = await withTimeout(
+          supabase.functions.invoke('ai-avatar-stream', {
+            body: {
+              action: 'talk',
+              stream_id: streamIdRef.current,
+              session_id: sessionStreamRef.current,
+              provider_kind: providerKindRef.current,
+              audit_session_id: auditSessionIdRef.current,
+              text: speaker === 'cohost'
+                ? `As co-lecturer ${cohostName} (${cohostSpecialty}), respond to: ${text}`
+                : text,
+              messages: messages.map((m) => ({
+                role: m.role === 'user' ? 'user' : 'assistant',
+                content: `${m.speakerName ? `[${m.speakerName}] ` : ''}${m.content}`,
+              })),
+              moduleContent: moduleContent?.substring(0, 3000),
+              tutorId: speakerVoiceId,
+              tutorName: speakerName,
+              tutorSpecialty: speaker === 'cohost' ? cohostSpecialty : tutorSpecialty,
+              courseId,
+              courseTitle,
+              programTitle,
+              facultyName,
+              moduleTitle,
+              studentName,
+              learningObjectives,
+            },
+          }),
+          isSystem ? 12000 : 20000,
+          isSystem ? 'TALK_INTRO' : 'TALK',
+        );
 
         if (error) throw error;
 
