@@ -247,7 +247,9 @@ export function LiveAvatarLecture({
       if (sid) setSessionId(sid);
 
       const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
-      const connectionDeadlineMs = isMobile ? 8000 : 15000;
+      // D-ID typically needs 8–15s after sdp_answer before the first avatar
+      // video frame arrives. Give mobile 20s and desktop 30s before demoting.
+      const connectionDeadlineMs = isMobile ? 20000 : 30000;
       const { data, error } = await withTimeout(
         supabase.functions.invoke('ai-avatar-stream', {
           body: {
