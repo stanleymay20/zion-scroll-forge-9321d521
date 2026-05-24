@@ -142,8 +142,8 @@ export function LiveAvatarLecture({
   const remoteMediaStreamRef = useRef<MediaStream | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const voiceMonitorCleanupRef = useRef<(() => void) | null>(null);
-  const silenceTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
-  const autoContinueTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const silenceTimeoutRef = useRef<number | null>(null);
+  const autoContinueTimeoutRef = useRef<number | null>(null);
   const consecutiveAutoTurnsRef = useRef(0);
   const voiceLoopEnabledRef = useRef(false);
   const isTranscribingVoiceRef = useRef(false);
