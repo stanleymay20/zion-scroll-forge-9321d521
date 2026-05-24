@@ -237,17 +237,22 @@ export function LiveAvatarLecture({
       if (sid) setSessionId(sid);
 
       const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
-      const { data, error } = await supabase.functions.invoke('ai-avatar-stream', {
-        body: {
-          action: 'create_stream',
-          lecture_mode: 'live',
-          is_mobile: isMobile,
-          course_id: courseId ?? null,
-          module_id: moduleId ?? null,
-          tutor_id: tutorId ?? null,
-        },
-      });
+      const { data, error } = await withTimeout(
+        supabase.functions.invoke('ai-avatar-stream', {
+          body: {
+            action: 'create_stream',
+            lecture_mode: 'live',
+            is_mobile: isMobile,
+            course_id: courseId ?? null,
+            module_id: moduleId ?? null,
+            tutor_id: tutorId ?? null,
+          },
+        }),
+        20000,
+        'CREATE_STREAM',
+      );
       if (error) throw error;
+
 
       providerKindRef.current = data?.provider_kind ?? null;
       auditSessionIdRef.current = data?.audit_session_id ?? null;
