@@ -6,36 +6,44 @@
 import { profileService } from '../ProfileService';
 import { PrismaClient } from '@prisma/client';
 
+// Get the mocked Prisma instance
 const prisma = new PrismaClient();
 
 describe('ProfileService', () => {
   let testUserId: string;
 
-  beforeAll(async () => {
-    // Create a test user
-    const testUser = await prisma.user.create({
-      data: {
-        email: 'profile.test@scrolluniversity.com',
-        username: 'profiletest',
-        passwordHash: 'test_hash',
-        firstName: 'Profile',
-        lastName: 'Test',
-        role: 'STUDENT',
-        enrollmentStatus: 'ACTIVE',
-        academicLevel: 'SCROLL_OPEN'
-      }
-    });
-    testUserId = testUser.id;
-  });
-
-  afterAll(async () => {
-    // Cleanup
-    await prisma.user.delete({ where: { id: testUserId } }).catch(() => {});
-    await prisma.$disconnect();
+  beforeEach(() => {
+    jest.clearAllMocks();
+    testUserId = 'test-user-123';
   });
 
   describe('getProfile', () => {
     it('should retrieve user profile', async () => {
+      const mockUser = {
+        id: testUserId,
+        email: 'profile.test@scrolluniversity.com',
+        username: 'profiletest',
+        firstName: 'Profile',
+        lastName: 'Test',
+        bio: null,
+        avatarUrl: null,
+        dateOfBirth: null,
+        phoneNumber: null,
+        location: null,
+        role: 'STUDENT',
+        academicLevel: 'SCROLL_OPEN',
+        enrollmentStatus: 'ACTIVE',
+        scrollCalling: null,
+        spiritualGifts: [],
+        kingdomVision: null,
+        scrollAlignment: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastLoginAt: null,
+      };
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(mockUser);
+
       const profile = await profileService.getProfile(testUserId);
 
       expect(profile).toBeDefined();
@@ -43,9 +51,15 @@ describe('ProfileService', () => {
       expect(profile.email).toBe('profile.test@scrolluniversity.com');
       expect(profile.firstName).toBe('Profile');
       expect(profile.lastName).toBe('Test');
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: testUserId },
+        select: expect.any(Object),
+      });
     });
 
     it('should throw error for non-existent user', async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
+
       await expect(profileService.getProfile('non-existent-id')).rejects.toThrow('User not found');
     });
   });
@@ -55,8 +69,33 @@ describe('ProfileService', () => {
       const updates = {
         bio: 'Test bio for profile',
         location: 'Test City',
-        scrollCalling: 'To serve in the kingdom'
+        scrollCalling: 'To serve in the kingdom',
       };
+
+      const updatedUser = {
+        id: testUserId,
+        email: 'profile.test@scrolluniversity.com',
+        username: 'profiletest',
+        firstName: 'Profile',
+        lastName: 'Test',
+        bio: updates.bio,
+        avatarUrl: null,
+        dateOfBirth: null,
+        phoneNumber: null,
+        location: updates.location,
+        role: 'STUDENT',
+        academicLevel: 'SCROLL_OPEN',
+        enrollmentStatus: 'ACTIVE',
+        scrollCalling: updates.scrollCalling,
+        spiritualGifts: [],
+        kingdomVision: null,
+        scrollAlignment: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastLoginAt: null,
+      };
+
+      (prisma.user.update as jest.Mock).mockResolvedValueOnce(updatedUser);
 
       const updatedProfile = await profileService.updateProfile(testUserId, updates);
 
@@ -67,7 +106,7 @@ describe('ProfileService', () => {
 
     it('should validate profile updates', async () => {
       const invalidUpdates = {
-        firstName: 'A' // Too short
+        firstName: 'A', // Too short
       };
 
       await expect(profileService.updateProfile(testUserId, invalidUpdates)).rejects.toThrow();
@@ -76,6 +115,22 @@ describe('ProfileService', () => {
 
   describe('getCompletionStatus', () => {
     it('should calculate completion percentage', async () => {
+      const mockUser = {
+        id: testUserId,
+        firstName: 'Profile',
+        lastName: 'Test',
+        bio: 'Test bio',
+        avatarUrl: 'http://example.com/avatar.jpg',
+        dateOfBirth: new Date('1990-01-01'),
+        phoneNumber: '+1234567890',
+        location: 'Test City',
+        scrollCalling: 'To serve',
+        spiritualGifts: ['Teaching'],
+        kingdomVision: 'To build the kingdom',
+      };
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(mockUser);
+
       const status = await profileService.getCompletionStatus(testUserId);
 
       expect(status).toBeDefined();
@@ -89,6 +144,33 @@ describe('ProfileService', () => {
 
   describe('searchProfiles', () => {
     it('should search profiles by query', async () => {
+      const mockResults = [
+        {
+          id: testUserId,
+          email: 'profile.test@scrolluniversity.com',
+          username: 'profiletest',
+          firstName: 'Profile',
+          lastName: 'Test',
+          bio: null,
+          avatarUrl: null,
+          dateOfBirth: null,
+          phoneNumber: null,
+          location: null,
+          role: 'STUDENT',
+          academicLevel: 'SCROLL_OPEN',
+          enrollmentStatus: 'ACTIVE',
+          scrollCalling: null,
+          spiritualGifts: [],
+          kingdomVision: null,
+          scrollAlignment: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastLoginAt: null,
+        },
+      ];
+
+      (prisma.user.findMany as jest.Mock).mockResolvedValueOnce(mockResults);
+
       const results = await profileService.searchProfiles('Profile', 10);
 
       expect(Array.isArray(results)).toBe(true);
@@ -97,6 +179,8 @@ describe('ProfileService', () => {
     });
 
     it('should return empty array for no matches', async () => {
+      (prisma.user.findMany as jest.Mock).mockResolvedValueOnce([]);
+
       const results = await profileService.searchProfiles('NonExistentUser12345', 10);
 
       expect(Array.isArray(results)).toBe(true);
@@ -106,6 +190,22 @@ describe('ProfileService', () => {
 
   describe('getPublicProfile', () => {
     it('should return limited profile information', async () => {
+      const mockPublicProfile = {
+        id: testUserId,
+        username: 'profiletest',
+        firstName: 'Profile',
+        lastName: 'Test',
+        bio: null,
+        avatarUrl: null,
+        location: null,
+        scrollCalling: null,
+        spiritualGifts: [],
+        scrollAlignment: 0,
+        createdAt: new Date(),
+      };
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(mockPublicProfile);
+
       const publicProfile = await profileService.getPublicProfile(testUserId);
 
       expect(publicProfile).toBeDefined();
