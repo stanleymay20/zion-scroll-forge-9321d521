@@ -40,6 +40,7 @@ class CDNIntegration {
     try {
       if (import.meta.env.PROD) {
         const response = await fetch('/asset-manifest.json');
+        if (!response.ok) return;
         const manifest = await response.json();
         Object.entries(manifest).forEach(([key, value]) => {
           this.assetManifest.set(key, value as string);
@@ -242,11 +243,4 @@ export function useCDNAsset(path: string, options: AssetOptions = {}) {
  */
 export function initializeCDN() {
   cdnIntegration.preconnect();
-
-  // Preload critical assets
-  const criticalAssets = [
-    '/fonts/inter-var.woff2',
-    '/images/logo.svg',
-  ];
-  cdnIntegration.preloadAssets(criticalAssets);
 }
