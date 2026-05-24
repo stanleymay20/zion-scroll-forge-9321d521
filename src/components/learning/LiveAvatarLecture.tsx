@@ -251,6 +251,7 @@ export function LiveAvatarLecture({
           if (videoRef.current && event.streams[0]) {
             videoRef.current.muted = false;
             videoRef.current.srcObject = event.streams[0];
+            setHasAvatarStream(true);
             videoRef.current.play().catch((playErr) => {
               console.error('Video autoplay error:', playErr);
             });
