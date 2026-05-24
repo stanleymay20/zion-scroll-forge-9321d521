@@ -866,12 +866,14 @@ export function LiveAvatarLecture({
       return;
     }
 
+    consecutiveAutoTurnsRef.current = 0;
+    cancelAutoContinue();
     const userMsg: Message = { role: 'user', content: cleanedTranscript, timestamp: new Date() };
     setMessages((prev) => [...prev, userMsg]);
     if (sessionId) await persistTranscript(sessionId, 'user', cleanedTranscript, 'You');
     await sendToAvatar(cleanedTranscript, 'host');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, isDisconnecting, isLoading, isRecordingVoice, isSpeaking, sessionId, sendToAvatar]);
+  }, [cancelAutoContinue, isConnected, isDisconnecting, isLoading, isRecordingVoice, isSpeaking, sessionId, sendToAvatar]);
 
   const selectRecorderMimeType = () => {
     if (typeof MediaRecorder === 'undefined') return '';
@@ -1079,6 +1081,7 @@ export function LiveAvatarLecture({
   const stopVoiceInput = () => {
     voiceLoopEnabledRef.current = false;
     setIsVoiceLoopEnabled(false);
+    cancelAutoContinue();
     cleanupVoiceCapture(true);
   };
 
