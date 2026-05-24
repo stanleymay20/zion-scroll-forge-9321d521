@@ -124,6 +124,7 @@ export function LiveAvatarLecture({
   // the same click gesture that sets it) can play without waiting for React state.
   const audioUnlockedRef = useRef(false);
   const isMutedRef = useRef(false);
+  const trackWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
   useEffect(() => {
     isMutedRef.current = isMuted;
