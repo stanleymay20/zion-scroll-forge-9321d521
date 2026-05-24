@@ -711,7 +711,7 @@ export function LiveAvatarLecture({
                 {tutorName}{hasCohost && ` & ${cohostName}`}
                 <Badge variant="secondary" className="text-xs">
                   <Sparkles className="h-3 w-3 mr-1" />
-                  {hasCohost ? 'Panel' : 'Live Avatar'}
+                  {hasCohost ? 'Panel' : hasAvatarStream ? 'Live Avatar' : deliveryMode === 'audio' ? 'Voice Tutor' : deliveryMode === 'text' ? 'Text Tutor' : 'AI Tutor'}
                 </Badge>
                 {isRecording && (
                   <Badge variant="destructive" className="text-xs gap-1">
