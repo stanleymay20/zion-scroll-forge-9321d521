@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LiveAvatarLecture } from './LiveAvatarLecture';
 
 const invokeMock = vi.fn();
+const supabaseUrl = 'https://example.supabase.co';
+
+vi.stubEnv('VITE_SUPABASE_URL', supabaseUrl);
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -161,6 +164,13 @@ describe('LiveAvatarLecture workflow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /start lecture/i }));
     await waitFor(() => expect(screen.getAllByText(hasText('delivery: live avatar')).length).toBeGreaterThan(0));
+
+    expect(invokeMock).toHaveBeenCalledWith('ai-avatar-stream', expect.objectContaining({
+      body: expect.objectContaining({
+        action: 'create_stream',
+        avatar_image_url: `${supabaseUrl}/storage/v1/object/public/avatars/default-tutor.jpg`,
+      }),
+    }));
 
     const input = screen.getByPlaceholderText(/ask, or tap hand to queue/i);
     fireEvent.change(input, { target: { value: 'Can you explain the practical implication?' } });
