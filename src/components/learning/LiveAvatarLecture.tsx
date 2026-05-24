@@ -821,6 +821,9 @@ export function LiveAvatarLecture({
                     if (!isConnected && !isConnecting) return 'Ready';
                     if (isConnecting) return 'Reconnecting';
                     if (hasAvatarStream) return 'Live Avatar';
+                    // Stream session was created but video frames haven't
+                    // arrived yet — show truthful negotiating state.
+                    if (deliveryMode === 'avatar' && trackWatchdogRef.current) return 'Negotiating video…';
                     if (deliveryMode === 'audio') return 'Voice Tutor';
                     if (deliveryMode === 'text') return 'Text Tutor';
                     if (!audioUnlocked) return 'Audio Disabled';
