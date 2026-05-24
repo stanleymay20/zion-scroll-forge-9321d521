@@ -104,6 +104,7 @@ export function LiveAvatarLecture({
   const [showQueue, setShowQueue] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [hasAvatarStream, setHasAvatarStream] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [micStatus, setMicStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied' | 'no-device' | 'in-use' | 'unsupported'>('idle');
   const [micLevel, setMicLevel] = useState(0);
 
@@ -125,6 +126,7 @@ export function LiveAvatarLecture({
   const audioUnlockedRef = useRef(false);
   const isMutedRef = useRef(false);
   const trackWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectionEpochRef = useRef(0);
   useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -217,6 +219,45 @@ export function LiveAvatarLecture({
     ]);
   };
 
+  const teardownLocalSession = useCallback(() => {
+    connectionEpochRef.current += 1;
+
+    if (trackWatchdogRef.current) {
+      clearTimeout(trackWatchdogRef.current);
+      trackWatchdogRef.current = null;
+    }
+
+    audioRef.current?.pause();
+    audioRef.current = null;
+
+    const activeVideo = videoRef.current;
+    const activeStream = activeVideo?.srcObject;
+    if (activeStream instanceof MediaStream) {
+      activeStream.getTracks().forEach((track) => track.stop());
+    }
+
+    if (activeVideo) {
+      activeVideo.pause();
+      activeVideo.srcObject = null;
+      activeVideo.muted = true;
+    }
+
+    peerConnectionRef.current?.close();
+    peerConnectionRef.current = null;
+    streamIdRef.current = null;
+    sessionStreamRef.current = null;
+    providerKindRef.current = null;
+    auditSessionIdRef.current = null;
+
+    setIsConnected(false);
+    setIsConnecting(false);
+    setHasAvatarStream(false);
+    setIsLoading(false);
+    setIsSpeaking(false);
+    setActiveSpeaker(null);
+    setDeliveryMode('offline');
+  }, []);
+
   const connectStream = useCallback(async () => {
     // Guardrail: do not allow start without verified course context.
     if (!courseTitle) {
@@ -243,7 +284,11 @@ export function LiveAvatarLecture({
     let fallbackReason: string | null = null;
 
     try {
+      const connectEpoch = connectionEpochRef.current + 1;
+      connectionEpochRef.current = connectEpoch;
+
       const sid = await withTimeout(createSession(), 8000, 'CREATE_AUDIT_SESSION');
+      if (connectEpoch !== connectionEpochRef.current) return;
       if (sid) setSessionId(sid);
 
       const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
@@ -265,6 +310,7 @@ export function LiveAvatarLecture({
         'CREATE_STREAM',
       );
       if (error) throw error;
+      if (connectEpoch !== connectionEpochRef.current) return;
 
 
       providerKindRef.current = data?.provider_kind ?? null;
@@ -290,6 +336,7 @@ export function LiveAvatarLecture({
         peerConnectionRef.current = pc;
 
         pc.ontrack = (event) => {
+          if (connectEpoch !== connectionEpochRef.current) return;
           if (videoRef.current && event.streams[0]) {
             // First media track arrived — cancel the demotion watchdog.
             if (trackWatchdogRef.current) {
@@ -322,7 +369,12 @@ export function LiveAvatarLecture({
                 action: 'ice_candidate',
                 stream_id: streamIdRef.current,
                 session_id: sessionStreamRef.current,
-                candidate: event.candidate,
+                candidate: event.candidate.toJSON?.() ?? {
+                  candidate: event.candidate.candidate,
+                  sdpMid: event.candidate.sdpMid,
+                  sdpMLineIndex: event.candidate.sdpMLineIndex,
+                  usernameFragment: event.candidate.usernameFragment,
+                },
                 provider_kind: providerKindRef.current,
               },
             });
@@ -355,6 +407,7 @@ export function LiveAvatarLecture({
           15000,
           'SDP_ANSWER',
         );
+        if (connectEpoch !== connectionEpochRef.current) return;
 
         // Mark connected so the "Connecting…" panel disappears even if the
         // remote video track never arrives. UI will show truthful fallback.
@@ -367,6 +420,7 @@ export function LiveAvatarLecture({
         // demote to voice/text truthfully so the user is never stuck. Cancelled in ontrack.
         if (trackWatchdogRef.current) clearTimeout(trackWatchdogRef.current);
         trackWatchdogRef.current = setTimeout(() => {
+          if (connectEpoch !== connectionEpochRef.current) return;
           if (!videoRef.current?.srcObject) {
             peerConnectionRef.current?.close();
             peerConnectionRef.current = null;
@@ -409,47 +463,59 @@ export function LiveAvatarLecture({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moduleContent, hasCohost, cohostName, cohostSpecialty, moduleTitle, tutorName, courseTitle, programTitle, facultyName, studentName]);
 
-  const disconnectStream = useCallback(async () => {
-    if (isRecording) await stopRecording();
+  const disconnectStream = useCallback(() => {
+    if (isDisconnecting) return;
 
-    if (streamIdRef.current || auditSessionIdRef.current) {
-      try {
-        await supabase.functions.invoke('ai-avatar-stream', {
-          body: {
-            action: 'destroy_stream',
-            stream_id: streamIdRef.current,
-            session_id: sessionStreamRef.current,
-            provider_kind: providerKindRef.current,
-            audit_session_id: auditSessionIdRef.current,
-            end_reason: 'student_left',
-          },
-        });
-      } catch (e) { console.error('Disconnect error:', e); }
+    setIsDisconnecting(true);
+
+    const currentStreamId = streamIdRef.current;
+    const currentSessionStreamId = sessionStreamRef.current;
+    const currentProviderKind = providerKindRef.current;
+    const currentAuditSessionId = auditSessionIdRef.current;
+    const currentLectureSessionId = sessionId;
+
+    if (isRecording) void stopRecording();
+
+    teardownLocalSession();
+    setSessionId(null);
+    setQuestions([]);
+
+    const cleanupTasks: Promise<unknown>[] = [];
+
+    if (currentStreamId || currentAuditSessionId) {
+      cleanupTasks.push(
+        withTimeout(
+          supabase.functions.invoke('ai-avatar-stream', {
+            body: {
+              action: 'destroy_stream',
+              stream_id: currentStreamId,
+              session_id: currentSessionStreamId,
+              provider_kind: currentProviderKind,
+              audit_session_id: currentAuditSessionId,
+              end_reason: 'student_left',
+            },
+          }),
+          5000,
+          'DESTROY_STREAM',
+        ).catch((e) => {
+          console.error('Disconnect error:', e);
+        })
+      );
     }
 
-    if (sessionId) {
-      await supabase.from('lecture_sessions').update({
-        ended_at: new Date().toISOString(),
-      }).eq('id', sessionId);
+    if (currentLectureSessionId) {
+      cleanupTasks.push(
+        supabase.from('lecture_sessions').update({
+          ended_at: new Date().toISOString(),
+        }).eq('id', currentLectureSessionId)
+      );
     }
 
-    if (trackWatchdogRef.current) {
-      clearTimeout(trackWatchdogRef.current);
-      trackWatchdogRef.current = null;
-    }
-    peerConnectionRef.current?.close();
-    peerConnectionRef.current = null;
-    streamIdRef.current = null;
-    sessionStreamRef.current = null;
-    providerKindRef.current = null;
-    auditSessionIdRef.current = null;
-    setIsConnected(false);
-    setHasAvatarStream(false);
-    setDeliveryMode('offline');
-
-    if (videoRef.current) videoRef.current.srcObject = null;
+    void Promise.allSettled(cleanupTasks).finally(() => {
+      setIsDisconnecting(false);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, isRecording]);
+  }, [isDisconnecting, isRecording, sessionId, teardownLocalSession]);
 
   const sendToAvatar = useCallback(
     async (
@@ -459,6 +525,7 @@ export function LiveAvatarLecture({
       isSystem = false
     ) => {
       const activeSid = sid || sessionId;
+      const requestEpoch = connectionEpochRef.current;
       setIsLoading(true);
       setIsSpeaking(false);
       setActiveSpeaker(speaker);
@@ -500,6 +567,7 @@ export function LiveAvatarLecture({
         );
 
         if (error) throw error;
+        if (requestEpoch !== connectionEpochRef.current) return;
 
         const assistantMsg: Message = {
           role: speaker,
