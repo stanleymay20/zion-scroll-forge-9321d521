@@ -67,7 +67,7 @@ export function createDidProvider(): AvatarProvider {
       }
     },
 
-    async createSession(_input: CreateSessionInput): Promise<CreateSessionResult> {
+    async createSession(input: CreateSessionInput): Promise<CreateSessionResult> {
       if (!apiKey) {
         return { ok: false, fallback: true, providerKind: "did",
           reason: "AVATAR_PROVIDER_UNCONFIGURED", estimatedCostPerMinuteUsd: COST_PER_MIN_USD };
@@ -77,7 +77,7 @@ export function createDidProvider(): AvatarProvider {
           method: "POST",
           headers: { Authorization: auth(), "Content-Type": "application/json" },
           body: JSON.stringify({
-            source_url: "https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg",
+            source_url: input.avatarImageUrl || "https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg",
             driver_url: "bank://lively",
             config: { stitch: true, fluent: true },
           }),
