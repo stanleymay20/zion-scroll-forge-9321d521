@@ -103,6 +103,7 @@ export function LiveAvatarLecture({
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
   const [showQueue, setShowQueue] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [hasAvatarStream, setHasAvatarStream] = useState(false);
   const [micStatus, setMicStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied' | 'no-device' | 'in-use' | 'unsupported'>('idle');
   const [micLevel, setMicLevel] = useState(0);
 
@@ -117,6 +118,12 @@ export function LiveAvatarLecture({
   const screenRecorderRef = useRef<MediaRecorder | null>(null);
   const screenChunksRef = useRef<Blob[]>([]);
   const sequenceRef = useRef<number>(0);
+  // Ref mirror of `audioUnlocked` so the first intro speech (fired from inside
+  // the same click gesture that sets it) can play without waiting for React state.
+  const audioUnlockedRef = useRef(false);
+  const isMutedRef = useRef(false);
+  useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
   useEffect(() => {
     if (scrollRef.current) {
