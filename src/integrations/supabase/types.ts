@@ -7546,6 +7546,98 @@ export type Database = {
         }
         Relationships: []
       }
+      live_lecture_events: {
+        Row: {
+          created_at: string
+          estimated_cost_usd: number
+          event_type: string
+          id: string
+          latency_ms: number | null
+          payload: Json
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_cost_usd?: number
+          event_type: string
+          id?: string
+          latency_ms?: number | null
+          payload?: Json
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          estimated_cost_usd?: number
+          event_type?: string
+          id?: string
+          latency_ms?: number | null
+          payload?: Json
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_lecture_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "live_lecture_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_lecture_sessions: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          end_reason: Database["public"]["Enums"]["lecture_end_reason"] | null
+          ended_at: string | null
+          estimated_cost_usd: number
+          faculty_id: string | null
+          id: string
+          lecture_mode: Database["public"]["Enums"]["lecture_mode"]
+          metadata: Json
+          module_id: string | null
+          provider_capabilities: Json
+          provider_used: string | null
+          started_at: string
+          tutor_id: string | null
+          user_id: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          end_reason?: Database["public"]["Enums"]["lecture_end_reason"] | null
+          ended_at?: string | null
+          estimated_cost_usd?: number
+          faculty_id?: string | null
+          id?: string
+          lecture_mode?: Database["public"]["Enums"]["lecture_mode"]
+          metadata?: Json
+          module_id?: string | null
+          provider_capabilities?: Json
+          provider_used?: string | null
+          started_at?: string
+          tutor_id?: string | null
+          user_id: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          end_reason?: Database["public"]["Enums"]["lecture_end_reason"] | null
+          ended_at?: string | null
+          estimated_cost_usd?: number
+          faculty_id?: string | null
+          id?: string
+          lecture_mode?: Database["public"]["Enums"]["lecture_mode"]
+          metadata?: Json
+          module_id?: string | null
+          provider_capabilities?: Json
+          provider_used?: string | null
+          started_at?: string
+          tutor_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       live_sessions: {
         Row: {
           course_id: string
@@ -16115,6 +16207,16 @@ export type Database = {
         | "supreme"
         | "honor"
       issued_credential_status: "issued" | "revoked" | "expired" | "superseded"
+      lecture_end_reason:
+        | "completed"
+        | "student_left"
+        | "provider_failed"
+        | "fallback_exhausted"
+        | "timeout"
+        | "kicked"
+        | "error"
+        | "unknown"
+      lecture_mode: "live" | "recorded_ai" | "semi_live"
       ledger_entry_type:
         | "tuition_charge"
         | "fee_charge"
@@ -16579,6 +16681,17 @@ export const Constants = {
         "honor",
       ],
       issued_credential_status: ["issued", "revoked", "expired", "superseded"],
+      lecture_end_reason: [
+        "completed",
+        "student_left",
+        "provider_failed",
+        "fallback_exhausted",
+        "timeout",
+        "kicked",
+        "error",
+        "unknown",
+      ],
+      lecture_mode: ["live", "recorded_ai", "semi_live"],
       ledger_entry_type: [
         "tuition_charge",
         "fee_charge",
