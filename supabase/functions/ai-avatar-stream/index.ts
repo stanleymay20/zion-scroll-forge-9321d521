@@ -301,16 +301,26 @@ serve(async (req) => {
       const { stream_id, session_id, answer, provider_kind } = body;
       const provider = providerByKind(provider_kind ?? "did");
       if (!provider?.sendSdpAnswer) return json({ success: false, reason: "PROVIDER_NO_REALTIME" });
-      await provider.sendSdpAnswer(stream_id, session_id, answer);
-      return json({ success: true });
+      try {
+        await provider.sendSdpAnswer(stream_id, session_id, answer);
+        return json({ success: true });
+      } catch (error: any) {
+        console.error("sdp_answer failed", { provider_kind, stream_id, message: error?.message ?? error });
+        return json({ success: false, reason: error?.message ?? "SDP_ANSWER_FAILED" }, 502);
+      }
     }
 
     if (action === "ice_candidate") {
       const { stream_id, session_id, candidate, provider_kind } = body;
       const provider = providerByKind(provider_kind ?? "did");
       if (!provider?.sendIceCandidate) return json({ success: false, reason: "PROVIDER_NO_REALTIME" });
-      await provider.sendIceCandidate(stream_id, session_id, candidate);
-      return json({ success: true });
+      try {
+        await provider.sendIceCandidate(stream_id, session_id, candidate);
+        return json({ success: true });
+      } catch (error: any) {
+        console.error("ice_candidate failed", { provider_kind, stream_id, message: error?.message ?? error });
+        return json({ success: false, reason: error?.message ?? "ICE_CANDIDATE_FAILED" }, 502);
+      }
     }
 
     if (action === "destroy_stream") {
