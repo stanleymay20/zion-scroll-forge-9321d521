@@ -1,5 +1,5 @@
 const LEGACY_TUTOR_AVATAR_PREFIX = '/avatars/';
-const DEFAULT_TUTOR_AVATAR_FILE = 'default-tutor.png';
+const DEFAULT_TUTOR_AVATAR_FILE = 'default-tutor.jpg';
 
 function getAvatarStorageBaseUrl() {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -20,11 +20,7 @@ export function resolveTutorAvatarUrl(avatarUrl?: string | null) {
   if (/^https?:\/\//i.test(avatarUrl)) return avatarUrl;
 
   if (avatarUrl.startsWith(LEGACY_TUTOR_AVATAR_PREFIX)) {
-    const fileName = avatarUrl.slice(LEGACY_TUTOR_AVATAR_PREFIX.length);
-    const storageBaseUrl = getAvatarStorageBaseUrl();
-    return storageBaseUrl
-      ? `${storageBaseUrl}/${encodeURIComponent(fileName)}`
-      : avatarUrl;
+    return getDefaultTutorAvatarUrl();
   }
 
   if (avatarUrl.startsWith('/') && typeof window !== 'undefined') {
