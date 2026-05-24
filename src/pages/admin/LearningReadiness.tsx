@@ -204,6 +204,33 @@ export default function LearningReadiness() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="h-4 w-4" /> Seed quiz question pools
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Generates 5 MCQs per module via Lovable AI for quizzes and quiz-type
+              assignments that still have empty pools. Processes ~10 of each per
+              click; run repeatedly until the quiz row above hits 100%.
+            </p>
+            <Button onClick={runSeed} disabled={seeding}>
+              {seeding ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Seeding…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" /> Run batch (10 quizzes + 10 assignments)
+                </>
+              )}
+            </Button>
+            {lastRun && <p className="text-xs text-muted-foreground">{lastRun}</p>}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="text-base">Raw counts</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4 text-sm">
