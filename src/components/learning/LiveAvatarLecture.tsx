@@ -117,6 +117,7 @@ export function LiveAvatarLecture({
   const [micStatus, setMicStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied' | 'no-device' | 'in-use' | 'unsupported'>('idle');
   const [micLevel, setMicLevel] = useState(0);
   const [lastMicError, setLastMicError] = useState<string | null>(null);
+  const [isVoiceLoopEnabled, setIsVoiceLoopEnabled] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -139,7 +140,26 @@ export function LiveAvatarLecture({
   const connectionEpochRef = useRef(0);
   const remoteStreamArrivedRef = useRef(false);
   const remoteMediaStreamRef = useRef<MediaStream | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const voiceMonitorCleanupRef = useRef<(() => void) | null>(null);
+  const silenceTimeoutRef = useRef<number | null>(null);
+  const autoContinueTimeoutRef = useRef<number | null>(null);
+  const consecutiveAutoTurnsRef = useRef(0);
+  const voiceLoopEnabledRef = useRef(false);
+  const isTranscribingVoiceRef = useRef(false);
+  const recorderMimeTypeRef = useRef('audio/webm');
+  const isConnectedRef = useRef(false);
+  const isLoadingRef = useRef(false);
+  const isSpeakingRef = useRef(false);
+  const isRecordingVoiceRef = useRef(false);
+  const isDisconnectingRef = useRef(false);
   useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
+  useEffect(() => { voiceLoopEnabledRef.current = isVoiceLoopEnabled; }, [isVoiceLoopEnabled]);
+  useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
+  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+  useEffect(() => { isSpeakingRef.current = isSpeaking; }, [isSpeaking]);
+  useEffect(() => { isRecordingVoiceRef.current = isRecordingVoice; }, [isRecordingVoice]);
+  useEffect(() => { isDisconnectingRef.current = isDisconnecting; }, [isDisconnecting]);
   useEffect(() => {
     isMutedRef.current = isMuted;
     // Keep the live-avatar <video> element's audio in sync with the mute button.
@@ -234,6 +254,36 @@ export function LiveAvatarLecture({
   const teardownLocalSession = useCallback(() => {
     connectionEpochRef.current += 1;
 
+    voiceLoopEnabledRef.current = false;
+    setIsVoiceLoopEnabled(false);
+    isTranscribingVoiceRef.current = false;
+
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+    if (autoContinueTimeoutRef.current) {
+      clearTimeout(autoContinueTimeoutRef.current);
+      autoContinueTimeoutRef.current = null;
+    }
+    consecutiveAutoTurnsRef.current = 0;
+
+    voiceMonitorCleanupRef.current?.();
+    voiceMonitorCleanupRef.current = null;
+
+    const activeVoiceRecorder = mediaRecorderRef.current;
+    mediaRecorderRef.current = null;
+    if (activeVoiceRecorder && activeVoiceRecorder.state !== 'inactive') {
+      try {
+        activeVoiceRecorder.stop();
+      } catch (error) {
+        console.error('Voice recorder stop error:', error);
+      }
+    }
+
+    micStreamRef.current?.getTracks().forEach((track) => track.stop());
+    micStreamRef.current = null;
+
     if (trackWatchdogRef.current) {
       clearTimeout(trackWatchdogRef.current);
       trackWatchdogRef.current = null;
@@ -268,8 +318,17 @@ export function LiveAvatarLecture({
     setHasAvatarStream(false);
     setIsLoading(false);
     setIsSpeaking(false);
+    setIsRecordingVoice(false);
     setActiveSpeaker(null);
+    setMicLevel(0);
     setDeliveryMode('offline');
+  }, []);
+
+  const cancelAutoContinue = useCallback(() => {
+    if (autoContinueTimeoutRef.current) {
+      clearTimeout(autoContinueTimeoutRef.current);
+      autoContinueTimeoutRef.current = null;
+    }
   }, []);
 
   const connectStream = useCallback(async () => {
@@ -640,9 +699,10 @@ export function LiveAvatarLecture({
           // synced audio plays from the <video> element
         } else if (data.audio_base64 && !isMutedRef.current && audioUnlockedRef.current) {
           setDeliveryMode((prev) => (prev === 'avatar' ? prev : 'audio'));
-          playAudio(data.audio_base64);
+          playAudio(data.audio_base64, activeSid);
         } else if (deliveryMode !== 'avatar') {
           setDeliveryMode('text');
+          if (!voiceLoopEnabledRef.current) scheduleAutoContinue(activeSid);
         }
       } catch (err: any) {
         console.error('Avatar talk error:', err);
@@ -655,21 +715,56 @@ export function LiveAvatarLecture({
   [messages, moduleContent, tutorId, isMuted, sessionId, cohostName, cohostSpecialty, cohostId, tutorName]
   );
 
-  const playAudio = (base64Audio: string) => {
+  const scheduleAutoContinue = useCallback((sid?: string) => {
+    cancelAutoContinue();
+    if (voiceLoopEnabledRef.current || !isConnectedRef.current || isDisconnectingRef.current) return;
+    if (consecutiveAutoTurnsRef.current >= 3) return;
+
+    autoContinueTimeoutRef.current = window.setTimeout(() => {
+      if (voiceLoopEnabledRef.current || !isConnectedRef.current || isDisconnectingRef.current || isLoadingRef.current || isSpeakingRef.current || isRecordingVoiceRef.current) {
+        return;
+      }
+      consecutiveAutoTurnsRef.current += 1;
+      void sendToAvatar(
+        'Continue the live lecture naturally from the last teaching point. Speak like a real lecturer, not a chatbot. Advance the lesson in 2-4 concise sentences, then end with a brief reflective prompt only if appropriate.',
+        'host',
+        sid,
+        true,
+      );
+    }, 1400);
+  }, [cancelAutoContinue, sendToAvatar]);
+
+  const playAudio = (base64Audio: string, sid?: string) => {
     setIsSpeaking(true);
     const audio = new Audio(`data:audio/mpeg;base64,${base64Audio}`);
     audioRef.current = audio;
-    audio.onended = () => { setIsSpeaking(false); setActiveSpeaker(null); };
-    audio.onerror = () => { setIsSpeaking(false); setActiveSpeaker(null); };
+    const maybeResumeVoiceLoop = () => {
+      setIsSpeaking(false);
+      setActiveSpeaker(null);
+      if (voiceLoopEnabledRef.current && isConnected && !isDisconnecting) {
+        window.setTimeout(() => {
+          if (voiceLoopEnabledRef.current && !isRecordingVoice && !isLoading && !isSpeaking) {
+            void startVoiceInput();
+          }
+        }, 120);
+      } else {
+        scheduleAutoContinue(sid);
+      }
+    };
+    audio.onended = maybeResumeVoiceLoop;
+    audio.onerror = maybeResumeVoiceLoop;
     audio.play().catch((err) => {
       console.error('Audio play error:', err);
       setIsSpeaking(false);
+      setActiveSpeaker(null);
     });
   };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
     const text = input.trim();
+    consecutiveAutoTurnsRef.current = 0;
+    cancelAutoContinue();
     setInput('');
     const userMsg: Message = { role: 'user', content: text, timestamp: new Date() };
     setMessages((prev) => [...prev, userMsg]);
@@ -782,48 +877,224 @@ export function LiveAvatarLecture({
     setIsRecording(false);
   };
 
+  const processVoiceTranscript = useCallback(async (transcript: string) => {
+    const cleanedTranscript = transcript.trim();
+    if (!cleanedTranscript || cleanedTranscript.length < 3 || /^(you|thank you|thanks|okay|ok|mm+|hmm+|uh|um)\.?$/i.test(cleanedTranscript)) {
+      if (voiceLoopEnabledRef.current && isConnected && !isDisconnecting) {
+        window.setTimeout(() => {
+          if (voiceLoopEnabledRef.current && !isRecordingVoice && !isLoading && !isSpeaking) {
+            void startVoiceInput();
+          }
+        }, 120);
+      }
+      return;
+    }
+
+    consecutiveAutoTurnsRef.current = 0;
+    cancelAutoContinue();
+    const userMsg: Message = { role: 'user', content: cleanedTranscript, timestamp: new Date() };
+    setMessages((prev) => [...prev, userMsg]);
+    if (sessionId) await persistTranscript(sessionId, 'user', cleanedTranscript, 'You');
+    await sendToAvatar(cleanedTranscript, 'host');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancelAutoContinue, isConnected, isDisconnecting, isLoading, isRecordingVoice, isSpeaking, sessionId, sendToAvatar]);
+
+  const selectRecorderMimeType = () => {
+    if (typeof MediaRecorder === 'undefined') return '';
+    const candidates = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/mp4;codecs=mp4a.40.2',
+      'audio/aac',
+    ];
+    return candidates.find((type) => {
+      try {
+        return typeof MediaRecorder.isTypeSupported === 'function' ? MediaRecorder.isTypeSupported(type) : type === 'audio/webm';
+      } catch {
+        return false;
+      }
+    }) ?? '';
+  };
+
+  const cleanupVoiceCapture = useCallback((stopStream = true) => {
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+    voiceMonitorCleanupRef.current?.();
+    voiceMonitorCleanupRef.current = null;
+
+    const activeRecorder = mediaRecorderRef.current;
+    mediaRecorderRef.current = null;
+    if (activeRecorder && activeRecorder.state !== 'inactive') {
+      try {
+        activeRecorder.stop();
+      } catch (error) {
+        console.error('Voice recorder cleanup error:', error);
+      }
+    }
+
+    if (stopStream) {
+      micStreamRef.current?.getTracks().forEach((track) => track.stop());
+      micStreamRef.current = null;
+    }
+
+    setIsRecordingVoice(false);
+    setMicLevel(0);
+  }, []);
+
   const startVoiceInput = async () => {
     try {
+      if (!isConnected || isDisconnecting || isLoading || isSpeaking || isTranscribingVoiceRef.current) {
+        return;
+      }
       if (micStatus === 'no-device' || micStatus === 'denied' || micStatus === 'in-use' || micStatus === 'unsupported') {
         toast.error(lastMicError || 'Microphone unavailable. Use typed questions instead.');
         return;
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const existingRecorder = mediaRecorderRef.current;
+      if (existingRecorder && existingRecorder.state !== 'inactive') {
+        return;
+      }
+
+      const stream = micStreamRef.current ?? await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+      setMicStatus('granted');
       setLastMicError(null);
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+      voiceMonitorCleanupRef.current?.();
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+        silenceTimeoutRef.current = null;
+      }
+
+      const mimeType = selectRecorderMimeType();
+      recorderMimeTypeRef.current = mimeType || 'audio/webm';
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        voiceMonitorCleanupRef.current?.();
+        voiceMonitorCleanupRef.current = null;
+        if (silenceTimeoutRef.current) {
+          clearTimeout(silenceTimeoutRef.current);
+          silenceTimeoutRef.current = null;
+        }
+        setIsRecordingVoice(false);
+        setMicLevel(0);
+
+        const blob = new Blob(chunksRef.current, { type: recorderMimeTypeRef.current || 'audio/webm' });
+        if (!blob.size) {
+          if (voiceLoopEnabledRef.current && isConnected && !isDisconnecting) {
+            window.setTimeout(() => {
+              if (voiceLoopEnabledRef.current && !isRecordingVoice && !isLoading && !isSpeaking) {
+                void startVoiceInput();
+              }
+            }, 120);
+          }
+          return;
+        }
+
         const reader = new FileReader();
         reader.onloadend = async () => {
           const base64 = (reader.result as string).split(',')[1];
-          if (!base64) return;
+          if (!base64) {
+            if (voiceLoopEnabledRef.current && isConnected && !isDisconnecting) {
+              window.setTimeout(() => {
+                if (voiceLoopEnabledRef.current && !isRecordingVoice && !isLoading && !isSpeaking) {
+                  void startVoiceInput();
+                }
+              }, 120);
+            }
+            return;
+          }
+
+          isTranscribingVoiceRef.current = true;
           try {
             const { data: transcriptionData, error: transcriptionError } = await supabase.functions.invoke('ai-avatar-stream', {
               body: { action: 'transcribe_audio', audio_base64: base64 },
             });
             const transcript = typeof transcriptionData?.transcript === 'string' ? transcriptionData.transcript.trim() : '';
-            if (transcriptionError || !transcript || transcript.length < 3 || /^(you|thank you|thanks|okay|ok)\.?$/i.test(transcript)) {
-              toast.error('Voice not recognized. Please type your question.');
+            if (transcriptionError) {
+              toast.error('Voice processing failed.');
               return;
             }
-            const userMsg: Message = { role: 'user', content: transcript, timestamp: new Date() };
-            setMessages((prev) => [...prev, userMsg]);
-            if (sessionId) await persistTranscript(sessionId, 'user', transcript, 'You');
-            await sendToAvatar(transcript, 'host');
+            await processVoiceTranscript(transcript);
           } catch (e) {
             console.error('Voice processing error:', e);
             toast.error('Voice processing failed.');
+          } finally {
+            isTranscribingVoiceRef.current = false;
           }
         };
         reader.readAsDataURL(blob);
       };
+
+      const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        const audioContext = new AudioCtx();
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume().catch(() => undefined);
+        }
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0.15;
+        source.connect(analyser);
+        const data = new Uint8Array(analyser.fftSize);
+        let speechDetected = false;
+        let rafId = 0;
+
+        const stopForSilence = () => {
+          if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+          }
+        };
+
+        const monitor = () => {
+          analyser.getByteTimeDomainData(data);
+          let sumSquares = 0;
+          for (let i = 0; i < data.length; i += 1) {
+            const normalized = (data[i] - 128) / 128;
+            sumSquares += normalized * normalized;
+          }
+          const rms = Math.sqrt(sumSquares / data.length);
+          const nextMicLevel = Math.min(100, Math.round(rms * 280));
+          setMicLevel(nextMicLevel);
+
+          if (rms > 0.03) {
+            speechDetected = true;
+            if (silenceTimeoutRef.current) {
+              clearTimeout(silenceTimeoutRef.current);
+              silenceTimeoutRef.current = null;
+            }
+          } else if (speechDetected && !silenceTimeoutRef.current) {
+            silenceTimeoutRef.current = window.setTimeout(stopForSilence, 900);
+          }
+
+          if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
+            rafId = requestAnimationFrame(monitor);
+          }
+        };
+
+        rafId = requestAnimationFrame(monitor);
+        voiceMonitorCleanupRef.current = () => {
+          if (rafId) cancelAnimationFrame(rafId);
+          source.disconnect();
+          analyser.disconnect();
+          void audioContext.close().catch(() => undefined);
+        };
+      }
+
       mediaRecorder.start();
       setIsRecordingVoice(true);
-      toast.info('🎙️ Listening...');
+      if (!voiceLoopEnabledRef.current) {
+        toast.info('🎙️ Listening...');
+      }
     } catch (err) {
       console.error('Mic error:', err);
       setLastMicError('Microphone access required');
@@ -832,8 +1103,10 @@ export function LiveAvatarLecture({
   };
 
   const stopVoiceInput = () => {
-    mediaRecorderRef.current?.stop();
-    setIsRecordingVoice(false);
+    voiceLoopEnabledRef.current = false;
+    setIsVoiceLoopEnabled(false);
+    cancelAutoContinue();
+    cleanupVoiceCapture(true);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -1309,11 +1582,21 @@ export function LiveAvatarLecture({
         <div className="flex gap-2 w-full">
           <Button
             size="icon"
-            variant={isRecordingVoice ? 'destructive' : 'outline'}
-            onClick={isRecordingVoice ? stopVoiceInput : startVoiceInput}
-            disabled={!isConnected || isLoading}
+            variant={isRecordingVoice || isVoiceLoopEnabled ? 'destructive' : 'outline'}
+            onClick={() => {
+              if (isRecordingVoice || isVoiceLoopEnabled) {
+                stopVoiceInput();
+                return;
+              }
+              voiceLoopEnabledRef.current = true;
+              setIsVoiceLoopEnabled(true);
+              consecutiveAutoTurnsRef.current = 0;
+              cancelAutoContinue();
+              void startVoiceInput();
+            }}
+            disabled={!isConnected || isLoading || isDisconnecting}
             className="shrink-0"
-            title="Voice input"
+            title={isRecordingVoice || isVoiceLoopEnabled ? 'Stop live listening' : 'Start live listening'}
           >
             {isRecordingVoice ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </Button>
