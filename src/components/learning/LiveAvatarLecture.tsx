@@ -314,20 +314,38 @@ export function LiveAvatarLecture({
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
-        await supabase.functions.invoke('ai-avatar-stream', {
-          body: {
-            action: 'sdp_answer',
-            stream_id: data.stream_id,
-            session_id: data.session_id,
-            answer,
-            provider_kind: providerKindRef.current,
-          },
-        });
+        await withTimeout(
+          supabase.functions.invoke('ai-avatar-stream', {
+            body: {
+              action: 'sdp_answer',
+              stream_id: data.stream_id,
+              session_id: data.session_id,
+              answer,
+              provider_kind: providerKindRef.current,
+            },
+          }),
+          15000,
+          'SDP_ANSWER',
+        );
 
+        // Mark connected so the "Connecting…" panel disappears even if the
+        // remote video track never arrives. UI will show truthful fallback.
         setIsConnected(true);
         setDeliveryMode('avatar');
         toast.success('🎥 Live lecture started');
+
+        // Track-arrival watchdog: if no remote video frames after 15s,
+        // demote to voice/text truthfully so the user is never stuck.
+        setTimeout(() => {
+          if (!videoRef.current?.srcObject) {
+            setDeliveryMode((prev) => (prev === 'avatar' ? 'audio' : prev));
+            toast.message('Live video did not arrive', {
+              description: 'Continuing in voice/text mode.',
+            });
+          }
+        }, 15000);
       }
+
 
       const courseLabel = `${courseTitle}${moduleTitle ? ` — module "${moduleTitle}"` : ''}`;
       const programBit = programTitle
