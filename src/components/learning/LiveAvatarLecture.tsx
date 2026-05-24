@@ -103,6 +103,7 @@ export function LiveAvatarLecture({
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
   const [showQueue, setShowQueue] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [hasAvatarStream, setHasAvatarStream] = useState(false);
   const [micStatus, setMicStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied' | 'no-device' | 'in-use' | 'unsupported'>('idle');
   const [micLevel, setMicLevel] = useState(0);
 
@@ -117,6 +118,12 @@ export function LiveAvatarLecture({
   const screenRecorderRef = useRef<MediaRecorder | null>(null);
   const screenChunksRef = useRef<Blob[]>([]);
   const sequenceRef = useRef<number>(0);
+  // Ref mirror of `audioUnlocked` so the first intro speech (fired from inside
+  // the same click gesture that sets it) can play without waiting for React state.
+  const audioUnlockedRef = useRef(false);
+  const isMutedRef = useRef(false);
+  useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -191,7 +198,28 @@ export function LiveAvatarLecture({
   };
 
   const connectStream = useCallback(async () => {
+    // Guardrail: do not allow start without verified course context.
+    if (!courseTitle) {
+      toast.error('No assigned live class found for your program.');
+      return;
+    }
     setIsConnecting(true);
+
+    // Unlock browser audio inside the same user gesture (autoplay policy).
+    // Safe to call repeatedly.
+    try {
+      const probe = new Audio();
+      probe.muted = true;
+      probe.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+      await probe.play().catch(() => {});
+      probe.pause();
+      setAudioUnlocked(true);
+      setIsMuted(false);
+    } catch { /* ignore */ }
+
+    let avatarFallback = false;
+    let fallbackReason: string | null = null;
+
     try {
       const sid = await createSession();
       if (sid) setSessionId(sid);
@@ -201,67 +229,79 @@ export function LiveAvatarLecture({
       });
       if (error) throw error;
 
-      streamIdRef.current = data.stream_id;
-      sessionStreamRef.current = data.session_id;
+      if (data?.fallback) {
+        // Provider unavailable — keep session going in audio/text mode.
+        avatarFallback = true;
+        fallbackReason = data.reason || 'AVATAR_PROVIDER_UNAVAILABLE';
+        setDeliveryMode(data.mode === 'audio' ? 'audio' : 'text');
+        setIsConnected(true);
+        toast.message('Live video avatar unavailable', {
+          description: 'Continuing in voice/text mode.',
+        });
+      } else {
+        streamIdRef.current = data.stream_id;
+        sessionStreamRef.current = data.session_id;
 
-      const pc = new RTCPeerConnection({
-        iceServers: data.ice_servers || [{ urls: 'stun:stun.l.google.com:19302' }],
-      });
-      peerConnectionRef.current = pc;
+        const pc = new RTCPeerConnection({
+          iceServers: data.ice_servers || [{ urls: 'stun:stun.l.google.com:19302' }],
+        });
+        peerConnectionRef.current = pc;
 
-      pc.ontrack = (event) => {
-        if (videoRef.current && event.streams[0]) {
-          videoRef.current.muted = true;
-          videoRef.current.srcObject = event.streams[0];
-          videoRef.current.play().catch((playErr) => {
-            console.error('Video autoplay error:', playErr);
-          });
-        }
-      };
+        pc.ontrack = (event) => {
+          if (videoRef.current && event.streams[0]) {
+            videoRef.current.muted = false;
+            videoRef.current.srcObject = event.streams[0];
+            setHasAvatarStream(true);
+            videoRef.current.play().catch((playErr) => {
+              console.error('Video autoplay error:', playErr);
+            });
+          }
+        };
 
-      pc.onicecandidate = async (event) => {
-        if (event.candidate && streamIdRef.current && sessionStreamRef.current) {
-          await supabase.functions.invoke('ai-avatar-stream', {
-            body: {
-              action: 'ice_candidate',
-              stream_id: streamIdRef.current,
-              session_id: sessionStreamRef.current,
-              candidate: event.candidate,
-            },
-          });
-        }
-      };
+        pc.onicecandidate = async (event) => {
+          if (event.candidate && streamIdRef.current && sessionStreamRef.current) {
+            await supabase.functions.invoke('ai-avatar-stream', {
+              body: {
+                action: 'ice_candidate',
+                stream_id: streamIdRef.current,
+                session_id: sessionStreamRef.current,
+                candidate: event.candidate,
+              },
+            });
+          }
+        };
 
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'connected') {
-          setIsConnected(true);
-          setIsConnecting(false);
-        } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-          setIsConnected(false);
-        }
-      };
+        pc.onconnectionstatechange = () => {
+          if (pc.connectionState === 'connected') {
+            setIsConnected(true);
+            setIsConnecting(false);
+          } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+            setIsConnected(false);
+          }
+        };
 
-      await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
 
-      await supabase.functions.invoke('ai-avatar-stream', {
-        body: {
-          action: 'sdp_answer',
-          stream_id: data.stream_id,
-          session_id: data.session_id,
-          answer,
-        },
-      });
+        await supabase.functions.invoke('ai-avatar-stream', {
+          body: {
+            action: 'sdp_answer',
+            stream_id: data.stream_id,
+            session_id: data.session_id,
+            answer,
+          },
+        });
 
-      setIsConnected(true);
-      setDeliveryMode('avatar');
-      toast.success('🎥 Live lecture started');
+        setIsConnected(true);
+        setDeliveryMode('avatar');
+        toast.success('🎥 Live lecture started');
+      }
 
-      const courseLabel = courseTitle
-        ? `${courseTitle}${moduleTitle ? ` — module "${moduleTitle}"` : ''}`
-        : (moduleTitle || 'this session');
-      const programBit = programTitle ? ` in ${programTitle}${facultyName ? ` (${facultyName})` : ''}` : '';
+      const courseLabel = `${courseTitle}${moduleTitle ? ` — module "${moduleTitle}"` : ''}`;
+      const programBit = programTitle
+        ? ` in ${programTitle}${facultyName ? ` (${facultyName})` : ''}`
+        : facultyName ? ` (${facultyName})` : '';
       const namePart = studentName ? `, ${studentName}` : '';
       const cohostLine = hasCohost
         ? ` Briefly introduce your co-lecturer ${cohostName}${cohostSpecialty ? ` (${cohostSpecialty})` : ''}, then invite the student in.`
@@ -277,14 +317,13 @@ export function LiveAvatarLecture({
     } catch (err: any) {
       console.error('Stream connection error:', err);
       setDeliveryMode('text');
-      toast.error('Failed to connect avatar stream. Switching to truthful tutor fallback.');
-      setShowVideo(false);
+      toast.error('Live class connection failed. Text tutor still available.');
       setIsConnected(true);
     } finally {
       setIsConnecting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleContent, hasCohost, cohostName, cohostSpecialty, moduleTitle, tutorName]);
+  }, [moduleContent, hasCohost, cohostName, cohostSpecialty, moduleTitle, tutorName, courseTitle, programTitle, facultyName, studentName]);
 
   const disconnectStream = useCallback(async () => {
     if (isRecording) await stopRecording();
@@ -312,6 +351,7 @@ export function LiveAvatarLecture({
     streamIdRef.current = null;
     sessionStreamRef.current = null;
     setIsConnected(false);
+    setHasAvatarStream(false);
     setDeliveryMode('offline');
 
     if (videoRef.current) videoRef.current.srcObject = null;
@@ -373,7 +413,7 @@ export function LiveAvatarLecture({
           await persistTranscript(activeSid, speaker, data.message, speakerName);
         }
 
-        if (data.audio_base64 && !isMuted && audioUnlocked) {
+        if (data.audio_base64 && !isMutedRef.current && audioUnlockedRef.current) {
           setDeliveryMode((prev) => (prev === 'avatar' ? prev : 'audio'));
           playAudio(data.audio_base64);
         } else if (deliveryMode !== 'avatar') {
@@ -671,7 +711,7 @@ export function LiveAvatarLecture({
                 {tutorName}{hasCohost && ` & ${cohostName}`}
                 <Badge variant="secondary" className="text-xs">
                   <Sparkles className="h-3 w-3 mr-1" />
-                  {hasCohost ? 'Panel' : 'Live Avatar'}
+                  {hasCohost ? 'Panel' : hasAvatarStream ? 'Live Avatar' : deliveryMode === 'audio' ? 'Voice Tutor' : deliveryMode === 'text' ? 'Text Tutor' : 'AI Tutor'}
                 </Badge>
                 {isRecording && (
                   <Badge variant="destructive" className="text-xs gap-1">
@@ -790,7 +830,28 @@ export function LiveAvatarLecture({
           <div className={`grid gap-2 ${hasCohost ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1'}`}>
             <div className={`relative aspect-video bg-gradient-to-br from-primary/10 via-primary/5 to-background rounded-lg overflow-hidden border border-border ${hasCohost ? 'sm:col-span-2' : ''}`}>
               {isConnected ? (
-                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" data-testid="live-avatar-video" />
+                <>
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className={`w-full h-full object-cover ${hasAvatarStream ? '' : 'hidden'}`}
+                    data-testid="live-avatar-video"
+                  />
+                  {!hasAvatarStream && (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3 p-4">
+                      <Avatar className={`h-24 w-24 border-4 border-primary/30 ${isSpeaking ? 'animate-pulse ring-4 ring-primary/40' : ''}`}>
+                        <AvatarImage src={tutorAvatar || undefined} />
+                        <AvatarFallback className="bg-primary/10 text-primary text-3xl">
+                          {tutorName.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <p className="text-xs text-center opacity-80">
+                        Live video avatar unavailable — continuing in {deliveryMode === 'audio' ? 'voice' : 'text'} mode.
+                      </p>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
                   <div className="relative">
@@ -815,7 +876,7 @@ export function LiveAvatarLecture({
                 </div>
               )}
 
-              {isConnected && (
+              {isConnected && hasAvatarStream && (
                 <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
                   <div className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
                   LIVE

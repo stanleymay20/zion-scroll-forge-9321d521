@@ -67,40 +67,66 @@ serve(async (req) => {
     }
 
     // ─── ACTION: Create a streaming session ───
+    // Graceful degradation: never throw — return `fallback:true` so the
+    // client can continue in voice-only or text-only mode.
     if (action === "create_stream") {
       if (!DID_API_KEY) {
-        throw new Error("DID_API_KEY not configured");
+        return json({
+          fallback: true,
+          reason: "AVATAR_PROVIDER_UNCONFIGURED",
+          message: "Live video avatar is unavailable. Continuing in voice/text mode.",
+          mode: ELEVENLABS_API_KEY ? "audio" : "text",
+        });
       }
 
-      const streamResp = await fetch("https://api.d-id.com/talks/streams", {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${DID_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          source_url:
-            "https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg",
-          driver_url: "bank://lively",
-          config: { stitch: true, fluent: true },
-        }),
-      });
+      try {
+        const streamResp = await fetch("https://api.d-id.com/talks/streams", {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${DID_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            source_url:
+              "https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg",
+            driver_url: "bank://lively",
+            config: { stitch: true, fluent: true },
+          }),
+        });
 
-      if (!streamResp.ok) {
-        const errText = await streamResp.text();
-        console.error("D-ID stream create error:", streamResp.status, errText);
-        throw new Error(`D-ID stream creation failed: ${errText}`);
+        if (!streamResp.ok) {
+          const errText = await streamResp.text();
+          console.error("D-ID stream create error:", streamResp.status, errText);
+          const reason =
+            streamResp.status === 402 ? "AVATAR_PROVIDER_CREDITS_EXHAUSTED"
+            : streamResp.status === 401 ? "AVATAR_PROVIDER_AUTH_FAILED"
+            : "AVATAR_PROVIDER_UNAVAILABLE";
+          return json({
+            fallback: true,
+            reason,
+            provider_status: streamResp.status,
+            message: "Live video avatar unavailable. Continuing in voice/text mode.",
+            mode: ELEVENLABS_API_KEY ? "audio" : "text",
+          });
+        }
+
+        const streamData = await streamResp.json();
+        console.log("D-ID stream created:", streamData.id);
+        return json({
+          stream_id: streamData.id,
+          session_id: streamData.session_id,
+          offer: streamData.offer,
+          ice_servers: streamData.ice_servers,
+        });
+      } catch (e) {
+        console.error("D-ID stream exception:", e);
+        return json({
+          fallback: true,
+          reason: "AVATAR_PROVIDER_EXCEPTION",
+          message: "Live video avatar unreachable. Continuing in voice/text mode.",
+          mode: ELEVENLABS_API_KEY ? "audio" : "text",
+        });
       }
-
-      const streamData = await streamResp.json();
-      console.log("D-ID stream created:", streamData.id);
-
-      return json({
-        stream_id: streamData.id,
-        session_id: streamData.session_id,
-        offer: streamData.offer,
-        ice_servers: streamData.ice_servers,
-      });
     }
 
     // ─── ACTION: Send text to avatar (make it talk) ───
