@@ -6,7 +6,7 @@
  *  - Live Q&A queue with raise-hand (lecture_questions + Realtime)
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,6 +84,15 @@ export function LiveAvatarLecture({
   studentName,
   learningObjectives,
 }: LiveAvatarLectureProps) {
+  const resolvedTutorAvatar = useMemo(() => {
+    if (!tutorAvatar) return null;
+    if (/^https?:\/\//i.test(tutorAvatar)) return tutorAvatar;
+    if (typeof window !== 'undefined' && tutorAvatar.startsWith('/')) {
+      return new URL(tutorAvatar, window.location.origin).toString();
+    }
+    return tutorAvatar;
+  }, [tutorAvatar]);
+
   const hasCohost = Boolean(cohostName);
   const [deliveryMode, setDeliveryMode] = useState<'offline' | 'avatar' | 'audio' | 'text'>('offline');
 
@@ -310,7 +319,7 @@ export function LiveAvatarLecture({
             course_id: courseId ?? null,
             module_id: moduleId ?? null,
             tutor_id: tutorId ?? null,
-            avatar_image_url: tutorAvatar ?? null,
+            avatar_image_url: resolvedTutorAvatar ?? null,
           },
         }),
         20000,
@@ -917,7 +926,7 @@ export function LiveAvatarLecture({
                 isSpeaking && activeSpeaker === 'host' ? 'animate-pulse ring-4 ring-primary/50' : ''
               }`}
             >
-              <AvatarImage src={tutorAvatar || undefined} />
+              <AvatarImage src={resolvedTutorAvatar || undefined} />
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {tutorName.charAt(0)}
               </AvatarFallback>
@@ -1094,7 +1103,7 @@ export function LiveAvatarLecture({
                   {!hasAvatarStream && (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3 p-4">
                       <Avatar className={`h-24 w-24 border-4 border-primary/30 ${isSpeaking ? 'animate-pulse ring-4 ring-primary/40' : ''}`}>
-                        <AvatarImage src={tutorAvatar || undefined} />
+                        <AvatarImage src={resolvedTutorAvatar || undefined} />
                         <AvatarFallback className="bg-primary/10 text-primary text-3xl">
                           {tutorName.charAt(0)}
                         </AvatarFallback>
@@ -1109,7 +1118,7 @@ export function LiveAvatarLecture({
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
                   <div className="relative">
                     <Avatar className="h-24 w-24 border-4 border-primary/20">
-                      <AvatarImage src={tutorAvatar || undefined} />
+                      <AvatarImage src={resolvedTutorAvatar || undefined} />
                       <AvatarFallback className="bg-primary/10 text-primary text-3xl">
                         {tutorName.charAt(0)}
                       </AvatarFallback>
@@ -1236,7 +1245,7 @@ export function LiveAvatarLecture({
               const isUser = msg.role === 'user';
               const isCohost = msg.role === 'cohost';
               const name = msg.speakerName || (isCohost ? cohostName : tutorName);
-              const avatarSrc = isCohost ? cohostAvatar : tutorAvatar;
+              const avatarSrc = isCohost ? cohostAvatar : resolvedTutorAvatar;
               return (
                 <div key={i} className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
                   {!isUser && (
