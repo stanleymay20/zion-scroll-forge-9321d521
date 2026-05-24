@@ -106,11 +106,15 @@ export function createDidProvider(): AvatarProvider {
 
     async sendSdpAnswer(streamId, sessionId, answer) {
       if (!apiKey) return;
-      await fetch(`https://api.d-id.com/talks/streams/${streamId}/sdp`, {
+      const r = await fetch(`https://api.d-id.com/talks/streams/${streamId}/sdp`, {
         method: "POST",
         headers: { Authorization: auth(), "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: sessionId, answer }),
       });
+      if (!r.ok) {
+        const detail = await r.text().catch(() => "");
+        throw new Error(`D-ID SDP answer failed (${r.status})${detail ? `: ${detail}` : ""}`);
+      }
     },
 
     async sendIceCandidate(streamId, sessionId, candidate) {
@@ -123,11 +127,15 @@ export function createDidProvider(): AvatarProvider {
             usernameFragment: (candidate as Record<string, unknown>).usernameFragment ?? null,
           }
         : { candidate: candidate ?? null, sdpMid: null, sdpMLineIndex: null, usernameFragment: null };
-      await fetch(`https://api.d-id.com/talks/streams/${streamId}/ice`, {
+      const r = await fetch(`https://api.d-id.com/talks/streams/${streamId}/ice`, {
         method: "POST",
         headers: { Authorization: auth(), "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: sessionId, ...normalizedCandidate }),
       });
+      if (!r.ok) {
+        const detail = await r.text().catch(() => "");
+        throw new Error(`D-ID ICE candidate failed (${r.status})${detail ? `: ${detail}` : ""}`);
+      }
     },
 
     async speak(streamId, sessionId, text, voiceId) {
