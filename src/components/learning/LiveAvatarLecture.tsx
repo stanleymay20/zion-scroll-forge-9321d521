@@ -351,6 +351,7 @@ export function LiveAvatarLecture({
     streamIdRef.current = null;
     sessionStreamRef.current = null;
     setIsConnected(false);
+    setHasAvatarStream(false);
     setDeliveryMode('offline');
 
     if (videoRef.current) videoRef.current.srcObject = null;
