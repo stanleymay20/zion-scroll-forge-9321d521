@@ -489,7 +489,13 @@ export function LiveAvatarLecture({
           await persistTranscript(activeSid, speaker, data.message, speakerName);
         }
 
-        if (data.audio_base64 && !isMutedRef.current && audioUnlockedRef.current) {
+        // When the live avatar WebRTC stream is active, its track already
+        // carries lip-synced audio. Playing a parallel base64 track here
+        // would cause echo + voice/video desync, so only play base64 when
+        // we are NOT in live-avatar mode.
+        if (hasAvatarStream && deliveryMode === 'avatar') {
+          // synced audio plays from the <video> element
+        } else if (data.audio_base64 && !isMutedRef.current && audioUnlockedRef.current) {
           setDeliveryMode((prev) => (prev === 'avatar' ? prev : 'audio'));
           playAudio(data.audio_base64);
         } else if (deliveryMode !== 'avatar') {
