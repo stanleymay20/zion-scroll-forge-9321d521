@@ -480,7 +480,7 @@ export function LiveAvatarLecture({
     setSessionId(null);
     setQuestions([]);
 
-    const cleanupTasks: Promise<unknown>[] = [];
+    const cleanupTasks: Array<PromiseLike<unknown>> = [];
 
     if (currentStreamId || currentAuditSessionId) {
       cleanupTasks.push(
