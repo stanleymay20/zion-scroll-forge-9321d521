@@ -125,7 +125,16 @@ export function LiveAvatarLecture({
   const audioUnlockedRef = useRef(false);
   const isMutedRef = useRef(false);
   useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
-  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+    // Keep the live-avatar <video> element's audio in sync with the mute button.
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted || !audioUnlocked;
+      if (!isMuted && audioUnlocked) videoRef.current.volume = 1;
+    }
+    // Also mute/unmute any in-flight base64 audio element.
+    if (audioRef.current) audioRef.current.muted = isMuted;
+  }, [isMuted, audioUnlocked]);
 
   useEffect(() => {
     if (scrollRef.current) {
