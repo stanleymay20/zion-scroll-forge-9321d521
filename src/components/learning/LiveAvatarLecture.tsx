@@ -507,7 +507,9 @@ export function LiveAvatarLecture({
       cleanupTasks.push(
         supabase.from('lecture_sessions').update({
           ended_at: new Date().toISOString(),
-        }).eq('id', currentLectureSessionId)
+        }).eq('id', currentLectureSessionId).then(({ error }) => {
+          if (error) throw error;
+        })
       );
     }
 
