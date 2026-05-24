@@ -199,6 +199,14 @@ export function LiveAvatarLecture({
     return data.id;
   };
 
+  // Wrap any promise so it cannot hang the connect flow indefinitely.
+  const withTimeout = async <T,>(p: Promise<T>, ms: number, label: string): Promise<T> => {
+    return await Promise.race<T>([
+      p,
+      new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`TIMEOUT_${label}_${ms}ms`)), ms)),
+    ]);
+  };
+
   const connectStream = useCallback(async () => {
     // Guardrail: do not allow start without verified course context.
     if (!courseTitle) {
@@ -206,6 +214,8 @@ export function LiveAvatarLecture({
       return;
     }
     setIsConnecting(true);
+    setHasAvatarStream(false);
+
 
     // Unlock browser audio inside the same user gesture (autoplay policy).
     // Safe to call repeatedly.
@@ -227,17 +237,22 @@ export function LiveAvatarLecture({
       if (sid) setSessionId(sid);
 
       const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
-      const { data, error } = await supabase.functions.invoke('ai-avatar-stream', {
-        body: {
-          action: 'create_stream',
-          lecture_mode: 'live',
-          is_mobile: isMobile,
-          course_id: courseId ?? null,
-          module_id: moduleId ?? null,
-          tutor_id: tutorId ?? null,
-        },
-      });
+      const { data, error } = await withTimeout(
+        supabase.functions.invoke('ai-avatar-stream', {
+          body: {
+            action: 'create_stream',
+            lecture_mode: 'live',
+            is_mobile: isMobile,
+            course_id: courseId ?? null,
+            module_id: moduleId ?? null,
+            tutor_id: tutorId ?? null,
+          },
+        }),
+        20000,
+        'CREATE_STREAM',
+      );
       if (error) throw error;
+
 
       providerKindRef.current = data?.provider_kind ?? null;
       auditSessionIdRef.current = data?.audit_session_id ?? null;
@@ -299,20 +314,38 @@ export function LiveAvatarLecture({
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
-        await supabase.functions.invoke('ai-avatar-stream', {
-          body: {
-            action: 'sdp_answer',
-            stream_id: data.stream_id,
-            session_id: data.session_id,
-            answer,
-            provider_kind: providerKindRef.current,
-          },
-        });
+        await withTimeout(
+          supabase.functions.invoke('ai-avatar-stream', {
+            body: {
+              action: 'sdp_answer',
+              stream_id: data.stream_id,
+              session_id: data.session_id,
+              answer,
+              provider_kind: providerKindRef.current,
+            },
+          }),
+          15000,
+          'SDP_ANSWER',
+        );
 
+        // Mark connected so the "Connecting…" panel disappears even if the
+        // remote video track never arrives. UI will show truthful fallback.
         setIsConnected(true);
         setDeliveryMode('avatar');
         toast.success('🎥 Live lecture started');
+
+        // Track-arrival watchdog: if no remote video frames after 15s,
+        // demote to voice/text truthfully so the user is never stuck.
+        setTimeout(() => {
+          if (!videoRef.current?.srcObject) {
+            setDeliveryMode((prev) => (prev === 'avatar' ? 'audio' : prev));
+            toast.message('Live video did not arrive', {
+              description: 'Continuing in voice/text mode.',
+            });
+          }
+        }, 15000);
       }
+
 
       const courseLabel = `${courseTitle}${moduleTitle ? ` — module "${moduleTitle}"` : ''}`;
       const programBit = programTitle
