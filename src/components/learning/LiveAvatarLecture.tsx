@@ -125,7 +125,16 @@ export function LiveAvatarLecture({
   const audioUnlockedRef = useRef(false);
   const isMutedRef = useRef(false);
   useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
-  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+    // Keep the live-avatar <video> element's audio in sync with the mute button.
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted || !audioUnlocked;
+      if (!isMuted && audioUnlocked) videoRef.current.volume = 1;
+    }
+    // Also mute/unmute any in-flight base64 audio element.
+    if (audioRef.current) audioRef.current.muted = isMuted;
+  }, [isMuted, audioUnlocked]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -279,14 +288,21 @@ export function LiveAvatarLecture({
 
         pc.ontrack = (event) => {
           if (videoRef.current && event.streams[0]) {
+            // Start muted to satisfy autoplay, then unmute right after play()
+            // so D-ID's lip-synced audio plays in sync with the video.
             videoRef.current.muted = true;
             videoRef.current.autoplay = true;
             videoRef.current.playsInline = true;
             videoRef.current.srcObject = event.streams[0];
             setHasAvatarStream(true);
-            videoRef.current.play().catch((playErr) => {
-              console.error('Video autoplay error:', playErr);
-            });
+            videoRef.current.play()
+              .then(() => {
+                if (videoRef.current && audioUnlockedRef.current && !isMutedRef.current) {
+                  videoRef.current.muted = false;
+                  videoRef.current.volume = 1;
+                }
+              })
+              .catch((playErr) => console.error('Video autoplay error:', playErr));
           }
         };
 
@@ -482,7 +498,13 @@ export function LiveAvatarLecture({
           await persistTranscript(activeSid, speaker, data.message, speakerName);
         }
 
-        if (data.audio_base64 && !isMutedRef.current && audioUnlockedRef.current) {
+        // When the live avatar WebRTC stream is active, its track already
+        // carries lip-synced audio. Playing a parallel base64 track here
+        // would cause echo + voice/video desync, so only play base64 when
+        // we are NOT in live-avatar mode.
+        if (hasAvatarStream && deliveryMode === 'avatar') {
+          // synced audio plays from the <video> element
+        } else if (data.audio_base64 && !isMutedRef.current && audioUnlockedRef.current) {
           setDeliveryMode((prev) => (prev === 'avatar' ? prev : 'audio'));
           playAudio(data.audio_base64);
         } else if (deliveryMode !== 'avatar') {
