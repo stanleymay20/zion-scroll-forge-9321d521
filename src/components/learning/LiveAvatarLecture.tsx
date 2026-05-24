@@ -925,6 +925,7 @@ export function LiveAvatarLecture({
                   variant={isRecording ? 'destructive' : 'outline'}
                   className="h-8 w-8"
                   title={isRecording ? 'Stop recording' : 'Record lecture'}
+                  aria-label={isRecording ? 'Stop recording' : 'Record lecture'}
                   onClick={isRecording ? stopRecording : startRecording}
                 >
                   <Disc className="h-4 w-4" />
@@ -944,6 +945,8 @@ export function LiveAvatarLecture({
                   size="icon"
                   variant={showVideo ? 'default' : 'outline'}
                   className="h-8 w-8"
+                  title={showVideo ? 'Hide video' : 'Show video'}
+                  aria-label={showVideo ? 'Hide video' : 'Show video'}
                   onClick={() => setShowVideo(!showVideo)}
                 >
                   {showVideo ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
@@ -952,11 +955,21 @@ export function LiveAvatarLecture({
                   size="icon"
                   variant={isMuted ? 'outline' : 'default'}
                   className="h-8 w-8"
+                  title={isMuted ? 'Unmute lecture' : 'Mute lecture'}
+                  aria-label={isMuted ? 'Unmute lecture' : 'Mute lecture'}
                   onClick={() => setIsMuted(!isMuted)}
                 >
                   {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 </Button>
-                <Button size="icon" variant="destructive" className="h-8 w-8" onClick={disconnectStream}>
+                <Button
+                  size="icon"
+                  variant="destructive"
+                  className="h-8 w-8"
+                  title="Stop lecture"
+                  aria-label="Stop lecture"
+                  onClick={disconnectStream}
+                  disabled={isDisconnecting}
+                >
                   <PhoneOff className="h-4 w-4" />
                 </Button>
               </>
