@@ -1073,7 +1073,7 @@ export function LiveAvatarLecture({
               silenceTimeoutRef.current = null;
             }
           } else if (speechDetected && !silenceTimeoutRef.current) {
-            silenceTimeoutRef.current = setTimeout(stopForSilence, 900);
+            silenceTimeoutRef.current = window.setTimeout(stopForSilence, 900);
           }
 
           if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
