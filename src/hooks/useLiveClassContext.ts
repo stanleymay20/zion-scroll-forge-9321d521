@@ -1,7 +1,7 @@
 /**
  * useLiveClassContext — single source of truth for live-class context.
  * Resolves: authenticated user → student record → degree_program →
- *           course (from moduleId) → faculty → matched AI tutor.
+ *           enrolled course (from moduleId) → faculty → matched AI tutor.
  *
  * Returns truthful status; never invents a fallback course/tutor.
  */
@@ -64,26 +64,65 @@ export function useLiveClassContext(moduleId?: string) {
         .maybeSingle();
       if (!course) return { ...empty, blockedReason: 'Course for this module is unavailable.' };
 
-      // Student → program (best-effort; non-blocking)
+      // Student → program. This is required for live class because live lectures are
+      // academic delivery, not anonymous content previews.
       const { data: student } = await supabase
         .from('students')
         .select('full_name,degree_program_id')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      let programTitle: string | null = null;
-      let programFacultyName: string | null = null;
-      if (student?.degree_program_id) {
-        const { data: prog } = await supabase
-          .from('degree_programs')
-          .select('title,faculty')
-          .eq('id', student.degree_program_id)
-          .maybeSingle();
-        programTitle = prog?.title ?? null;
-        programFacultyName = prog?.faculty ?? null;
+      if (!student?.degree_program_id) {
+        return {
+          ...empty,
+          userId: user.id,
+          studentName: user.email ?? null,
+          courseId: course.id,
+          courseTitle: course.title,
+          moduleId: mod.id,
+          moduleTitle: mod.title,
+          moduleContent: mod.content_md ?? null,
+          blockedReason: 'No accepted degree program is assigned to your student record.',
+        };
       }
 
-      // Match an AI tutor by faculty (no global fallback)
+      // Hard enrollment guard: user must be enrolled in this exact course before a
+      // live AI lecturer can start. This prevents cross-program lectures and stale
+      // course-context drift.
+      const { data: enrollment } = await supabase
+        .from('enrollments')
+        .select('id,status,course_id')
+        .eq('user_id', user.id)
+        .eq('course_id', course.id)
+        .maybeSingle();
+
+      if (!enrollment) {
+        return {
+          ...empty,
+          userId: user.id,
+          studentName: student.full_name ?? user.email ?? null,
+          programId: student.degree_program_id,
+          courseId: course.id,
+          courseTitle: course.title,
+          moduleId: mod.id,
+          moduleTitle: mod.title,
+          moduleContent: mod.content_md ?? null,
+          blockedReason: 'Not enrolled in this course.',
+        };
+      }
+
+      let programTitle: string | null = null;
+      let programFacultyName: string | null = null;
+      const { data: prog } = await supabase
+        .from('degree_programs')
+        .select('title,faculty')
+        .eq('id', student.degree_program_id)
+        .maybeSingle();
+      programTitle = prog?.title ?? null;
+      programFacultyName = prog?.faculty ?? null;
+
+      // Match an AI tutor by canonical faculty assignment only. No global tutor and
+      // no loose specialty substring fallback are allowed for live lectures.
       let tutor: LiveClassContext['tutor'] = null;
       if (course.faculty_id) {
         const { data } = await supabase
@@ -94,8 +133,10 @@ export function useLiveClassContext(moduleId?: string) {
           .maybeSingle();
         if (data) tutor = data as any;
       }
-      // Fallback A: resolve faculty name → faculties.id → tutor
-      if (!tutor && course.faculty) {
+
+      // Resolve faculty name → faculties.id → tutor only when the course has no
+      // faculty_id. This is still faculty-scoped and avoids generic fallback tutors.
+      if (!tutor && !course.faculty_id && course.faculty) {
         const { data: fac } = await supabase
           .from('faculties')
           .select('id')
@@ -112,15 +153,25 @@ export function useLiveClassContext(moduleId?: string) {
           if (data) tutor = data as any;
         }
       }
-      // Fallback B: specialty substring match
-      if (!tutor && course.faculty) {
-        const { data } = await supabase
-          .from('ai_tutors')
-          .select('id,name,specialty,avatar_image_url')
-          .ilike('specialty', `%${course.faculty}%`)
-          .limit(1)
-          .maybeSingle();
-        if (data) tutor = data as any;
+
+      if (!tutor) {
+        return {
+          ...empty,
+          ready: false,
+          blocked: true,
+          userId: user.id,
+          studentName: student.full_name ?? user.email ?? null,
+          programTitle,
+          programId: student.degree_program_id,
+          facultyName: course.faculty ?? programFacultyName ?? null,
+          facultyId: course.faculty_id ?? null,
+          courseId: course.id,
+          courseTitle: course.title,
+          moduleId: mod.id,
+          moduleTitle: mod.title,
+          moduleContent: mod.content_md ?? null,
+          blockedReason: 'No AI faculty lecturer is assigned to this course faculty yet.',
+        };
       }
 
       const objectives: string[] = Array.isArray((course as any).learning_outcomes)
@@ -131,9 +182,9 @@ export function useLiveClassContext(moduleId?: string) {
         ready: true,
         blocked: false,
         userId: user.id,
-        studentName: student?.full_name ?? user.email ?? null,
+        studentName: student.full_name ?? user.email ?? null,
         programTitle,
-        programId: student?.degree_program_id ?? null,
+        programId: student.degree_program_id,
         facultyName: course.faculty ?? programFacultyName ?? null,
         facultyId: course.faculty_id ?? null,
         courseId: course.id,
