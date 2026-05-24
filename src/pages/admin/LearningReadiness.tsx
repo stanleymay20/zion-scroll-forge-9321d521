@@ -74,7 +74,10 @@ function Row({
 }
 
 export default function LearningReadiness() {
-  const { data, isLoading, error } = useQuery({
+  const [seeding, setSeeding] = useState(false);
+  const [lastRun, setLastRun] = useState<string | null>(null);
+
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['learning-readiness'],
     queryFn: async (): Promise<Readiness> => {
       const { data, error } = await supabase
@@ -86,6 +89,27 @@ export default function LearningReadiness() {
     },
     refetchInterval: 30_000,
   });
+
+  const runSeed = async () => {
+    setSeeding(true);
+    try {
+      const { data: res, error: err } = await supabase.functions.invoke(
+        'seed-quiz-questions',
+        { body: { batch_size: 10 } },
+      );
+      if (err) throw err;
+      setLastRun(
+        `Seeded ${res.processed_quizzes ?? 0} quizzes + ${res.processed_assignments ?? 0} assignments. ${res.errors?.length ? `${res.errors.length} errors.` : ''}`,
+      );
+      toast({ title: 'Batch complete', description: 'Run again to seed more.' });
+      await refetch();
+    } catch (e: any) {
+      toast({ title: 'Seed failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setSeeding(false);
+    }
+  };
+
 
   if (isLoading) {
     return (
