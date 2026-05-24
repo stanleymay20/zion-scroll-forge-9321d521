@@ -199,6 +199,14 @@ export function LiveAvatarLecture({
     return data.id;
   };
 
+  // Wrap any promise so it cannot hang the connect flow indefinitely.
+  const withTimeout = async <T,>(p: Promise<T>, ms: number, label: string): Promise<T> => {
+    return await Promise.race<T>([
+      p,
+      new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`TIMEOUT_${label}_${ms}ms`)), ms)),
+    ]);
+  };
+
   const connectStream = useCallback(async () => {
     // Guardrail: do not allow start without verified course context.
     if (!courseTitle) {
@@ -206,6 +214,8 @@ export function LiveAvatarLecture({
       return;
     }
     setIsConnecting(true);
+    setHasAvatarStream(false);
+
 
     // Unlock browser audio inside the same user gesture (autoplay policy).
     // Safe to call repeatedly.
