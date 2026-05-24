@@ -117,6 +117,7 @@ export function LiveAvatarLecture({
   const [micStatus, setMicStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied' | 'no-device' | 'in-use' | 'unsupported'>('idle');
   const [micLevel, setMicLevel] = useState(0);
   const [lastMicError, setLastMicError] = useState<string | null>(null);
+  const [isVoiceLoopEnabled, setIsVoiceLoopEnabled] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -139,7 +140,14 @@ export function LiveAvatarLecture({
   const connectionEpochRef = useRef(0);
   const remoteStreamArrivedRef = useRef(false);
   const remoteMediaStreamRef = useRef<MediaStream | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const voiceMonitorCleanupRef = useRef<(() => void) | null>(null);
+  const silenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const voiceLoopEnabledRef = useRef(false);
+  const isTranscribingVoiceRef = useRef(false);
+  const recorderMimeTypeRef = useRef('audio/webm');
   useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
+  useEffect(() => { voiceLoopEnabledRef.current = isVoiceLoopEnabled; }, [isVoiceLoopEnabled]);
   useEffect(() => {
     isMutedRef.current = isMuted;
     // Keep the live-avatar <video> element's audio in sync with the mute button.
@@ -234,6 +242,31 @@ export function LiveAvatarLecture({
   const teardownLocalSession = useCallback(() => {
     connectionEpochRef.current += 1;
 
+    voiceLoopEnabledRef.current = false;
+    setIsVoiceLoopEnabled(false);
+    isTranscribingVoiceRef.current = false;
+
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+
+    voiceMonitorCleanupRef.current?.();
+    voiceMonitorCleanupRef.current = null;
+
+    const activeVoiceRecorder = mediaRecorderRef.current;
+    mediaRecorderRef.current = null;
+    if (activeVoiceRecorder && activeVoiceRecorder.state !== 'inactive') {
+      try {
+        activeVoiceRecorder.stop();
+      } catch (error) {
+        console.error('Voice recorder stop error:', error);
+      }
+    }
+
+    micStreamRef.current?.getTracks().forEach((track) => track.stop());
+    micStreamRef.current = null;
+
     if (trackWatchdogRef.current) {
       clearTimeout(trackWatchdogRef.current);
       trackWatchdogRef.current = null;
@@ -268,7 +301,9 @@ export function LiveAvatarLecture({
     setHasAvatarStream(false);
     setIsLoading(false);
     setIsSpeaking(false);
+    setIsRecordingVoice(false);
     setActiveSpeaker(null);
+    setMicLevel(0);
     setDeliveryMode('offline');
   }, []);
 
