@@ -6,7 +6,7 @@ import {
   decidePedagogy, renderMemorySummary, EMPTY_MEMORY,
   type TeachingMode, type TutorStudentMemory,
 } from "../_shared/tutor-pedagogy.ts";
-import { healthAll, orchestrateCreate, providerByKind } from "../_shared/avatar-providers/registry.ts";
+import { healthAll, orchestrateCreate, providerByKind, probeSovereign } from "../_shared/avatar-providers/registry.ts";
 import type { LectureMode } from "../_shared/avatar-providers/types.ts";
 
 const corsHeaders = {
