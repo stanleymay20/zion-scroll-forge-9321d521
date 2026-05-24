@@ -331,6 +331,25 @@ export function LiveAvatarLecture({
     }
   }, []);
 
+  const scheduleAutoContinue = useCallback((sid?: string) => {
+    cancelAutoContinue();
+    if (voiceLoopEnabledRef.current || !isConnectedRef.current || isDisconnectingRef.current) return;
+    if (consecutiveAutoTurnsRef.current >= 3) return;
+
+    autoContinueTimeoutRef.current = window.setTimeout(() => {
+      if (voiceLoopEnabledRef.current || !isConnectedRef.current || isDisconnectingRef.current || isLoadingRef.current || isSpeakingRef.current || isRecordingVoiceRef.current) {
+        return;
+      }
+      consecutiveAutoTurnsRef.current += 1;
+      void sendToAvatar(
+        'Continue the live lecture naturally from the last teaching point. Speak like a real lecturer, not a chatbot. Advance the lesson in 2-4 concise sentences, then end with a brief reflective prompt only if appropriate.',
+        'host',
+        sid,
+        true,
+      );
+    }, 1400);
+  }, [cancelAutoContinue, sendToAvatar]);
+
   const connectStream = useCallback(async () => {
     // Guardrail: do not allow start without verified course context.
     if (!courseTitle) {
