@@ -13,16 +13,29 @@ import {
   createVoiceOnlyProvider, createTextOnlyProvider,
 } from "./stubs.ts";
 
+// PRIMARY PROVIDER POLICY (current phase):
+//   D-ID is the production primary while the sovereign MuseTalk renderer is
+//   built and validated in the background. Sovereign is kept in the registry
+//   for health probing + shadow telemetry but is NOT selected first.
+//   Flip SOVEREIGN_PRIMARY=true once the GPU worker is ready to take over.
 export function buildRegistry(): AvatarProvider[] {
-  // Order: sovereign (cheapest, when up) → external → voice → text.
+  const sovereignPrimary = (Deno.env.get("SOVEREIGN_PRIMARY") ?? "false").toLowerCase() === "true";
+  const did = createDidProvider();
+  const sovereign = createSovereignMuseTalkProvider();
+  const ordered = sovereignPrimary ? [sovereign, did] : [did, sovereign];
   return [
-    createSovereignMuseTalkProvider(),
-    createDidProvider(),
+    ...ordered,
     createTavusProvider(),
     createHeygenProvider(),
     createVoiceOnlyProvider(),
     createTextOnlyProvider(),
   ];
+}
+
+// Shadow probe: returns sovereign health without affecting selection.
+// Used by ai-avatar-stream to log background-readiness telemetry per session.
+export async function probeSovereign(): Promise<ProviderHealth> {
+  return await createSovereignMuseTalkProvider().getHealth();
 }
 
 export async function healthAll(): Promise<ProviderHealth[]> {
