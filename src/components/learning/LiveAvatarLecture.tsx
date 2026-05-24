@@ -129,6 +129,7 @@ export function LiveAvatarLecture({
   const trackWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionEpochRef = useRef(0);
   const remoteStreamArrivedRef = useRef(false);
+  const remoteMediaStreamRef = useRef<MediaStream | null>(null);
   useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -246,6 +247,7 @@ export function LiveAvatarLecture({
 
     peerConnectionRef.current?.close();
     peerConnectionRef.current = null;
+    remoteMediaStreamRef.current = null;
     streamIdRef.current = null;
     sessionStreamRef.current = null;
     providerKindRef.current = null;
@@ -308,6 +310,7 @@ export function LiveAvatarLecture({
             course_id: courseId ?? null,
             module_id: moduleId ?? null,
             tutor_id: tutorId ?? null,
+            avatar_image_url: tutorAvatar ?? null,
           },
         }),
         20000,
@@ -344,7 +347,22 @@ export function LiveAvatarLecture({
 
         pc.ontrack = (event) => {
           if (connectEpoch !== connectionEpochRef.current) return;
-          if (videoRef.current && event.streams[0]) {
+          const track = event.track;
+          if (!track) return;
+
+          const remoteStream = remoteMediaStreamRef.current ?? new MediaStream();
+          remoteMediaStreamRef.current = remoteStream;
+
+          const existingTrackIds = new Set(remoteStream.getTracks().map((item) => item.id));
+          if (!existingTrackIds.has(track.id)) {
+            remoteStream.addTrack(track);
+          }
+
+          if (videoRef.current && !videoRef.current.srcObject) {
+            videoRef.current.srcObject = remoteStream;
+          }
+
+          if (track.kind === 'video' && videoRef.current) {
             // First media track arrived — cancel the demotion watchdog.
             if (trackWatchdogRef.current) {
               clearTimeout(trackWatchdogRef.current);
@@ -355,7 +373,7 @@ export function LiveAvatarLecture({
             videoRef.current.muted = true;
             videoRef.current.autoplay = true;
             videoRef.current.playsInline = true;
-            videoRef.current.srcObject = event.streams[0];
+            videoRef.current.srcObject = remoteStream;
             remoteStreamArrivedRef.current = true;
             setHasAvatarStream(true);
             setDeliveryMode('avatar');
