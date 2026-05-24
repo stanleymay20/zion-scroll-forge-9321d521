@@ -830,7 +830,28 @@ export function LiveAvatarLecture({
           <div className={`grid gap-2 ${hasCohost ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1'}`}>
             <div className={`relative aspect-video bg-gradient-to-br from-primary/10 via-primary/5 to-background rounded-lg overflow-hidden border border-border ${hasCohost ? 'sm:col-span-2' : ''}`}>
               {isConnected ? (
-                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" data-testid="live-avatar-video" />
+                <>
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className={`w-full h-full object-cover ${hasAvatarStream ? '' : 'hidden'}`}
+                    data-testid="live-avatar-video"
+                  />
+                  {!hasAvatarStream && (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3 p-4">
+                      <Avatar className={`h-24 w-24 border-4 border-primary/30 ${isSpeaking ? 'animate-pulse ring-4 ring-primary/40' : ''}`}>
+                        <AvatarImage src={tutorAvatar || undefined} />
+                        <AvatarFallback className="bg-primary/10 text-primary text-3xl">
+                          {tutorName.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <p className="text-xs text-center opacity-80">
+                        Live video avatar unavailable — continuing in {deliveryMode === 'audio' ? 'voice' : 'text'} mode.
+                      </p>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
                   <div className="relative">
@@ -855,7 +876,7 @@ export function LiveAvatarLecture({
                 </div>
               )}
 
-              {isConnected && (
+              {isConnected && hasAvatarStream && (
                 <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
                   <div className="h-1.5 w-1.5 bg-white rounded-full animate-pulse" />
                   LIVE
