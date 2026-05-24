@@ -231,8 +231,8 @@ export function LiveAvatarLecture({
     audioRef.current = null;
 
     const activeVideo = videoRef.current;
-    const activeStream = activeVideo?.srcObject;
-    if (activeStream instanceof MediaStream) {
+    const activeStream = activeVideo?.srcObject as { getTracks?: () => Array<{ stop: () => void }> } | null;
+    if (activeStream?.getTracks) {
       activeStream.getTracks().forEach((track) => track.stop());
     }
 
