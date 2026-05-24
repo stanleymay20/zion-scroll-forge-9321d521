@@ -107,6 +107,7 @@ export function LiveAvatarLecture({
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [micStatus, setMicStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied' | 'no-device' | 'in-use' | 'unsupported'>('idle');
   const [micLevel, setMicLevel] = useState(0);
+  const [lastMicError, setLastMicError] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -127,6 +128,7 @@ export function LiveAvatarLecture({
   const isMutedRef = useRef(false);
   const trackWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionEpochRef = useRef(0);
+  const remoteStreamArrivedRef = useRef(false);
   useEffect(() => { audioUnlockedRef.current = audioUnlocked; }, [audioUnlocked]);
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -248,6 +250,7 @@ export function LiveAvatarLecture({
     sessionStreamRef.current = null;
     providerKindRef.current = null;
     auditSessionIdRef.current = null;
+    remoteStreamArrivedRef.current = false;
 
     setIsConnected(false);
     setIsConnecting(false);
@@ -286,6 +289,7 @@ export function LiveAvatarLecture({
     try {
       const connectEpoch = connectionEpochRef.current + 1;
       connectionEpochRef.current = connectEpoch;
+      remoteStreamArrivedRef.current = false;
 
       const sid = await withTimeout(createSession(), 8000, 'CREATE_AUDIT_SESSION');
       if (connectEpoch !== connectionEpochRef.current) return;
@@ -335,6 +339,9 @@ export function LiveAvatarLecture({
         });
         peerConnectionRef.current = pc;
 
+        pc.addTransceiver('video', { direction: 'recvonly' });
+        pc.addTransceiver('audio', { direction: 'recvonly' });
+
         pc.ontrack = (event) => {
           if (connectEpoch !== connectionEpochRef.current) return;
           if (videoRef.current && event.streams[0]) {
@@ -349,6 +356,7 @@ export function LiveAvatarLecture({
             videoRef.current.autoplay = true;
             videoRef.current.playsInline = true;
             videoRef.current.srcObject = event.streams[0];
+            remoteStreamArrivedRef.current = true;
             setHasAvatarStream(true);
             setDeliveryMode('avatar');
             videoRef.current.play()
@@ -363,21 +371,26 @@ export function LiveAvatarLecture({
         };
 
         pc.onicecandidate = async (event) => {
-          if (event.candidate && streamIdRef.current && sessionStreamRef.current) {
-            await supabase.functions.invoke('ai-avatar-stream', {
+          if (streamIdRef.current && sessionStreamRef.current) {
+            const { data: iceResponse, error: iceError } = await supabase.functions.invoke('ai-avatar-stream', {
               body: {
                 action: 'ice_candidate',
                 stream_id: streamIdRef.current,
                 session_id: sessionStreamRef.current,
-                candidate: event.candidate.toJSON?.() ?? {
-                  candidate: event.candidate.candidate,
-                  sdpMid: event.candidate.sdpMid,
-                  sdpMLineIndex: event.candidate.sdpMLineIndex,
-                  usernameFragment: event.candidate.usernameFragment,
-                },
+                candidate: event.candidate
+                  ? (event.candidate.toJSON?.() ?? {
+                      candidate: event.candidate.candidate,
+                      sdpMid: event.candidate.sdpMid,
+                      sdpMLineIndex: event.candidate.sdpMLineIndex,
+                      usernameFragment: event.candidate.usernameFragment,
+                    })
+                  : null,
                 provider_kind: providerKindRef.current,
               },
             });
+            if (iceError || iceResponse?.success === false) {
+              throw iceError ?? new Error(iceResponse?.reason || 'ICE candidate rejected');
+            }
           }
         };
 
@@ -390,11 +403,17 @@ export function LiveAvatarLecture({
           }
         };
 
+        pc.oniceconnectionstatechange = () => {
+          if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+            console.error('Live avatar ICE state:', pc.iceConnectionState);
+          }
+        };
+
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
-        await withTimeout(
+        const { data: answerResponse, error: answerError } = await withTimeout(
           supabase.functions.invoke('ai-avatar-stream', {
             body: {
               action: 'sdp_answer',
@@ -407,6 +426,9 @@ export function LiveAvatarLecture({
           15000,
           'SDP_ANSWER',
         );
+        if (answerError || answerResponse?.success === false) {
+          throw answerError ?? new Error(answerResponse?.reason || 'SDP answer rejected');
+        }
         if (connectEpoch !== connectionEpochRef.current) return;
 
         // Mark connected so the "Connecting…" panel disappears even if the
@@ -421,7 +443,7 @@ export function LiveAvatarLecture({
         if (trackWatchdogRef.current) clearTimeout(trackWatchdogRef.current);
         trackWatchdogRef.current = setTimeout(() => {
           if (connectEpoch !== connectionEpochRef.current) return;
-          if (!videoRef.current?.srcObject) {
+          if (!remoteStreamArrivedRef.current || !videoRef.current?.srcObject) {
             peerConnectionRef.current?.close();
             peerConnectionRef.current = null;
             setDeliveryMode((prev) => (prev === 'avatar' ? 'audio' : prev));
@@ -735,7 +757,12 @@ export function LiveAvatarLecture({
 
   const startVoiceInput = async () => {
     try {
+      if (micStatus === 'no-device' || micStatus === 'denied' || micStatus === 'in-use' || micStatus === 'unsupported') {
+        toast.error(lastMicError || 'Microphone unavailable. Use typed questions instead.');
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setLastMicError(null);
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
@@ -748,17 +775,18 @@ export function LiveAvatarLecture({
           const base64 = (reader.result as string).split(',')[1];
           if (!base64) return;
           try {
-            const { data: voiceData, error } = await supabase.functions.invoke('ai-tutor-voice', {
-              body: { session_id: `live-${moduleId}`, audio_base64: base64 },
+            const { data: transcriptionData, error: transcriptionError } = await supabase.functions.invoke('ai-avatar-stream', {
+              body: { action: 'transcribe_audio', audio_base64: base64 },
             });
-            if (error || !voiceData?.transcript) {
+            const transcript = typeof transcriptionData?.transcript === 'string' ? transcriptionData.transcript.trim() : '';
+            if (transcriptionError || !transcript || transcript.length < 3 || /^(you|thank you|thanks|okay|ok)\.?$/i.test(transcript)) {
               toast.error('Voice not recognized. Please type your question.');
               return;
             }
-            const userMsg: Message = { role: 'user', content: voiceData.transcript, timestamp: new Date() };
+            const userMsg: Message = { role: 'user', content: transcript, timestamp: new Date() };
             setMessages((prev) => [...prev, userMsg]);
-            if (sessionId) await persistTranscript(sessionId, 'user', voiceData.transcript, 'You');
-            await sendToAvatar(voiceData.transcript, 'host');
+            if (sessionId) await persistTranscript(sessionId, 'user', transcript, 'You');
+            await sendToAvatar(transcript, 'host');
           } catch (e) {
             console.error('Voice processing error:', e);
             toast.error('Voice processing failed.');
@@ -771,6 +799,7 @@ export function LiveAvatarLecture({
       toast.info('🎙️ Listening...');
     } catch (err) {
       console.error('Mic error:', err);
+      setLastMicError('Microphone access required');
       toast.error('Microphone access required');
     }
   };
@@ -842,6 +871,12 @@ export function LiveAvatarLecture({
       else if (name === 'NotFoundError' || name === 'OverconstrainedError') setMicStatus('no-device');
       else if (name === 'NotReadableError') setMicStatus('in-use');
       else setMicStatus('denied');
+      setLastMicError(
+        name === 'NotAllowedError' ? 'Microphone blocked. Allow it in your browser settings.'
+        : name === 'NotFoundError' ? 'No microphone found.'
+        : name === 'NotReadableError' ? 'Microphone in use by another app.'
+        : 'Microphone unavailable.'
+      );
       toast.error(
         name === 'NotAllowedError' ? 'Microphone blocked. Allow it in your browser settings.'
         : name === 'NotFoundError' ? 'No microphone found.'
