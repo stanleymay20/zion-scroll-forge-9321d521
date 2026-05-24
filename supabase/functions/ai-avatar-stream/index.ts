@@ -3,133 +3,125 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { buildTutorSystemPrompt, formatForTTS, type TutorTone, type WarmthLevel } from "../_shared/tutor-persona.ts";
 import {
-  decidePedagogy,
-  renderMemorySummary,
-  EMPTY_MEMORY,
-  type TeachingMode,
-  type TutorStudentMemory,
+  decidePedagogy, renderMemorySummary, EMPTY_MEMORY,
+  type TeachingMode, type TutorStudentMemory,
 } from "../_shared/tutor-pedagogy.ts";
+import { healthAll, orchestrateCreate, providerByKind } from "../_shared/avatar-providers/registry.ts";
+import type { LectureMode } from "../_shared/avatar-providers/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
 
-    const DID_API_KEY = Deno.env.get("DID_API_KEY");
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
 
     const body = await req.json();
     const { action } = body;
 
-    // Auth is best-effort for stream creation, but required to persist tutor memory safely.
-    // We infer the learner from the JWT rather than trusting a caller-supplied userId.
     const bearer = (req.headers.get("authorization") ?? "").replace("Bearer ", "").trim();
     const { data: authData } = bearer
       ? await supabase.auth.getUser(bearer)
       : { data: { user: null } as any };
-    const authUserId = authData?.user?.id ?? null;
+    const authUserId: string | null = authData?.user?.id ?? null;
 
-    // Lightweight provider readiness probe for frontend/admin diagnostics.
+    // ── provider_health (capabilities + cost + truthful reason) ─────────────
     if (action === "provider_health") {
+      const checks = await healthAll();
       return json({
-        ok: Boolean(LOVABLE_API_KEY),
-        providers: {
-          llm: Boolean(LOVABLE_API_KEY),
-          avatar: Boolean(DID_API_KEY),
-          tts: Boolean(ELEVENLABS_API_KEY),
-        },
-        mode: DID_API_KEY ? "avatar" : ELEVENLABS_API_KEY ? "audio" : "text",
+        ok: checks.some((c) => c.healthy && (c.kind === "did" || c.kind.startsWith("sovereign") || c.kind === "tavus" || c.kind === "heygen")),
+        providers: checks,
+        llm_ready: Boolean(LOVABLE_API_KEY),
+        tts_ready: Boolean(ELEVENLABS_API_KEY),
         checked_at: new Date().toISOString(),
       });
     }
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY not configured");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // ─── ACTION: Create a streaming session ───
-    // Graceful degradation: never throw — return `fallback:true` so the
-    // client can continue in voice-only or text-only mode.
+    // ── create_stream: orchestrate + audit ──────────────────────────────────
     if (action === "create_stream") {
-      if (!DID_API_KEY) {
-        return json({
-          fallback: true,
-          reason: "AVATAR_PROVIDER_UNCONFIGURED",
-          message: "Live video avatar is unavailable. Continuing in voice/text mode.",
-          mode: ELEVENLABS_API_KEY ? "audio" : "text",
-        });
-      }
+      const lectureMode: LectureMode = (body.lecture_mode as LectureMode) ?? "live";
+      const isMobile = Boolean(body.is_mobile);
+      const budgetCeilingUsd: number | undefined = typeof body.budget_ceiling_usd === "number"
+        ? body.budget_ceiling_usd : undefined;
 
+      const orchestrated = await orchestrateCreate({
+        lectureMode, isMobile, budgetCeilingUsd,
+        preferredLanguage: body.language ?? null,
+        facultyVoiceId: body.faculty_voice_id ?? null,
+      });
+
+      // Persist a session row (audit-first; never blocks the user)
+      let sessionRowId: string | null = null;
       try {
-        const streamResp = await fetch("https://api.d-id.com/talks/streams", {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${DID_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            source_url:
-              "https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg",
-            driver_url: "bank://lively",
-            config: { stitch: true, fluent: true },
-          }),
-        });
+        const { data: row } = await supabase.from("live_lecture_sessions").insert({
+          user_id: authUserId,
+          course_id: body.course_id ?? null,
+          module_id: body.module_id ?? null,
+          faculty_id: body.faculty_id ?? null,
+          tutor_id: body.tutor_id ?? null,
+          lecture_mode: lectureMode,
+          provider_used: orchestrated.providerKind,
+          provider_capabilities: orchestrated.provider.capabilities as unknown as Record<string, unknown>,
+          estimated_cost_usd: 0,
+          metadata: { attempts: orchestrated.attempts, budget_ceiling_usd: budgetCeilingUsd ?? null },
+        }).select("id").single();
+        sessionRowId = row?.id ?? null;
+      } catch (e) { console.error("audit session insert failed", e); }
 
-        if (!streamResp.ok) {
-          const errText = await streamResp.text();
-          console.error("D-ID stream create error:", streamResp.status, errText);
-          const reason =
-            streamResp.status === 402 ? "AVATAR_PROVIDER_CREDITS_EXHAUSTED"
-            : streamResp.status === 401 ? "AVATAR_PROVIDER_AUTH_FAILED"
-            : "AVATAR_PROVIDER_UNAVAILABLE";
-          return json({
-            fallback: true,
-            reason,
-            provider_status: streamResp.status,
-            message: "Live video avatar unavailable. Continuing in voice/text mode.",
-            mode: ELEVENLABS_API_KEY ? "audio" : "text",
-          });
-        }
-
-        const streamData = await streamResp.json();
-        console.log("D-ID stream created:", streamData.id);
-        return json({
-          stream_id: streamData.id,
-          session_id: streamData.session_id,
-          offer: streamData.offer,
-          ice_servers: streamData.ice_servers,
-        });
-      } catch (e) {
-        console.error("D-ID stream exception:", e);
-        return json({
-          fallback: true,
-          reason: "AVATAR_PROVIDER_EXCEPTION",
-          message: "Live video avatar unreachable. Continuing in voice/text mode.",
-          mode: ELEVENLABS_API_KEY ? "audio" : "text",
-        });
+      // Audit each attempt + the selection
+      if (sessionRowId) {
+        try {
+          const events = orchestrated.attempts.map((a) => ({
+            session_id: sessionRowId!,
+            event_type: a.ok ? "provider_selected" : "fallback",
+            payload: { provider: a.kind, reason: a.reason ?? null },
+            estimated_cost_usd: 0,
+          }));
+          if (events.length) await supabase.from("live_lecture_events").insert(events);
+        } catch (e) { console.error("audit events insert failed", e); }
       }
+
+      return json({
+        // legacy shape preserved
+        stream_id: orchestrated.stream_id ?? null,
+        session_id: orchestrated.session_id ?? null,
+        offer: orchestrated.offer ?? null,
+        ice_servers: orchestrated.ice_servers ?? null,
+        fallback: orchestrated.fallback ?? !orchestrated.ok ? true : (orchestrated.providerKind === "voice-only" || orchestrated.providerKind === "text-only"),
+        reason: orchestrated.reason ?? null,
+        // new: truthful provider + capability info for UI badge logic
+        provider_kind: orchestrated.providerKind,
+        provider_capabilities: orchestrated.provider.capabilities,
+        estimated_cost_per_minute_usd: orchestrated.estimatedCostPerMinuteUsd,
+        mode: orchestrated.providerKind === "text-only"
+          ? "text"
+          : orchestrated.providerKind === "voice-only"
+            ? "audio"
+            : "avatar",
+        audit_session_id: sessionRowId,
+        attempts: orchestrated.attempts,
+      });
     }
 
-    // ─── ACTION: Send text to avatar (make it talk) ───
+    // ── talk: pedagogy + LLM + TTS + (optional) provider speak ──────────────
     if (action === "talk") {
       const {
         stream_id, session_id, text, messages, moduleContent, tutorId,
@@ -138,28 +130,19 @@ serve(async (req) => {
         studentName, learningObjectives,
         tone, warmth,
         courseId, intent, modeOverride, lastAssessmentScore,
+        audit_session_id, provider_kind,
       } = body;
 
-      if (!stream_id || !session_id || !text) {
-        return json({ error: "stream_id, session_id, and text are required" }, 400);
-      }
+      if (!text) return json({ error: "text is required" }, 400);
 
-      // Never trust body.userId for memory writes. Use JWT user, with body.userId only as
-      // a compatibility fallback when a legacy client is still being upgraded.
       const effectiveUserId = authUserId ?? (typeof body.userId === "string" ? body.userId : null);
-      if (body.userId && authUserId && body.userId !== authUserId) {
-        console.warn("Ignoring mismatched avatar userId", { bodyUserId: body.userId, authUserId });
-      }
 
-      // ─── PR2: load tutor_student_memory (best-effort) ───
       let memory: TutorStudentMemory = { ...EMPTY_MEMORY };
       if (effectiveUserId && courseId) {
         const { data: memRow } = await supabase
           .from("tutor_student_memory")
           .select("misconceptions,strengths,weak_areas,last_topics,preferred_pace,current_mode,consecutive_low_scores,intervention_flag")
-          .eq("user_id", effectiveUserId)
-          .eq("course_id", courseId)
-          .maybeSingle();
+          .eq("user_id", effectiveUserId).eq("course_id", courseId).maybeSingle();
         if (memRow) memory = { ...EMPTY_MEMORY, ...(memRow as any) };
       }
 
@@ -176,13 +159,8 @@ serve(async (req) => {
         warmth: warmth as WarmthLevel | undefined,
         tutorName,
         tutorSpecialty: tutorSpecialty || facultyName || null,
-        studentName,
-        courseTitle,
-        programTitle,
-        facultyName,
-        moduleTitle,
-        learningObjectives,
-        moduleContent,
+        studentName, courseTitle, programTitle, facultyName, moduleTitle,
+        learningObjectives, moduleContent,
         teachingModeBlock: pedagogy.modeInstructions,
         memorySummary: renderMemorySummary(memory),
       });
@@ -193,40 +171,29 @@ serve(async (req) => {
         { role: "user", content: text },
       ];
 
-      const aiResp = await fetch(
-        "https://ai.gateway.lovable.dev/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: chatMessages,
-            temperature: 0.6,
-            max_tokens: 600,
-          }),
-        }
-      );
+      const t0 = Date.now();
+      const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash", messages: chatMessages,
+          temperature: 0.6, max_tokens: 600,
+        }),
+      });
 
       if (!aiResp.ok) {
-        const status = aiResp.status;
-        if (status === 429) {
-          return json({ error: "RATE_LIMITED", message: "Rate limited. Please wait a moment." }, 429);
-        }
-        if (status === 402) {
-          return json({ error: "CREDITS_REQUIRED", message: "AI credits exhausted. Please add credits." }, 402);
-        }
-        throw new Error(`AI Gateway error: ${status}`);
+        if (aiResp.status === 429) return json({ error: "RATE_LIMITED", message: "Rate limited." }, 429);
+        if (aiResp.status === 402) return json({ error: "CREDITS_REQUIRED", message: "AI credits exhausted." }, 402);
+        throw new Error(`AI Gateway error: ${aiResp.status}`);
       }
 
       const aiData = await aiResp.json();
       const rawMessage: string = aiData.choices[0].message.content ?? "";
       const spokenMessage = formatForTTS(rawMessage);
       const aiMessage = spokenMessage || rawMessage;
+      const llmLatencyMs = Date.now() - t0;
 
-      // 2. Generate audio via ElevenLabs TTS — warm, conversational settings.
+      // TTS
       let audioBase64: string | null = null;
       let ttsAvailable = false;
       if (ELEVENLABS_API_KEY) {
@@ -236,96 +203,55 @@ serve(async (req) => {
             `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
             {
               method: "POST",
-              headers: {
-                "xi-api-key": ELEVENLABS_API_KEY,
-                "Content-Type": "application/json",
-              },
+              headers: { "xi-api-key": ELEVENLABS_API_KEY, "Content-Type": "application/json" },
               body: JSON.stringify({
                 text: aiMessage,
                 model_id: "eleven_turbo_v2_5",
-                voice_settings: {
-                  stability: 0.45,
-                  similarity_boost: 0.8,
-                  style: 0.55,
-                  use_speaker_boost: true,
-                  speed: 0.97,
-                },
+                voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.55, use_speaker_boost: true, speed: 0.97 },
               }),
-            }
+            },
           );
-
           if (ttsResp.ok) {
-            const audioBuffer = await ttsResp.arrayBuffer();
-            const uint8 = new Uint8Array(audioBuffer);
-            let binary = "";
-            for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
-            audioBase64 = btoa(binary);
+            const buf = await ttsResp.arrayBuffer();
+            const u8 = new Uint8Array(buf);
+            let bin = "";
+            for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+            audioBase64 = btoa(bin);
             ttsAvailable = true;
-          } else {
-            console.error("ElevenLabs TTS error:", ttsResp.status);
           }
-        } catch (ttsErr) {
-          console.error("TTS generation error:", ttsErr);
+        } catch (e) { console.error("TTS error", e); }
+      }
+
+      // Route avatar speak through the provider that owns the stream
+      let providerSpeakResult: unknown = null;
+      if (stream_id && session_id && provider_kind) {
+        const provider = providerByKind(provider_kind);
+        if (provider?.speak) {
+          try { providerSpeakResult = await provider.speak(stream_id, session_id, aiMessage); }
+          catch (e) { console.error("provider.speak failed", e); }
         }
       }
 
-      // 3. Send talk command to D-ID stream (if available)
-      let didTalkResult = null;
-      if (DID_API_KEY && stream_id && session_id) {
-        try {
-          const talkResp = await fetch(
-            `https://api.d-id.com/talks/streams/${stream_id}`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Basic ${DID_API_KEY}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                session_id,
-                script: {
-                  type: "text",
-                  input: aiMessage.substring(0, 1500),
-                  provider: { type: "microsoft", voice_id: "en-US-JennyNeural" },
-                },
-                config: { fluent: true },
-              }),
-            }
-          );
-
-          if (talkResp.ok) didTalkResult = await talkResp.json();
-          else console.error("D-ID talk error:", talkResp.status);
-        } catch (didErr) {
-          console.error("D-ID talk error:", didErr);
-        }
-      }
-
-      // ─── PR2: persist memory + open intervention alert if triggered ───
+      // Persist memory + intervention (unchanged behaviour)
       if (effectiveUserId && courseId) {
         const nextTopics = [
           ...(moduleTitle ? [moduleTitle] : []),
           ...(pedagogy.nextMemory.last_topics || []),
         ].slice(0, 6);
         await supabase.from("tutor_student_memory").upsert({
-          user_id: effectiveUserId,
-          course_id: courseId,
-          ...pedagogy.nextMemory,
-          last_topics: nextTopics,
+          user_id: effectiveUserId, course_id: courseId,
+          ...pedagogy.nextMemory, last_topics: nextTopics,
           last_interaction_at: new Date().toISOString(),
         }, { onConflict: "user_id,course_id" });
 
         if (pedagogy.shouldIntervene) {
           const { data: existing } = await supabase
             .from("student_intervention_alerts")
-            .select("id")
-            .eq("user_id", effectiveUserId)
-            .eq("course_id", courseId)
-            .eq("status", "open")
-            .maybeSingle();
+            .select("id").eq("user_id", effectiveUserId).eq("course_id", courseId)
+            .eq("status", "open").maybeSingle();
           if (!existing) {
             await supabase.from("student_intervention_alerts").insert({
-              user_id: effectiveUserId,
-              course_id: courseId,
+              user_id: effectiveUserId, course_id: courseId,
               trigger_reason: pedagogy.interventionReason ?? "Repeated low assessment scores.",
               recommended_action: "Faculty check-in; tutor switched to revision mode.",
               metadata: { source: "ai-avatar-stream", mode: pedagogy.mode },
@@ -334,61 +260,70 @@ serve(async (req) => {
         }
       }
 
+      // Audit teaching mode + latency
+      if (audit_session_id) {
+        try {
+          await supabase.from("live_lecture_events").insert({
+            session_id: audit_session_id,
+            event_type: "teaching_mode_change",
+            payload: { mode: pedagogy.mode, tts_available: ttsAvailable, provider_kind: provider_kind ?? null },
+            latency_ms: llmLatencyMs,
+          });
+        } catch (e) { console.error("audit talk event failed", e); }
+      }
+
       return json({
         message: aiMessage,
         audio_base64: audioBase64,
         tts_available: ttsAvailable,
-        did_talk: didTalkResult,
+        did_talk: providerSpeakResult,
         teaching_mode: pedagogy.mode,
         intervention_opened: pedagogy.shouldIntervene,
         memory_user_scoped: Boolean(effectiveUserId && courseId),
+        llm_latency_ms: llmLatencyMs,
       });
     }
 
-    // ─── ACTION: Send SDP answer (WebRTC handshake) ───
+    // ── sdp_answer / ice_candidate / destroy_stream — routed via registry ───
     if (action === "sdp_answer") {
-      const { stream_id, session_id, answer } = body;
-      if (!DID_API_KEY) throw new Error("DID_API_KEY not configured");
-      const resp = await fetch(`https://api.d-id.com/talks/streams/${stream_id}/sdp`, {
-        method: "POST",
-        headers: { Authorization: `Basic ${DID_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id, answer }),
-      });
-      if (!resp.ok) throw new Error(`SDP answer failed: ${await resp.text()}`);
+      const { stream_id, session_id, answer, provider_kind } = body;
+      const provider = providerByKind(provider_kind ?? "did");
+      if (!provider?.sendSdpAnswer) return json({ success: false, reason: "PROVIDER_NO_REALTIME" });
+      await provider.sendSdpAnswer(stream_id, session_id, answer);
       return json({ success: true });
     }
 
-    // ─── ACTION: Send ICE candidate ───
     if (action === "ice_candidate") {
-      const { stream_id, session_id, candidate } = body;
-      if (!DID_API_KEY) throw new Error("DID_API_KEY not configured");
-      const resp = await fetch(`https://api.d-id.com/talks/streams/${stream_id}/ice`, {
-        method: "POST",
-        headers: { Authorization: `Basic ${DID_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id, candidate }),
-      });
-      if (!resp.ok) console.error("ICE candidate error:", await resp.text());
+      const { stream_id, session_id, candidate, provider_kind } = body;
+      const provider = providerByKind(provider_kind ?? "did");
+      if (!provider?.sendIceCandidate) return json({ success: false, reason: "PROVIDER_NO_REALTIME" });
+      await provider.sendIceCandidate(stream_id, session_id, candidate);
       return json({ success: true });
     }
 
-    // ─── ACTION: Destroy stream ───
     if (action === "destroy_stream") {
-      const { stream_id, session_id } = body;
-      if (DID_API_KEY && stream_id) {
+      const { stream_id, session_id, provider_kind, audit_session_id, end_reason } = body;
+      const provider = providerByKind(provider_kind ?? "did");
+      if (provider?.destroy && stream_id) {
+        try { await provider.destroy(stream_id, session_id); } catch (e) { console.error(e); }
+      }
+      if (audit_session_id) {
         try {
-          await fetch(`https://api.d-id.com/talks/streams/${stream_id}`, {
-            method: "DELETE",
-            headers: { Authorization: `Basic ${DID_API_KEY}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ session_id }),
+          await supabase.from("live_lecture_sessions").update({
+            ended_at: new Date().toISOString(),
+            end_reason: end_reason ?? "completed",
+          }).eq("id", audit_session_id);
+          await supabase.from("live_lecture_events").insert({
+            session_id: audit_session_id,
+            event_type: "disconnect",
+            payload: { reason: end_reason ?? "completed" },
           });
-        } catch (e) {
-          console.error("Stream destroy error:", e);
-        }
+        } catch (e) { console.error("audit destroy failed", e); }
       }
       return json({ success: true });
     }
 
-    return json({ error: "Invalid action. Use: provider_health, create_stream, talk, sdp_answer, ice_candidate, destroy_stream" }, 400);
+    return json({ error: "Invalid action" }, 400);
   } catch (error: any) {
     console.error("ai-avatar-stream error:", error);
     return json({ error: error.message }, 500);
