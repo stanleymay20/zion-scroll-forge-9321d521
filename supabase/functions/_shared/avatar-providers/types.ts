@@ -34,6 +34,7 @@ export interface CreateSessionInput {
   isMobile?: boolean;
   preferredLanguage?: string;
   facultyVoiceId?: string | null;
+  avatarImageUrl?: string | null;
   budgetCeilingUsd?: number;      // hard cap — orchestrator routes below this
 }
 
