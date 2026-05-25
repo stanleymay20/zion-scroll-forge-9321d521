@@ -441,6 +441,7 @@ export function LiveAvatarLecture({
             remoteStreamArrivedRef.current = true;
             setHasAvatarStream(true);
             setDeliveryMode('avatar');
+            toast.success('🎥 Live avatar video active');
             videoRef.current.play()
               .then(() => {
                 if (videoRef.current && audioUnlockedRef.current && !isMutedRef.current) {
@@ -513,12 +514,16 @@ export function LiveAvatarLecture({
         }
         if (connectEpoch !== connectionEpochRef.current) return;
 
-        // Mark connected so the "Connecting…" panel disappears even if the
-        // remote video track never arrives. UI will show truthful fallback.
+        // SDP negotiated. Enter the "avatar" channel provisionally so the
+        // negotiating-video state renders, but do NOT claim "live avatar"
+        // until the remote video track actually arrives (gated by
+        // hasAvatarStream in the UI). ontrack flips the truthful state.
         setIsConnected(true);
         setIsConnecting(false);
         setDeliveryMode('avatar');
-        toast.success('🎥 Live lecture started');
+        toast.message('Negotiating live video…', {
+          description: 'Waiting for the avatar stream to arrive.',
+        });
 
         // Track-arrival watchdog: if no remote video frames after the device-specific deadline,
         // demote to voice/text truthfully so the user is never stuck. Cancelled in ontrack.
@@ -1315,8 +1320,8 @@ export function LiveAvatarLecture({
           <Badge variant={courseTitle ? 'secondary' : 'destructive'}>
             {courseTitle ? `Course: ${courseTitle}` : 'No course context'}
           </Badge>
-          <Badge variant={deliveryMode === 'avatar' || deliveryMode === 'audio' ? 'secondary' : deliveryMode === 'text' ? 'outline' : 'destructive'}>
-            Delivery: {deliveryMode === 'avatar' ? 'live avatar' : deliveryMode === 'audio' ? 'audio tutor' : deliveryMode === 'text' ? 'text tutor only' : 'offline'}
+          <Badge variant={hasAvatarStream || deliveryMode === 'audio' ? 'secondary' : deliveryMode === 'text' ? 'outline' : 'destructive'}>
+            Delivery: {hasAvatarStream ? 'live avatar' : deliveryMode === 'avatar' ? 'negotiating video' : deliveryMode === 'audio' ? 'audio tutor' : deliveryMode === 'text' ? 'text tutor only' : 'offline'}
           </Badge>
           {programTitle && <Badge variant="outline">Program: {programTitle}</Badge>}
           {facultyName && <Badge variant="outline">Faculty: {facultyName}</Badge>}
