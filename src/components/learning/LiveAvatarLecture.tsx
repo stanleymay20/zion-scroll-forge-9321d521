@@ -1318,8 +1318,8 @@ export function LiveAvatarLecture({
           <Badge variant={courseTitle ? 'secondary' : 'destructive'}>
             {courseTitle ? `Course: ${courseTitle}` : 'No course context'}
           </Badge>
-          <Badge variant={deliveryMode === 'avatar' || deliveryMode === 'audio' ? 'secondary' : deliveryMode === 'text' ? 'outline' : 'destructive'}>
-            Delivery: {deliveryMode === 'avatar' ? 'live avatar' : deliveryMode === 'audio' ? 'audio tutor' : deliveryMode === 'text' ? 'text tutor only' : 'offline'}
+          <Badge variant={hasAvatarStream || deliveryMode === 'audio' ? 'secondary' : deliveryMode === 'text' ? 'outline' : 'destructive'}>
+            Delivery: {hasAvatarStream ? 'live avatar' : deliveryMode === 'avatar' ? 'negotiating video' : deliveryMode === 'audio' ? 'audio tutor' : deliveryMode === 'text' ? 'text tutor only' : 'offline'}
           </Badge>
           {programTitle && <Badge variant="outline">Program: {programTitle}</Badge>}
           {facultyName && <Badge variant="outline">Faculty: {facultyName}</Badge>}
