@@ -441,6 +441,7 @@ export function LiveAvatarLecture({
             remoteStreamArrivedRef.current = true;
             setHasAvatarStream(true);
             setDeliveryMode('avatar');
+            toast.success('🎥 Live avatar video active');
             videoRef.current.play()
               .then(() => {
                 if (videoRef.current && audioUnlockedRef.current && !isMutedRef.current) {
