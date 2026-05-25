@@ -513,12 +513,14 @@ export function LiveAvatarLecture({
         }
         if (connectEpoch !== connectionEpochRef.current) return;
 
-        // Mark connected so the "Connecting…" panel disappears even if the
-        // remote video track never arrives. UI will show truthful fallback.
+        // SDP negotiated. Do NOT claim "live avatar" until the remote video
+        // track actually arrives — ontrack will flip deliveryMode + toast.
+        // Until then, surface a truthful "negotiating video" state.
         setIsConnected(true);
         setIsConnecting(false);
-        setDeliveryMode('avatar');
-        toast.success('🎥 Live lecture started');
+        toast.message('Negotiating live video…', {
+          description: 'Waiting for the avatar stream to arrive.',
+        });
 
         // Track-arrival watchdog: if no remote video frames after the device-specific deadline,
         // demote to voice/text truthfully so the user is never stuck. Cancelled in ontrack.
