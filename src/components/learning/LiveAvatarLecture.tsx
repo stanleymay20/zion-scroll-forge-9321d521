@@ -514,11 +514,13 @@ export function LiveAvatarLecture({
         }
         if (connectEpoch !== connectionEpochRef.current) return;
 
-        // SDP negotiated. Do NOT claim "live avatar" until the remote video
-        // track actually arrives — ontrack will flip deliveryMode + toast.
-        // Until then, surface a truthful "negotiating video" state.
+        // SDP negotiated. Enter the "avatar" channel provisionally so the
+        // negotiating-video state renders, but do NOT claim "live avatar"
+        // until the remote video track actually arrives (gated by
+        // hasAvatarStream in the UI). ontrack flips the truthful state.
         setIsConnected(true);
         setIsConnecting(false);
+        setDeliveryMode('avatar');
         toast.message('Negotiating live video…', {
           description: 'Waiting for the avatar stream to arrive.',
         });
