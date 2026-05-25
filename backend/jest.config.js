@@ -6,14 +6,12 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  
-  // Test file patterns
+
   testMatch: [
     '**/__tests__/**/*.test.ts',
     '**/?(*.)+(spec|test).ts'
   ],
-  
-  // Coverage configuration
+
   collectCoverage: true,
   coverageDirectory: 'coverage',
   coverageReporters: [
@@ -22,8 +20,7 @@ module.exports = {
     'html',
     'json-summary'
   ],
-  
-  // Coverage thresholds (enforce minimum coverage)
+
   coverageThreshold: {
     global: {
       branches: 80,
@@ -31,7 +28,6 @@ module.exports = {
       lines: 80,
       statements: 80
     },
-    // Stricter thresholds for critical services
     './src/services/admissions/': {
       branches: 90,
       functions: 90,
@@ -45,8 +41,7 @@ module.exports = {
       statements: 85
     }
   },
-  
-  // Files to collect coverage from
+
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
@@ -54,45 +49,45 @@ module.exports = {
     '!src/**/*.spec.ts',
     '!src/types/**',
     '!src/**/__tests__/**',
-    '!src/index.ts', // Main entry point
-    '!src/**/demo.ts', // Demo files
-    '!src/**/example.ts' // Example files
+    '!src/index.ts',
+    '!src/**/demo.ts',
+    '!src/**/example.ts'
   ],
-  
-  // Setup files
+
   setupFilesAfterEnv: [
     '<rootDir>/src/__tests__/setup.ts'
   ],
-  
-  // Module path mapping
+
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@tests/(.*)$': '<rootDir>/src/__tests__/$1'
   },
-  
-  // Transform configuration
+
   transform: {
-    '^.+\\.ts$': 'ts-jest'
+    '^.+\\.(ts|tsx)$': [
+      'ts-jest',
+      {
+        tsconfig: 'tsconfig.json'
+      }
+    ]
   },
-  
-  // Global test timeout
+
   testTimeout: 30000,
-  
-  // Test environment variables
+
   testEnvironmentOptions: {
     NODE_ENV: 'test'
   },
-  
-  // Ignore patterns
+
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
     '/coverage/',
     '/.next/',
-    '/build/'
+    '/build/',
+    '\\.integration\\.test\\.ts$',
+    '\\.e2e\\.test\\.ts$'
   ],
-  
-  // Module file extensions
+
   moduleFileExtensions: [
     'ts',
     'tsx',
@@ -100,28 +95,12 @@ module.exports = {
     'jsx',
     'json'
   ],
-  
-  // Verbose output
+
   verbose: true,
-  
-  // Clear mocks between tests
   clearMocks: true,
-  
-  // Restore mocks after each test
   restoreMocks: true,
-  
-  // Error handling
   errorOnDeprecated: true,
-  
-  // Globals
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json',
-      isolatedModules: true
-    }
-  },
-  
-  // Reporters
+
   reporters: [
     'default',
     [
@@ -146,27 +125,14 @@ module.exports = {
       }
     ]
   ],
-  
-  // Watch mode configuration
+
   watchPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
     '/coverage/'
   ],
-  
-  // Snapshot configuration
+
   snapshotSerializers: [
     'jest-serializer-path'
-  ],
-  
-  // Test suites - simplified to avoid regex issues with special characters in path
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/dist/',
-    '/coverage/',
-    '/.next/',
-    '/build/',
-    '\\.integration\\.test\\.ts$',
-    '\\.e2e\\.test\\.ts$'
   ]
 };
