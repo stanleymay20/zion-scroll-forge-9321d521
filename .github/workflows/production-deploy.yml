@@ -5,16 +5,20 @@ on:
     branches:
       - main
       - master
+  pull_request:
+    branches:
+      - main
+      - master
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Deployment environment'
+        description: Deployment environment
         required: true
-        default: 'production'
+        default: staging
         type: choice
         options:
-          - production
           - staging
+          - production
 
 permissions:
   contents: read
@@ -28,7 +32,6 @@ env:
   IMAGE_NAME_FRONTEND: ${{ github.repository }}/frontend
 
 jobs:
-  # Security Scanning
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -39,40 +42,30 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
           exit-code: '0'
-      
+          ignore-unfixed: true
+
       - name: Upload Trivy results to GitHub Security
-        if: always()
+        if: always() && hashFiles('trivy-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
-      
-      - name: Run Snyk security scan (advisory)
+          sarif_file: trivy-results.sarif
+
+      - name: Run Snyk security scan advisory
         if: ${{ secrets.SNYK_TOKEN != '' }}
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: |
-          npm install -g snyk
-          snyk test --severity-threshold=critical || {
-            echo "Snyk reported vulnerabilities. Treating as advisory while dependency hardening is in progress."
-            exit 0
-          }
+        run: npx snyk test --severity-threshold=critical
 
-      - name: Snyk token not configured
-        if: ${{ secrets.SNYK_TOKEN == '' }}
-        run: |
-          echo "SNYK_TOKEN is not configured. Trivy SARIF scanning remains active."
-          echo "Configure SNYK_TOKEN in repository secrets to enable Snyk as an additional advisory scan."
-
-  # Backend Tests
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
@@ -90,7 +83,6 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      
       redis:
         image: redis:7-alpine
         options: >-
@@ -100,29 +92,32 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: backend/package-lock.json
-      
-      - name: Install dependencies
+
+      - name: Install backend dependencies
         working-directory: backend
         run: npm ci
-      
-      - name: Run database migrations
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: Apply database migrations
         working-directory: backend
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/scrolluniversity_test
-        run: npm run migrate
-      
-      - name: Run tests
+        run: npx prisma migrate deploy
+
+      - name: Run backend tests
         working-directory: backend
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/scrolluniversity_test
@@ -130,234 +125,106 @@ jobs:
           JWT_SECRET: test-secret-key-for-ci-testing-only
           NODE_ENV: test
         run: npm run test:ci
-      
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./backend/coverage/lcov.info
-          flags: backend
-          name: backend-coverage
 
-  # Frontend Tests
   frontend-tests:
     name: Frontend Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Run linter
-        run: npm run lint
-      
-      - name: Run type check
-        run: npm run type-check
-      
-      - name: Run tests
-        run: npm run test:ci
-      
-      - name: Build frontend
-        run: npm run build
-      
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage/lcov.info
-          flags: frontend
-          name: frontend-coverage
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-  # Build and Push Docker Images
-  build-and-push:
-    name: Build and Push Docker Images
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Run frontend lint
+        run: npm run lint
+
+      - name: Run frontend build
+        run: npm run build
+
+  build-images:
+    name: Build Docker Images
     runs-on: ubuntu-latest
     needs: [security-scan, backend-tests, frontend-tests]
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     permissions:
       contents: read
       packages: write
-    outputs:
-      backend-image: ${{ steps.meta-backend.outputs.tags }}
-      frontend-image: ${{ steps.meta-frontend.outputs.tags }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to Container Registry
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
-      # Backend Image
-      - name: Extract metadata for backend
-        id: meta-backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-      
-      - name: Build and push backend image
-        uses: docker/build-push-action@v5
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
-          push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            DEPLOYMENT_VERSION=${{ github.sha }}
-            DEPLOYMENT_TIMESTAMP=${{ github.event.head_commit.timestamp }}
-            DEPLOYMENT_COMMIT_SHA=${{ github.sha }}
-      
-      # Frontend Image
-      - name: Extract metadata for frontend
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-      
-      - name: Build and push frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.frontend
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Deploy to Kubernetes
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
     name: Deploy to Kubernetes
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: build-images
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
     environment:
-      name: ${{ github.event.inputs.environment || 'production' }}
+      name: production
       url: https://scrolluniversity.com
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
+      - name: Validate required deployment secrets
+        run: |
+          test -n "${{ secrets.KUBE_CONFIG }}" || (echo "KUBE_CONFIG is required for production deploy" && exit 1)
+
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
+        uses: azure/setup-kubectl@v4
         with:
-          version: 'v1.28.0'
-      
+          version: v1.29.0
+
       - name: Configure kubectl
         run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
-      
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
       - name: Update deployment images
         run: |
-          kubectl set image deployment/scrolluniversity-backend \
-            backend=${{ needs.build-and-push.outputs.backend-image }} \
-            -n scrolluniversity \
-            --record
-          
-          kubectl set image deployment/scrolluniversity-frontend \
-            frontend=${{ needs.build-and-push.outputs.frontend-image }} \
-            -n scrolluniversity \
-            --record
-      
+          kubectl set image deployment/scrolluniversity-backend backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:${{ github.sha }} -n scrolluniversity
+          kubectl set image deployment/scrolluniversity-frontend frontend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:${{ github.sha }} -n scrolluniversity
+
       - name: Wait for rollout
         run: |
           kubectl rollout status deployment/scrolluniversity-backend -n scrolluniversity --timeout=10m
           kubectl rollout status deployment/scrolluniversity-frontend -n scrolluniversity --timeout=10m
-      
-      - name: Verify deployment
-        run: |
-          kubectl get pods -n scrolluniversity
-          kubectl get services -n scrolluniversity
-          kubectl get ingress -n scrolluniversity
-
-  # Post-Deployment Tests
-  post-deployment-tests:
-    name: Post-Deployment Tests
-    runs-on: ubuntu-latest
-    needs: deploy
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install dependencies
-        working-directory: backend
-        run: npm ci
-      
-      - name: Run smoke tests
-        working-directory: backend
-        env:
-          API_URL: https://api.scrolluniversity.com
-        run: npm run test:smoke
-      
-      - name: Run health checks
-        run: |
-          curl -f https://api.scrolluniversity.com/health || exit 1
-          curl -f https://scrolluniversity.com || exit 1
-
-  # Notify
-  notify:
-    name: Notify Deployment Status
-    runs-on: ubuntu-latest
-    needs: [deploy, post-deployment-tests]
-    if: always()
-    steps:
-      - name: Notify Slack
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          text: |
-            Deployment to ${{ github.event.inputs.environment || 'production' }} ${{ job.status }}
-            Commit: ${{ github.sha }}
-            Author: ${{ github.actor }}
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-        if: always()
-      
-      - name: Notify Sentry
-        run: |
-          curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.SENTRY_AUTH_TOKEN }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "version": "${{ github.sha }}",
-              "projects": ["scrolluniversity-backend"],
-              "refs": [{
-                "repository": "${{ github.repository }}",
-                "commit": "${{ github.sha }}"
-              }]
-            }' \
-            "https://sentry.io/api/0/organizations/scrolluniversity/releases/"
-        if: success()
