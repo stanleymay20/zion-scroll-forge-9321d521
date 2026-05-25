@@ -73,6 +73,10 @@ export interface NetworkAnalysis {
   locationConsistency: number;
   accessPatterns: AccessPattern[];
   suspiciousConnections: string[];
+  isProxy?: boolean;
+  isVPN?: boolean;
+  riskScore?: number;
+  concurrentSessions?: number;
 }
 
 export interface AccessPattern {
@@ -118,169 +122,63 @@ export class FraudDetectionService {
     this.initializeFraudPatterns();
   }
 
-  /**
-   * Initialize fraud detection configuration
-   */
   private initializeConfig(): FraudDetectionConfig {
     return {
       riskThresholds: {
         low: 0.3,
         medium: 0.5,
         high: 0.7,
-        critical: 0.9
+        critical: 0.8
       },
       patternWeights: {
         documentTampering: 0.4,
         identityMismatch: 0.3,
-        behavioralAnomalies: 0.2,
-        networkAnalysis: 0.1
+        behavioralAnomalies: 0.25,
+        networkAnalysis: 0.25
       },
       alertSettings: {
         enableRealTimeAlerts: true,
-        escalationThreshold: 0.8,
-        autoRejectThreshold: 0.95
+        escalationThreshold: 0.7,
+        autoRejectThreshold: 0.8
       }
     };
   }
 
-  /**
-   * Initialize fraud detection patterns
-   */
   private initializeFraudPatterns(): void {
     const patterns: FraudPattern[] = [
-      {
-        id: 'rapid-multiple-submissions',
-        name: 'Rapid Multiple Submissions',
-        description: 'Multiple applications submitted in rapid succession',
-        category: 'BEHAVIORAL',
-        severity: 'MEDIUM',
-        algorithm: 'TIME_WINDOW_ANALYSIS',
-        weight: 0.6,
-        isActive: true
-      },
-      {
-        id: 'document-hash-collision',
-        name: 'Document Hash Collision',
-        description: 'Same document submitted by multiple applicants',
-        category: 'DOCUMENT',
-        severity: 'HIGH',
-        algorithm: 'HASH_COMPARISON',
-        weight: 0.9,
-        isActive: true
-      },
-      {
-        id: 'identity-inconsistency',
-        name: 'Identity Data Inconsistency',
-        description: 'Inconsistent personal information across documents',
-        category: 'IDENTITY',
-        severity: 'HIGH',
-        algorithm: 'CROSS_REFERENCE_ANALYSIS',
-        weight: 0.8,
-        isActive: true
-      },
-      {
-        id: 'suspicious-ip-pattern',
-        name: 'Suspicious IP Pattern',
-        description: 'Access from known proxy, VPN, or suspicious location',
-        category: 'NETWORK',
-        severity: 'MEDIUM',
-        algorithm: 'IP_REPUTATION_ANALYSIS',
-        weight: 0.4,
-        isActive: true
-      },
-      {
-        id: 'automated-behavior',
-        name: 'Automated Behavior Detection',
-        description: 'Behavior patterns consistent with automated tools',
-        category: 'BEHAVIORAL',
-        severity: 'HIGH',
-        algorithm: 'BEHAVIORAL_ANALYSIS',
-        weight: 0.7,
-        isActive: true
-      },
-      {
-        id: 'document-metadata-anomaly',
-        name: 'Document Metadata Anomaly',
-        description: 'Suspicious patterns in document metadata',
-        category: 'DOCUMENT',
-        severity: 'MEDIUM',
-        algorithm: 'METADATA_ANALYSIS',
-        weight: 0.5,
-        isActive: true
-      }
+      { id: 'rapid-multiple-submissions', name: 'Rapid Multiple Submissions', description: 'Multiple applications submitted in rapid succession', category: 'BEHAVIORAL', severity: 'MEDIUM', algorithm: 'TIME_WINDOW_ANALYSIS', weight: 0.6, isActive: true },
+      { id: 'document-hash-collision', name: 'Document Hash Collision', description: 'Same document submitted by multiple applicants', category: 'DOCUMENT', severity: 'HIGH', algorithm: 'HASH_COMPARISON', weight: 0.9, isActive: true },
+      { id: 'identity-inconsistency', name: 'Identity Data Inconsistency', description: 'Inconsistent personal information across documents', category: 'IDENTITY', severity: 'HIGH', algorithm: 'CROSS_REFERENCE_ANALYSIS', weight: 0.8, isActive: true },
+      { id: 'suspicious-ip-pattern', name: 'Suspicious IP Pattern', description: 'Access from known proxy, VPN, or suspicious location', category: 'NETWORK', severity: 'MEDIUM', algorithm: 'IP_REPUTATION_ANALYSIS', weight: 0.4, isActive: true },
+      { id: 'automated-behavior', name: 'Automated Behavior Detection', description: 'Behavior patterns consistent with automated tools', category: 'BEHAVIORAL', severity: 'HIGH', algorithm: 'BEHAVIORAL_ANALYSIS', weight: 0.7, isActive: true },
+      { id: 'document-metadata-anomaly', name: 'Document Metadata Anomaly', description: 'Suspicious patterns in document metadata', category: 'DOCUMENT', severity: 'MEDIUM', algorithm: 'METADATA_ANALYSIS', weight: 0.5, isActive: true }
     ];
 
-    patterns.forEach(pattern => {
-      this.fraudPatterns.set(pattern.id, pattern);
-    });
+    patterns.forEach(pattern => this.fraudPatterns.set(pattern.id, pattern));
   }
 
-  /**
-   * Perform comprehensive fraud analysis on applicant
-   */
-  async analyzeFraudRisk(
-    applicantId: string,
-    applicationData: any,
-    networkData?: NetworkAnalysis
-  ): Promise<FraudAnalysisResult> {
+  async analyzeFraudRisk(applicantId: string, applicationData: any, networkData?: NetworkAnalysis): Promise<FraudAnalysisResult> {
     try {
       logger.info(`Starting fraud analysis for applicant ${applicantId}`);
 
       const detectedPatterns: DetectedPattern[] = [];
-      let overallRiskScore = 0;
+      detectedPatterns.push(...await this.analyzeDocumentFraud(applicantId, applicationData.documents ?? []));
+      detectedPatterns.push(...await this.analyzeIdentityFraud(applicantId, applicationData.personalInfo ?? {}));
+      detectedPatterns.push(...await this.analyzeBehavioralFraud(applicantId, applicationData.behaviorData ?? {}));
+      if (networkData) detectedPatterns.push(...await this.analyzeNetworkFraud(applicantId, networkData));
 
-      // Document-based fraud detection
-      const documentPatterns = await this.analyzeDocumentFraud(applicantId, applicationData.documents);
-      detectedPatterns.push(...documentPatterns);
-
-      // Identity verification fraud detection
-      const identityPatterns = await this.analyzeIdentityFraud(applicantId, applicationData.personalInfo);
-      detectedPatterns.push(...identityPatterns);
-
-      // Behavioral analysis
-      const behavioralPatterns = await this.analyzeBehavioralFraud(applicantId, applicationData.behaviorData);
-      detectedPatterns.push(...behavioralPatterns);
-
-      // Network analysis
-      if (networkData) {
-        const networkPatterns = await this.analyzeNetworkFraud(applicantId, networkData);
-        detectedPatterns.push(...networkPatterns);
-      }
-
-      // Calculate overall risk score
-      overallRiskScore = this.calculateOverallRiskScore(detectedPatterns);
-
-      // Determine risk level
+      const overallRiskScore = this.calculateOverallRiskScore(detectedPatterns);
       const riskLevel = this.determineRiskLevel(overallRiskScore);
-
-      // Generate recommendations
       const recommendations = this.generateFraudRecommendations(overallRiskScore, detectedPatterns);
-
-      // Determine if manual review or auto-rejection is required
       const requiresManualReview = overallRiskScore >= this.config.riskThresholds.medium;
       const autoReject = overallRiskScore >= this.config.alertSettings.autoRejectThreshold;
 
-      const result: FraudAnalysisResult = {
-        applicantId,
-        overallRiskScore,
-        riskLevel,
-        detectedPatterns,
-        recommendations,
-        requiresManualReview,
-        autoReject,
-        analysisTimestamp: new Date()
-      };
+      const result: FraudAnalysisResult = { applicantId, overallRiskScore, riskLevel, detectedPatterns, recommendations, requiresManualReview, autoReject, analysisTimestamp: new Date() };
 
-      // Log fraud analysis
       await this.logFraudAnalysis(result);
-
-      // Send alerts if necessary
-      if (overallRiskScore >= this.config.alertSettings.escalationThreshold) {
-        await this.sendFraudAlert(result);
-      }
+      if (overallRiskScore >= this.config.alertSettings.escalationThreshold) await this.sendFraudAlert(result);
 
       logger.info(`Fraud analysis completed for applicant ${applicantId}: Risk Level ${riskLevel}`);
-
       return result;
     } catch (error) {
       logger.error('Fraud analysis failed:', error);
@@ -288,172 +186,84 @@ export class FraudDetectionService {
     }
   }
 
-  /**
-   * Analyze document-based fraud patterns
-   */
   private async analyzeDocumentFraud(applicantId: string, documents: any[]): Promise<DetectedPattern[]> {
     const patterns: DetectedPattern[] = [];
-
-    // Check for duplicate document hashes
     for (const document of documents) {
       if (document.hash) {
         const duplicates = await this.findDuplicateDocuments(document.hash, applicantId);
         if (duplicates.length > 0) {
-          patterns.push({
-            patternId: 'document-hash-collision',
-            patternName: 'Document Hash Collision',
-            confidence: 0.95,
-            evidence: [`Document hash ${document.hash} found in ${duplicates.length} other applications`],
-            impact: 0.9,
-            category: 'DOCUMENT'
-          });
+          patterns.push({ patternId: 'document-hash-collision', patternName: 'Document Hash Collision', confidence: 0.95, evidence: [`Document hash ${document.hash} found in ${duplicates.length} other applications`], impact: 0.95, category: 'DOCUMENT' });
         }
       }
     }
 
-    // Check for metadata anomalies
     const metadataAnomalies = this.detectMetadataAnomalies(documents);
     if (metadataAnomalies.length > 0) {
-      patterns.push({
-        patternId: 'document-metadata-anomaly',
-        patternName: 'Document Metadata Anomaly',
-        confidence: 0.7,
-        evidence: metadataAnomalies,
-        impact: 0.5,
-        category: 'DOCUMENT'
-      });
+      patterns.push({ patternId: 'document-metadata-anomaly', patternName: 'Document Metadata Anomaly', confidence: 0.85, evidence: metadataAnomalies, impact: 0.75, category: 'DOCUMENT' });
     }
-
     return patterns;
   }
 
-  /**
-   * Analyze identity-based fraud patterns
-   */
   private async analyzeIdentityFraud(applicantId: string, personalInfo: any): Promise<DetectedPattern[]> {
     const patterns: DetectedPattern[] = [];
-
-    // Check for identity inconsistencies across documents
     const inconsistencies = await this.findIdentityInconsistencies(applicantId, personalInfo);
     if (inconsistencies.length > 0) {
-      patterns.push({
-        patternId: 'identity-inconsistency',
-        patternName: 'Identity Data Inconsistency',
-        confidence: 0.8,
-        evidence: inconsistencies,
-        impact: 0.8,
-        category: 'IDENTITY'
-      });
+      patterns.push({ patternId: 'identity-inconsistency', patternName: 'Identity Data Inconsistency', confidence: 0.8, evidence: inconsistencies, impact: 0.8, category: 'IDENTITY' });
     }
 
-    // Check against known fraud databases
     const fraudCheck = await this.checkFraudDatabases(personalInfo);
     if (fraudCheck.isFlagged) {
-      patterns.push({
-        patternId: 'fraud-database-match',
-        patternName: 'Fraud Database Match',
-        confidence: 0.9,
-        evidence: [fraudCheck.reason || 'Match found in fraud database'],
-        impact: 1.0,
-        category: 'IDENTITY'
-      });
+      patterns.push({ patternId: 'fraud-database-match', patternName: 'Fraud Database Match', confidence: 0.9, evidence: [fraudCheck.reason || 'Match found in fraud database'], impact: 1.0, category: 'IDENTITY' });
     }
-
     return patterns;
   }
 
-  /**
-   * Analyze behavioral fraud patterns
-   */
   private async analyzeBehavioralFraud(applicantId: string, behaviorData: any): Promise<DetectedPattern[]> {
     const patterns: DetectedPattern[] = [];
-
-    // Check for rapid multiple submissions
     const recentSubmissions = await this.getRecentSubmissions(applicantId);
     if (recentSubmissions.length > 5) {
-      patterns.push({
-        patternId: 'rapid-multiple-submissions',
-        patternName: 'Rapid Multiple Submissions',
-        confidence: 0.8,
-        evidence: [`${recentSubmissions.length} submissions in the last 24 hours`],
-        impact: 0.6,
-        category: 'BEHAVIORAL'
-      });
+      patterns.push({ patternId: 'rapid-multiple-submissions', patternName: 'Rapid Multiple Submissions', confidence: 0.8, evidence: [`${recentSubmissions.length} submissions in the last 24 hours`], impact: 0.65, category: 'BEHAVIORAL' });
     }
 
-    // Check for automated behavior patterns
     if (behaviorData) {
       const automationScore = this.detectAutomatedBehavior(behaviorData);
       if (automationScore > 0.7) {
-        patterns.push({
-          patternId: 'automated-behavior',
-          patternName: 'Automated Behavior Detection',
-          confidence: automationScore,
-          evidence: ['Behavior patterns consistent with automated tools'],
-          impact: 0.7,
-          category: 'BEHAVIORAL'
-        });
+        patterns.push({ patternId: 'automated-behavior', patternName: 'Automated Behavior Detection', confidence: automationScore, evidence: ['Behavior patterns consistent with automated tools'], impact: 0.9, category: 'BEHAVIORAL' });
       }
     }
-
     return patterns;
   }
 
-  /**
-   * Analyze network-based fraud patterns
-   */
   private async analyzeNetworkFraud(applicantId: string, networkData: NetworkAnalysis): Promise<DetectedPattern[]> {
     const patterns: DetectedPattern[] = [];
-
-    // Check IP reputation
     const ipReputation = await this.checkIPReputation(networkData.ipAddress);
-    if (ipReputation.isSuspicious) {
-      patterns.push({
-        patternId: 'suspicious-ip-pattern',
-        patternName: 'Suspicious IP Pattern',
-        confidence: ipReputation.confidence,
-        evidence: [ipReputation.reason],
-        impact: 0.4,
-        category: 'NETWORK'
-      });
+    const proxySignals = Boolean(networkData.isProxy || networkData.isVPN || (networkData.riskScore ?? 0) >= 0.7 || (networkData.concurrentSessions ?? 0) >= 4);
+    if (ipReputation.isSuspicious || proxySignals) {
+      patterns.push({ patternId: 'suspicious-ip-pattern', patternName: 'Suspicious IP Pattern', confidence: Math.max(ipReputation.confidence, networkData.riskScore ?? 0.7), evidence: [ipReputation.reason, networkData.isProxy ? 'Proxy detected' : '', networkData.isVPN ? 'VPN detected' : ''].filter(Boolean), impact: 0.75, category: 'NETWORK' });
     }
 
-    // Check for location inconsistencies
     if (networkData.locationConsistency < 0.5) {
-      patterns.push({
-        patternId: 'location-inconsistency',
-        patternName: 'Location Inconsistency',
-        confidence: 1 - networkData.locationConsistency,
-        evidence: ['Inconsistent geographic locations across sessions'],
-        impact: 0.3,
-        category: 'NETWORK'
-      });
+      patterns.push({ patternId: 'location-inconsistency', patternName: 'Location Inconsistency', confidence: 1 - networkData.locationConsistency, evidence: ['Inconsistent geographic locations across sessions'], impact: 0.6, category: 'NETWORK' });
     }
-
     return patterns;
   }
 
-  /**
-   * Calculate overall risk score from detected patterns
-   */
   private calculateOverallRiskScore(patterns: DetectedPattern[]): number {
     if (patterns.length === 0) return 0;
 
-    let totalScore = 0;
-    let totalWeight = 0;
+    const weightedSignals = patterns.map(pattern => {
+      const categoryWeight = this.getPatternWeight(pattern.category);
+      return pattern.confidence * pattern.impact * categoryWeight;
+    });
 
-    for (const pattern of patterns) {
-      const weight = this.getPatternWeight(pattern.category);
-      totalScore += pattern.confidence * pattern.impact * weight;
-      totalWeight += weight;
-    }
+    const additiveScore = weightedSignals.reduce((sum, score) => sum + score, 0);
+    const maxSeverity = Math.max(...patterns.map(pattern => pattern.confidence * pattern.impact));
+    const multiPatternBoost = patterns.length >= 3 ? 0.2 : patterns.length >= 2 ? 0.1 : 0;
+    const highConfidenceBoost = patterns.some(pattern => pattern.confidence >= 0.85 && pattern.impact >= 0.75) ? 0.15 : 0;
 
-    return totalWeight > 0 ? Math.min(1, totalScore / totalWeight) : 0;
+    return Math.min(1, additiveScore + maxSeverity * 0.45 + multiPatternBoost + highConfidenceBoost);
   }
 
-  /**
-   * Get pattern weight based on category
-   */
   private getPatternWeight(category: string): number {
     switch (category) {
       case 'DOCUMENT': return this.config.patternWeights.documentTampering;
@@ -464,9 +274,6 @@ export class FraudDetectionService {
     }
   }
 
-  /**
-   * Determine risk level based on score
-   */
   private determineRiskLevel(riskScore: number): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
     if (riskScore >= this.config.riskThresholds.critical) return 'CRITICAL';
     if (riskScore >= this.config.riskThresholds.high) return 'HIGH';
@@ -474,201 +281,84 @@ export class FraudDetectionService {
     return 'LOW';
   }
 
-  /**
-   * Generate fraud recommendations based on analysis
-   */
-  private generateFraudRecommendations(
-    riskScore: number,
-    patterns: DetectedPattern[]
-  ): FraudRecommendation[] {
+  private generateFraudRecommendations(riskScore: number, patterns: DetectedPattern[]): FraudRecommendation[] {
     const recommendations: FraudRecommendation[] = [];
-
     if (riskScore >= this.config.alertSettings.autoRejectThreshold) {
-      recommendations.push({
-        type: 'REJECT',
-        priority: 'URGENT',
-        description: 'Automatic rejection due to critical fraud risk',
-        actionRequired: 'Reject application immediately and flag applicant',
-        deadline: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-      });
+      recommendations.push({ type: 'REJECT', priority: 'URGENT', description: 'Automatic rejection due to critical fraud risk', actionRequired: 'Reject application immediately and flag applicant', deadline: new Date(Date.now() + 24 * 60 * 60 * 1000) });
     } else if (riskScore >= this.config.alertSettings.escalationThreshold) {
-      recommendations.push({
-        type: 'ESCALATE',
-        priority: 'HIGH',
-        description: 'Escalate to senior admissions officer for review',
-        actionRequired: 'Manual review by senior staff required',
-        deadline: new Date(Date.now() + 48 * 60 * 60 * 1000) // 48 hours
-      });
+      recommendations.push({ type: 'ESCALATE', priority: 'HIGH', description: 'Escalate to senior admissions officer for review', actionRequired: 'Manual review by senior staff required', deadline: new Date(Date.now() + 48 * 60 * 60 * 1000) });
     } else if (riskScore >= this.config.riskThresholds.medium) {
-      recommendations.push({
-        type: 'INVESTIGATE',
-        priority: 'MEDIUM',
-        description: 'Additional investigation required',
-        actionRequired: 'Conduct enhanced verification process',
-        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-      });
+      recommendations.push({ type: 'INVESTIGATE', priority: 'MEDIUM', description: 'Additional investigation required', actionRequired: 'Conduct enhanced verification process', deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) });
     }
 
-    // Pattern-specific recommendations
     for (const pattern of patterns) {
-      if (pattern.patternId === 'document-hash-collision') {
-        recommendations.push({
-          type: 'REQUEST_ADDITIONAL',
-          priority: 'HIGH',
-          description: 'Request original documents due to duplicate detection',
-          actionRequired: 'Contact applicant for original document submission'
-        });
-      }
-
-      if (pattern.patternId === 'identity-inconsistency') {
-        recommendations.push({
-          type: 'INVESTIGATE',
-          priority: 'HIGH',
-          description: 'Verify identity due to data inconsistencies',
-          actionRequired: 'Conduct identity verification process'
-        });
-      }
+      if (pattern.patternId === 'document-hash-collision') recommendations.push({ type: 'REQUEST_ADDITIONAL', priority: 'HIGH', description: 'Request original documents due to duplicate detection', actionRequired: 'Contact applicant for original document submission' });
+      if (pattern.patternId === 'identity-inconsistency') recommendations.push({ type: 'INVESTIGATE', priority: 'HIGH', description: 'Verify identity due to data inconsistencies', actionRequired: 'Conduct identity verification process' });
     }
-
     return recommendations;
   }
 
-  // Helper methods for fraud detection
   private async findDuplicateDocuments(documentHash: string, excludeApplicantId: string): Promise<string[]> {
-    const duplicates = await this.prisma.documentVerificationLog.findMany({
-      where: {
-        metadata: {
-          path: ['fileHash'],
-          equals: documentHash
-        },
-        applicantId: {
-          not: excludeApplicantId
-        }
-      },
-      select: {
-        applicantId: true
-      }
-    });
-
-    return duplicates.map(d => d.applicantId);
+    const duplicates = await this.prisma.documentVerificationLog.findMany({ where: { metadata: { path: ['fileHash'], equals: documentHash }, applicantId: { not: excludeApplicantId } }, select: { applicantId: true } } as any);
+    return duplicates.map((d: any) => d.applicantId);
   }
 
   private detectMetadataAnomalies(documents: any[]): string[] {
     const anomalies: string[] = [];
-
     for (const document of documents) {
       if (document.metadata) {
-        // Check for suspicious creation dates
-        if (document.metadata.creationDate) {
-          const creationDate = new Date(document.metadata.creationDate);
-          const now = new Date();
-          if (creationDate > now) {
-            anomalies.push('Future creation date detected');
-          }
-        }
-
-        // Check for suspicious producer/author
+        if (document.metadata.creationDate && new Date(document.metadata.creationDate) > new Date()) anomalies.push('Future creation date detected');
         if (document.metadata.producer) {
           const suspiciousProducers = ['FAKE', 'TEST', 'SAMPLE', 'TEMPLATE'];
-          if (suspiciousProducers.some(producer => 
-            document.metadata.producer.toUpperCase().includes(producer)
-          )) {
-            anomalies.push('Suspicious document producer detected');
-          }
+          if (suspiciousProducers.some(producer => document.metadata.producer.toUpperCase().includes(producer))) anomalies.push('Suspicious document producer detected');
         }
       }
     }
-
     return anomalies;
   }
 
   private async findIdentityInconsistencies(applicantId: string, personalInfo: any): Promise<string[]> {
     const inconsistencies: string[] = [];
-
-    // Get all documents for this applicant
-    const verificationLogs = await this.prisma.documentVerificationLog.findMany({
-      where: { applicantId }
-    });
-
-    // Check for name inconsistencies across documents
+    const verificationLogs = await this.prisma.documentVerificationLog.findMany({ where: { applicantId } } as any);
     const names = new Set<string>();
     for (const log of verificationLogs) {
       if (log.metadata && typeof log.metadata === 'object') {
         const metadata = log.metadata as any;
-        if (metadata.extractedName) {
-          names.add(metadata.extractedName.toLowerCase());
-        }
+        if (metadata.extractedName) names.add(metadata.extractedName.toLowerCase());
       }
     }
-
-    if (names.size > 1) {
-      inconsistencies.push(`Multiple names found across documents: ${Array.from(names).join(', ')}`);
-    }
-
+    if (names.size > 1) inconsistencies.push(`Multiple names found across documents: ${Array.from(names).join(', ')}`);
     return inconsistencies;
   }
 
   private async checkFraudDatabases(personalInfo: any): Promise<{ isFlagged: boolean; reason?: string }> {
-    // Placeholder for external fraud database integration
-    // In production, this would integrate with services like:
-    // - National fraud databases
-    // - Educational credential verification services
-    // - Identity verification services
     return { isFlagged: false };
   }
 
   private async getRecentSubmissions(applicantId: string): Promise<any[]> {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    
-    return await this.prisma.documentVerificationLog.findMany({
-      where: {
-        applicantId,
-        verifiedAt: {
-          gte: twentyFourHoursAgo
-        }
-      }
-    });
+    return await this.prisma.documentVerificationLog.findMany({ where: { applicantId, verifiedAt: { gte: twentyFourHoursAgo } } } as any);
   }
 
   private detectAutomatedBehavior(behaviorData: any): number {
     let automationScore = 0;
-
-    // Check for consistent timing patterns (indication of automation)
     if (behaviorData.interactionMetrics) {
       const { clickPatterns, typingSpeed, pausePatterns } = behaviorData.interactionMetrics;
-
-      // Unusually consistent click patterns
-      if (clickPatterns && this.isPatternTooConsistent(clickPatterns)) {
-        automationScore += 0.3;
-      }
-
-      // Unusually fast or consistent typing speed
-      if (typingSpeed && (typingSpeed > 200 || typingSpeed < 10)) {
-        automationScore += 0.2;
-      }
-
-      // Lack of natural pause patterns
-      if (pausePatterns && this.lacksNaturalPauses(pausePatterns)) {
-        automationScore += 0.3;
-      }
+      if (clickPatterns && this.isPatternTooConsistent(clickPatterns)) automationScore += 0.35;
+      if (typingSpeed && (typingSpeed > 200 || typingSpeed < 10)) automationScore += 0.3;
+      if (pausePatterns && this.lacksNaturalPauses(pausePatterns)) automationScore += 0.35;
     }
-
     return Math.min(1, automationScore);
   }
 
   private isPatternTooConsistent(patterns: number[]): boolean {
     if (patterns.length < 3) return false;
-    
-    const variance = this.calculateVariance(patterns);
-    return variance < 0.1; // Very low variance indicates automation
+    return this.calculateVariance(patterns) < 0.1;
   }
 
   private lacksNaturalPauses(pausePatterns: number[]): boolean {
-    if (pausePatterns.length < 5) return false;
-    
-    // Natural human behavior includes varied pause lengths
-    const variance = this.calculateVariance(pausePatterns);
-    return variance < 0.2;
+    if (pausePatterns.length < 4) return false;
+    return this.calculateVariance(pausePatterns) < 0.2;
   }
 
   private calculateVariance(numbers: number[]): number {
@@ -677,47 +367,16 @@ export class FraudDetectionService {
     return squaredDiffs.reduce((sum, diff) => sum + diff, 0) / numbers.length;
   }
 
-  private async checkIPReputation(ipAddress: string): Promise<{
-    isSuspicious: boolean;
-    confidence: number;
-    reason: string;
-  }> {
-    // Placeholder for IP reputation checking
-    // In production, this would integrate with services like:
-    // - IP reputation databases
-    // - VPN/Proxy detection services
-    // - Geolocation services
-    
-    // Basic checks for common suspicious patterns
+  private async checkIPReputation(ipAddress: string): Promise<{ isSuspicious: boolean; confidence: number; reason: string }> {
     if (ipAddress.startsWith('10.') || ipAddress.startsWith('192.168.') || ipAddress.startsWith('172.')) {
-      return {
-        isSuspicious: true,
-        confidence: 0.6,
-        reason: 'Private IP address detected'
-      };
+      return { isSuspicious: true, confidence: 0.6, reason: 'Private IP address detected' };
     }
-
-    return {
-      isSuspicious: false,
-      confidence: 0.1,
-      reason: 'IP address appears legitimate'
-    };
+    return { isSuspicious: false, confidence: 0.1, reason: 'IP address appears legitimate' };
   }
 
   private async logFraudAnalysis(result: FraudAnalysisResult): Promise<void> {
     try {
-      await this.prisma.fraudAnalysisLog.create({
-        data: {
-          applicantId: result.applicantId,
-          overallRiskScore: result.overallRiskScore,
-          riskLevel: result.riskLevel,
-          detectedPatterns: JSON.stringify(result.detectedPatterns),
-          recommendations: JSON.stringify(result.recommendations),
-          requiresManualReview: result.requiresManualReview,
-          autoReject: result.autoReject,
-          analyzedAt: result.analysisTimestamp
-        }
-      });
+      await this.prisma.fraudAnalysisLog.create({ data: { applicantId: result.applicantId, overallRiskScore: result.overallRiskScore, riskLevel: result.riskLevel, detectedPatterns: JSON.stringify(result.detectedPatterns), recommendations: JSON.stringify(result.recommendations), requiresManualReview: result.requiresManualReview, autoReject: result.autoReject, analyzedAt: result.analysisTimestamp } } as any);
     } catch (error) {
       logger.error('Failed to log fraud analysis:', error);
     }
@@ -725,22 +384,7 @@ export class FraudDetectionService {
 
   private async sendFraudAlert(result: FraudAnalysisResult): Promise<void> {
     try {
-      // Create alert in database
-      await this.prisma.fraudAlert.create({
-        data: {
-          applicantId: result.applicantId,
-          riskLevel: result.riskLevel,
-          riskScore: result.overallRiskScore,
-          alertType: result.autoReject ? 'AUTO_REJECT' : 'MANUAL_REVIEW',
-          description: `Fraud risk detected: ${result.riskLevel} (Score: ${result.overallRiskScore.toFixed(2)})`,
-          metadata: JSON.stringify({
-            patterns: result.detectedPatterns.map(p => p.patternName),
-            recommendations: result.recommendations.map(r => r.type)
-          }),
-          createdAt: new Date()
-        }
-      });
-
+      await this.prisma.fraudAlert.create({ data: { applicantId: result.applicantId, riskLevel: result.riskLevel, riskScore: result.overallRiskScore, alertType: result.autoReject ? 'AUTO_REJECT' : 'MANUAL_REVIEW', description: `Fraud risk detected: ${result.riskLevel} (Score: ${result.overallRiskScore.toFixed(2)})`, metadata: JSON.stringify({ patterns: result.detectedPatterns.map(p => p.patternName), recommendations: result.recommendations.map(r => r.type) }), createdAt: new Date() } } as any);
       logger.warn(`Fraud alert sent for applicant ${result.applicantId}: ${result.riskLevel} risk`);
     } catch (error) {
       logger.error('Failed to send fraud alert:', error);
