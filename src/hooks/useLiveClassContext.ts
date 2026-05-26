@@ -46,33 +46,43 @@ export function useLiveClassContext(moduleId?: string) {
         learningObjectives: [], tutor: null,
       };
 
+      const dbg = (...args: unknown[]) => console.debug('[useLiveClassContext]', ...args);
+
       const { data: { user } } = await supabase.auth.getUser();
+      dbg('auth.user', user?.id ?? null);
       if (!user) return { ...empty, blockedReason: 'Sign in to join the live class.' };
 
       // Module → course
-      const { data: mod } = await supabase
+      const { data: mod, error: modErr } = await supabase
         .from('course_modules')
         .select('id,title,content_md,course_id')
         .eq('id', moduleId!)
         .maybeSingle();
-      if (!mod?.course_id) return { ...empty, blockedReason: 'Module is not linked to a course.' };
+      dbg('module', { moduleId, found: !!mod, err: modErr?.message });
+      if (modErr) return { ...empty, blockedReason: `Module lookup failed: ${modErr.message}` };
+      if (!mod) return { ...empty, blockedReason: `Module ${moduleId} not found.` };
+      if (!mod.course_id) return { ...empty, blockedReason: `Invalid course mapping: module ${mod.id} has no course_id.` };
 
-      const { data: course } = await supabase
+      const { data: course, error: courseErr } = await supabase
         .from('courses')
         .select('id,title,faculty,faculty_id,learning_outcomes')
         .eq('id', mod.course_id)
         .maybeSingle();
-      if (!course) return { ...empty, blockedReason: 'Course for this module is unavailable.' };
+      dbg('course', { courseId: mod.course_id, found: !!course, faculty_id: course?.faculty_id, err: courseErr?.message });
+      if (courseErr) return { ...empty, blockedReason: `Course lookup failed: ${courseErr.message}` };
+      if (!course) return { ...empty, blockedReason: `Invalid course mapping: course ${mod.course_id} not found.` };
 
-      // Student → program. This is required for live class because live lectures are
-      // academic delivery, not anonymous content previews.
-      const { data: student } = await supabase
+      // Student → program.
+      const { data: student, error: studentErr } = await supabase
         .from('students')
         .select('full_name,degree_program_id')
         .eq('user_id', user.id)
         .maybeSingle();
+      dbg('student', { userId: user.id, found: !!student, hasProgram: !!student?.degree_program_id, err: studentErr?.message });
+      if (studentErr) return { ...empty, userId: user.id, blockedReason: `Student profile lookup failed: ${studentErr.message}` };
+      if (!student) return { ...empty, userId: user.id, blockedReason: `Auth mismatch: no student profile linked to auth user ${user.id}.` };
 
-      if (!student?.degree_program_id) {
+      if (!student.degree_program_id) {
         return {
           ...empty,
           userId: user.id,
@@ -86,15 +96,31 @@ export function useLiveClassContext(moduleId?: string) {
         };
       }
 
-      // Hard enrollment guard: user must be enrolled in this exact course before a
-      // live AI lecturer can start. This prevents cross-program lectures and stale
-      // course-context drift.
-      const { data: enrollment } = await supabase
+      // Hard enrollment guard. NOTE: `enrollments` has no `status` column —
+      // previously selecting it caused PostgREST 42703 and silently produced
+      // "Not enrolled" for every user. Select only existing columns.
+      const { data: enrollment, error: enrollmentErr } = await supabase
         .from('enrollments')
-        .select('id,status,course_id')
+        .select('id,course_id,user_id')
         .eq('user_id', user.id)
         .eq('course_id', course.id)
         .maybeSingle();
+      dbg('enrollment', { userId: user.id, courseId: course.id, found: !!enrollment, err: enrollmentErr?.message });
+
+      if (enrollmentErr) {
+        return {
+          ...empty,
+          userId: user.id,
+          studentName: student.full_name ?? user.email ?? null,
+          programId: student.degree_program_id,
+          courseId: course.id,
+          courseTitle: course.title,
+          moduleId: mod.id,
+          moduleTitle: mod.title,
+          moduleContent: mod.content_md ?? null,
+          blockedReason: `Enrollment query failed: ${enrollmentErr.message}`,
+        };
+      }
 
       if (!enrollment) {
         return {
@@ -107,7 +133,7 @@ export function useLiveClassContext(moduleId?: string) {
           moduleId: mod.id,
           moduleTitle: mod.title,
           moduleContent: mod.content_md ?? null,
-          blockedReason: 'Not enrolled in this course.',
+          blockedReason: `Missing enrollment: user ${user.id} is not enrolled in course ${course.id} (${course.title}).`,
         };
       }
 
