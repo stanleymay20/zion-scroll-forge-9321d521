@@ -50,15 +50,17 @@ Deno.serve(async (req) => {
       .eq('room_name', roomName)
       .maybeSingle();
 
+    console.log('[livekit-token]', { userId, roomName, role, sessionFound: !!session, sessionStatus: session?.status, courseId: session?.course_id });
+
     if (sessionErr) {
       console.error('[livekit-token] session lookup failed', sessionErr);
-      return json({ error: 'Session lookup failed' }, 500);
+      return json({ error: `Session lookup failed: ${sessionErr.message}` }, 500);
     }
     if (!session) {
-      return json({ error: 'Room not found' }, 404);
+      return json({ error: `Missing classroom session: no room "${roomName}" exists.` }, 404);
     }
     if (session.status === 'ended' || session.status === 'cancelled') {
-      return json({ error: 'Room is not active' }, 409);
+      return json({ error: `Room "${roomName}" is ${session.status}.` }, 409);
     }
 
     // Authorization: faculty/admin OR enrolled student
@@ -69,17 +71,25 @@ Deno.serve(async (req) => {
     const isStaff = Boolean(facultyRole) || Boolean(adminRole);
 
     let allowed = isStaff;
+    let enrollmentChecked = false;
     if (!allowed && session.course_id) {
-      const { data: enrollment } = await admin
+      const { data: enrollment, error: enrErr } = await admin
         .from('enrollments')
         .select('id')
         .eq('user_id', userId)
         .eq('course_id', session.course_id)
         .maybeSingle();
+      enrollmentChecked = true;
+      if (enrErr) console.error('[livekit-token] enrollment lookup failed', enrErr);
       allowed = Boolean(enrollment);
+      console.log('[livekit-token] enrollment check', { userId, courseId: session.course_id, allowed });
     }
     if (!allowed) {
-      return json({ error: 'Not enrolled in this course' }, 403);
+      return json({
+        error: enrollmentChecked
+          ? `Missing enrollment: user ${userId} is not enrolled in course ${session.course_id}.`
+          : `Access denied for user ${userId} on room "${roomName}".`,
+      }, 403);
     }
 
     if (role === 'faculty' && !isStaff) {
