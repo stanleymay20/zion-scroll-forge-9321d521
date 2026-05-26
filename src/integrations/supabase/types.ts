@@ -1838,6 +1838,66 @@ export type Database = {
           },
         ]
       }
+      classroom_sessions: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          created_by: string
+          ended_at: string | null
+          id: string
+          lecture_title: string
+          lecturer_bot_status: string
+          room_name: string
+          scheduled_for: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          created_by: string
+          ended_at?: string | null
+          id?: string
+          lecture_title: string
+          lecturer_bot_status?: string
+          room_name: string
+          scheduled_for?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          id?: string
+          lecture_title?: string
+          lecturer_bot_status?: string
+          room_name?: string
+          scheduled_for?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classroom_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classroom_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "v_course_gradebook"
+            referencedColumns: ["course_id"]
+          },
+        ]
+      }
       clo_plo_mapping: {
         Row: {
           clo_id: string
