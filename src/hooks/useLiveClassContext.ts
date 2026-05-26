@@ -196,7 +196,7 @@ export function useLiveClassContext(moduleId?: string) {
           moduleId: mod.id,
           moduleTitle: mod.title,
           moduleContent: mod.content_md ?? null,
-          blockedReason: 'No AI faculty lecturer is assigned to this course faculty yet.',
+          blockedReason: `Missing tutor: no AI lecturer assigned to faculty "${course.faculty ?? programFacultyName ?? '(unknown)'}" (faculty_id=${course.faculty_id ?? 'null'}).`,
         };
       }
 
