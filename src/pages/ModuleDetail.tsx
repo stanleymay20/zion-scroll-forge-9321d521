@@ -80,6 +80,23 @@ export default function ModuleDetail() {
   return (
     <PageTemplate title={module.title}>
       <div className="space-y-6">
+        {/* Faculty/Admin: Start / End Live Class controls (course-scoped) */}
+        {canControlClass && liveCtx?.courseId && (
+          <LiveClassControls
+            courseId={liveCtx.courseId}
+            courseTitle={liveCtx.courseTitle || undefined}
+          />
+        )}
+
+        {/* LiveKit-backed classroom — truthful: only LIVE when remote video track present */}
+        {liveCtx?.courseId && (
+          <LiveClassroom
+            courseId={liveCtx.courseId}
+            role={canControlClass ? 'faculty' : 'student'}
+            lectureTitle={liveCtx.courseTitle || undefined}
+          />
+        )}
+
         {/* Live AI Avatar Lecture — gated on real course/tutor context */}
         {liveCtx && !tutor && (
           <Alert variant="destructive">
