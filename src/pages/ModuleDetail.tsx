@@ -11,8 +11,11 @@ import { toast } from '@/hooks/use-toast';
 import { AITutorAvatar } from '@/components/AITutorAvatar';
 import { MultiAgentClassroom } from '@/components/learning/MultiAgentClassroom';
 import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
+import { LiveClassroom } from '@/components/learning/LiveClassroom';
+import { LiveClassControls } from '@/components/learning/LiveClassControls';
 import { CompanionResources } from '@/components/learning/CompanionResources';
 import { useLiveClassContext } from '@/hooks/useLiveClassContext';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { BackButton } from "@/components/layout/BackButton";
 
