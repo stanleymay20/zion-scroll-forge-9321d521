@@ -1843,10 +1843,14 @@ export type Database = {
           course_id: string | null
           created_at: string
           created_by: string
+          delivery_mode: string
           ended_at: string | null
+          faculty_id: string | null
           id: string
+          last_bootstrap_reason: string | null
           lecture_title: string
           lecturer_bot_status: string
+          lecturer_identity: string | null
           room_name: string
           scheduled_for: string | null
           started_at: string | null
@@ -1857,10 +1861,14 @@ export type Database = {
           course_id?: string | null
           created_at?: string
           created_by: string
+          delivery_mode?: string
           ended_at?: string | null
+          faculty_id?: string | null
           id?: string
+          last_bootstrap_reason?: string | null
           lecture_title: string
           lecturer_bot_status?: string
+          lecturer_identity?: string | null
           room_name: string
           scheduled_for?: string | null
           started_at?: string | null
@@ -1871,10 +1879,14 @@ export type Database = {
           course_id?: string | null
           created_at?: string
           created_by?: string
+          delivery_mode?: string
           ended_at?: string | null
+          faculty_id?: string | null
           id?: string
+          last_bootstrap_reason?: string | null
           lecture_title?: string
           lecturer_bot_status?: string
+          lecturer_identity?: string | null
           room_name?: string
           scheduled_for?: string | null
           started_at?: string | null
@@ -1895,6 +1907,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_course_gradebook"
             referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "classroom_sessions_faculty_id_fkey"
+            columns: ["faculty_id"]
+            isOneToOne: false
+            referencedRelation: "faculties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classroom_sessions_faculty_id_fkey"
+            columns: ["faculty_id"]
+            isOneToOne: false
+            referencedRelation: "v_faculty_analytics"
+            referencedColumns: ["faculty_id"]
           },
         ]
       }

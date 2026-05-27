@@ -11,8 +11,11 @@ import { toast } from '@/hooks/use-toast';
 import { AITutorAvatar } from '@/components/AITutorAvatar';
 import { MultiAgentClassroom } from '@/components/learning/MultiAgentClassroom';
 import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
+import { LiveClassroom } from '@/components/learning/LiveClassroom';
+import { LiveClassControls } from '@/components/learning/LiveClassControls';
 import { CompanionResources } from '@/components/learning/CompanionResources';
 import { useLiveClassContext } from '@/hooks/useLiveClassContext';
+import { useUserRoles } from '@/hooks/useUserRoles';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { BackButton } from "@/components/layout/BackButton";
 
@@ -26,6 +29,8 @@ export default function ModuleDetail() {
   // Hook must run before early returns to preserve React hook ordering.
   const { data: liveCtx } = useLiveClassContext(moduleId);
   const tutor = liveCtx?.tutor || null;
+  const { isFaculty, isAdmin } = useUserRoles();
+  const canControlClass = isFaculty || isAdmin;
 
   if (isLoading) {
     return (
@@ -75,6 +80,23 @@ export default function ModuleDetail() {
   return (
     <PageTemplate title={module.title}>
       <div className="space-y-6">
+        {/* Faculty/Admin: Start / End Live Class controls (course-scoped) */}
+        {canControlClass && liveCtx?.courseId && (
+          <LiveClassControls
+            courseId={liveCtx.courseId}
+            courseTitle={liveCtx.courseTitle || undefined}
+          />
+        )}
+
+        {/* LiveKit-backed classroom — truthful: only LIVE when remote video track present */}
+        {liveCtx?.courseId && (
+          <LiveClassroom
+            courseId={liveCtx.courseId}
+            role={canControlClass ? 'faculty' : 'student'}
+            lectureTitle={liveCtx.courseTitle || undefined}
+          />
+        )}
+
         {/* Live AI Avatar Lecture — gated on real course/tutor context */}
         {liveCtx && !tutor && (
           <Alert variant="destructive">
