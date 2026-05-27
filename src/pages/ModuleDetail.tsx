@@ -29,6 +29,8 @@ export default function ModuleDetail() {
   // Hook must run before early returns to preserve React hook ordering.
   const { data: liveCtx } = useLiveClassContext(moduleId);
   const tutor = liveCtx?.tutor || null;
+  const { isFaculty, isAdmin } = useUserRoles();
+  const canControlClass = isFaculty || isAdmin;
 
   if (isLoading) {
     return (
