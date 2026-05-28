@@ -1,0 +1,30 @@
+{
+  "name": "scrolluniversity-lecturer-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ScrollUniversity audio-first AI lecturer worker. Joins LiveKit rooms and publishes synthesized speech for an AI tutor.",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@livekit/rtc-node": "^0.13.4",
+    "@supabase/supabase-js": "^2.45.4",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.28.1",
+    "livekit-server-sdk": "^2.9.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  }
+}
