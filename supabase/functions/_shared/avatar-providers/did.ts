@@ -1,4 +1,4 @@
-// D-ID provider adapter — wraps existing direct calls behind the registry contract.
+// D-ID provider adapter — wraps existing direct calls behind the registry contract. v2
 import type {
   AvatarProvider, CreateSessionInput, CreateSessionResult, ProviderHealth,
 } from "./types.ts";
