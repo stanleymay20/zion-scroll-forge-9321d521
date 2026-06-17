@@ -15780,6 +15780,7 @@ export type Database = {
           sequence_order: number
         }[]
       }
+      get_quiz_answer: { Args: { _question_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
