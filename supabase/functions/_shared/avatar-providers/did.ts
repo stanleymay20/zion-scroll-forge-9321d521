@@ -86,7 +86,7 @@ export function createDidProvider(): AvatarProvider {
     },
 
     async createSession(input: CreateSessionInput): Promise<CreateSessionResult> {
-      if (!apiKey) {
+      if (!encoded) {
         return { ok: false, fallback: true, providerKind: "did",
           reason: "AVATAR_PROVIDER_UNCONFIGURED", estimatedCostPerMinuteUsd: COST_PER_MIN_USD };
       }
