@@ -140,7 +140,7 @@ export function createDidProvider(): AvatarProvider {
     },
 
     async sendSdpAnswer(streamId, sessionId, answer) {
-      if (!apiKey) return;
+      if (!encoded) return;
       const r = await fetch(`https://api.d-id.com/talks/streams/${streamId}/sdp`, {
         method: "POST",
         headers: { Authorization: auth(), "Content-Type": "application/json" },
@@ -153,7 +153,7 @@ export function createDidProvider(): AvatarProvider {
     },
 
     async sendIceCandidate(streamId, sessionId, candidate) {
-      if (!apiKey) return;
+      if (!encoded) return;
       const normalizedCandidate = candidate && typeof candidate === "object"
         ? {
             candidate: (candidate as Record<string, unknown>).candidate ?? null,
@@ -174,7 +174,7 @@ export function createDidProvider(): AvatarProvider {
     },
 
     async speak(streamId, sessionId, text, voiceId) {
-      if (!apiKey) return null;
+      if (!encoded) return null;
       const r = await fetch(`https://api.d-id.com/talks/streams/${streamId}`, {
         method: "POST",
         headers: { Authorization: auth(), "Content-Type": "application/json" },
@@ -192,7 +192,7 @@ export function createDidProvider(): AvatarProvider {
     },
 
     async destroy(streamId, sessionId) {
-      if (!apiKey) return;
+      if (!encoded) return;
       try {
         await fetch(`https://api.d-id.com/talks/streams/${streamId}`, {
           method: "DELETE",
