@@ -106,6 +106,9 @@ class RoomSession {
     const track = LocalAudioTrack.createAudioTrack('lecturer-audio', source);
     const opts = new TrackPublishOptions();
     opts.source = TrackSource.SOURCE_MICROPHONE;
+    if (!room.localParticipant) {
+      throw new Error('LiveKit room has no localParticipant after connect');
+    }
     await room.localParticipant.publishTrack(track, opts);
 
     this.source = source;
