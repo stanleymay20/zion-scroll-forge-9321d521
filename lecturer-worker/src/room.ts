@@ -222,7 +222,9 @@ class RoomSession {
       const payload = new TextEncoder().encode(
         JSON.stringify({ type: 'lecturer.transcript', text, ts: Date.now() }),
       );
-      await this.room.localParticipant.publishData(payload, { reliable: true, topic: 'lecturer' });
+      const lp = this.room.localParticipant;
+      if (!lp) return;
+      await lp.publishData(payload, { reliable: true, topic: 'lecturer' });
     } catch (e) {
       this.logger.warn('transcript.publish.failed', { err: (e as Error).message });
     }
