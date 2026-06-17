@@ -18,9 +18,25 @@ const CAPABILITIES = {
 const COST_PER_MIN_USD = 0.30;
 
 export function createDidProvider(): AvatarProvider {
-  const apiKey = Deno.env.get("DID_API_KEY");
+  const rawKey = Deno.env.get("DID_API_KEY")?.trim();
 
-  const auth = () => `Basic ${apiKey}`;
+  // D-ID expects: `Authorization: Basic <base64(email:apikey)>`.
+  // Users commonly paste one of three things into the secret:
+  //   1) pre-encoded base64 of `email:apikey`  (what the D-ID UI shows as "API Key")
+  //   2) raw `email:apikey`                    (copied from the credentials panel)
+  //   3) bare api key (no colon)               (wrong — will 401/403)
+  // Normalize to a valid Basic value.
+  function normalize(key: string | undefined): string | null {
+    if (!key) return null;
+    // Heuristic: contains "@" or ":" => raw credentials, must encode.
+    if (key.includes("@") || key.includes(":")) {
+      try { return btoa(key); } catch { return null; }
+    }
+    // Otherwise assume already base64 (D-ID API key field).
+    return key;
+  }
+  const encoded = normalize(rawKey);
+  const auth = () => `Basic ${encoded}`;
 
   return {
     kind: "did",
@@ -28,7 +44,7 @@ export function createDidProvider(): AvatarProvider {
     estimatedCostPerMinuteUsd: COST_PER_MIN_USD,
 
     async getHealth(): Promise<ProviderHealth> {
-      if (!apiKey) {
+      if (!encoded) {
         return {
           kind: "did", healthy: false, reason: "AVATAR_PROVIDER_UNCONFIGURED",
           capabilities: CAPABILITIES, estimatedCostPerMinuteUsd: COST_PER_MIN_USD,
@@ -39,26 +55,28 @@ export function createDidProvider(): AvatarProvider {
         const r = await fetch("https://api.d-id.com/credits", {
           headers: { Authorization: auth() },
         });
-        if (r.status === 401) {
+        if (r.ok) {
           return {
-            kind: "did", healthy: false, reason: "AVATAR_PROVIDER_AUTH_FAILED",
+            kind: "did", healthy: true, reason: "OK",
             capabilities: CAPABILITIES, estimatedCostPerMinuteUsd: COST_PER_MIN_USD,
             checkedAt: new Date().toISOString(),
           };
         }
-        if (r.status === 402) {
-          return {
-            kind: "did", healthy: false, reason: "AVATAR_PROVIDER_CREDITS_EXHAUSTED",
-            capabilities: CAPABILITIES, estimatedCostPerMinuteUsd: COST_PER_MIN_USD,
-            checkedAt: new Date().toISOString(),
-          };
-        }
+        const body = await r.text().catch(() => "");
+        const snippet = body.slice(0, 200);
+        let reason: string;
+        if (r.status === 401) reason = `AVATAR_PROVIDER_AUTH_FAILED: ${snippet}`;
+        else if (r.status === 402) reason = "AVATAR_PROVIDER_CREDITS_EXHAUSTED";
+        else if (r.status === 403) reason = `AVATAR_PROVIDER_FORBIDDEN (trial expired, plan inactive, or invalid Basic key): ${snippet}`;
+        else reason = `AVATAR_PROVIDER_UNREACHABLE_${r.status}: ${snippet}`;
+        console.error("D-ID health failed", { status: r.status, body: snippet });
         return {
-          kind: "did", healthy: r.ok, reason: r.ok ? "OK" : `AVATAR_PROVIDER_UNREACHABLE_${r.status}`,
+          kind: "did", healthy: false, reason,
           capabilities: CAPABILITIES, estimatedCostPerMinuteUsd: COST_PER_MIN_USD,
           checkedAt: new Date().toISOString(),
         };
-      } catch {
+      } catch (e) {
+        console.error("D-ID health exception", e);
         return {
           kind: "did", healthy: false, reason: "AVATAR_PROVIDER_UNREACHABLE",
           capabilities: CAPABILITIES, estimatedCostPerMinuteUsd: COST_PER_MIN_USD,
