@@ -126,3 +126,6 @@ project_id = "klbtvdqfsctrfdkilrmx"
 
 [functions.run-academic-integrity-audit]
 verify_jwt = false
+
+[functions.lecturer-session-patch]
+verify_jwt = false

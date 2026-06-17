@@ -6,7 +6,6 @@ const Env = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   LECTURER_WORKER_KEY: z.string().min(8, 'LECTURER_WORKER_KEY is required'),
   SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
   TTS_PROVIDER: z.enum(['elevenlabs', 'text']).default('elevenlabs'),
   ELEVENLABS_API_KEY: z.string().optional(),
   ELEVENLABS_DEFAULT_VOICE_ID: z.string().default('JBFqnCBsd6RMkjVDRZzb'),
