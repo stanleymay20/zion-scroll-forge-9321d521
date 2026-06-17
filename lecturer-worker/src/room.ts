@@ -106,6 +106,9 @@ class RoomSession {
     const track = LocalAudioTrack.createAudioTrack('lecturer-audio', source);
     const opts = new TrackPublishOptions();
     opts.source = TrackSource.SOURCE_MICROPHONE;
+    if (!room.localParticipant) {
+      throw new Error('LiveKit room has no localParticipant after connect');
+    }
     await room.localParticipant.publishTrack(track, opts);
 
     this.source = source;
@@ -219,7 +222,9 @@ class RoomSession {
       const payload = new TextEncoder().encode(
         JSON.stringify({ type: 'lecturer.transcript', text, ts: Date.now() }),
       );
-      await this.room.localParticipant.publishData(payload, { reliable: true, topic: 'lecturer' });
+      const lp = this.room.localParticipant;
+      if (!lp) return;
+      await lp.publishData(payload, { reliable: true, topic: 'lecturer' });
     } catch (e) {
       this.logger.warn('transcript.publish.failed', { err: (e as Error).message });
     }
