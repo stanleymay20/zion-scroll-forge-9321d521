@@ -115,10 +115,13 @@ export function createDidProvider(): AvatarProvider {
         }
 
         if (!r.ok) {
+          const detail = await r.text().catch(() => "");
+          console.error("D-ID createSession failed", { status: r.status, body: detail.slice(0, 300) });
           const reason =
             r.status === 402 ? "AVATAR_PROVIDER_CREDITS_EXHAUSTED" :
-            r.status === 401 ? "AVATAR_PROVIDER_AUTH_FAILED" :
-            `AVATAR_PROVIDER_UNAVAILABLE_${r.status}`;
+            r.status === 401 ? `AVATAR_PROVIDER_AUTH_FAILED: ${detail.slice(0, 200)}` :
+            r.status === 403 ? `AVATAR_PROVIDER_FORBIDDEN (trial expired or plan inactive): ${detail.slice(0, 200)}` :
+            `AVATAR_PROVIDER_UNAVAILABLE_${r.status}: ${detail.slice(0, 200)}`;
           return { ok: false, fallback: true, providerKind: "did", reason,
             estimatedCostPerMinuteUsd: COST_PER_MIN_USD };
         }
