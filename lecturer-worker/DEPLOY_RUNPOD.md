@@ -62,9 +62,8 @@ Set these in the RunPod template (NOT in the image):
 
 | Var                              | Required | Notes |
 | -------------------------------- | -------- | ----- |
-| `LECTURER_WORKER_KEY`            | ✅       | Long random secret. MUST match the same-named secret in Lovable Cloud. |
+| `LECTURER_WORKER_KEY`            | ✅       | Long random secret (e.g. `openssl rand -hex 32`). MUST match the same-named secret in Lovable Cloud — it authorises the worker to call the `lecturer-session-patch` edge function. |
 | `SUPABASE_URL`                   | ✅       | `https://klbtvdqfsctrfdkilrmx.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY`      | ✅       | Service-role key. Used **only** by the worker to patch `classroom_sessions`. Never exposed to clients. |
 | `TTS_PROVIDER`                   | ✅       | `elevenlabs` for audio, `text` for transcript-only fallback. |
 | `ELEVENLABS_API_KEY`             | if audio | Required when `TTS_PROVIDER=elevenlabs`. Otherwise the worker self-downgrades to text mode (truthful, not silent-fake). |
 | `ELEVENLABS_DEFAULT_VOICE_ID`    | optional | Defaults to `JBFqnCBsd6RMkjVDRZzb` (George). |
