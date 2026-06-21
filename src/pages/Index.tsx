@@ -5,6 +5,9 @@ import { StatsBand } from "@/components/landing/StatsBand";
 import { CapabilitiesSection } from "@/components/landing/CapabilitiesSection";
 import { FacultiesSection } from "@/components/FacultiesSection";
 import { JourneySection } from "@/components/landing/JourneySection";
+import { FeaturedStoriesSection } from "@/components/landing/FeaturedStoriesSection";
+import { UpcomingLecturesSection } from "@/components/landing/UpcomingLecturesSection";
+import { VoicesSection } from "@/components/landing/VoicesSection";
 import { ScrollGoldSection } from "@/components/ScrollGoldSection";
 import { PrayerSection } from "@/components/PrayerSection";
 import { FinalCTASection } from "@/components/landing/FinalCTASection";
@@ -33,8 +36,11 @@ const Index = () => {
         <HeroSection />
         <StatsBand />
         <CapabilitiesSection />
+        <FeaturedStoriesSection />
         <FacultiesSection />
+        <UpcomingLecturesSection />
         <JourneySection />
+        <VoicesSection />
         <ScrollGoldSection />
         <PrayerSection />
         <FinalCTASection />
