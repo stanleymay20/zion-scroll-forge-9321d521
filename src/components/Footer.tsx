@@ -27,6 +27,8 @@ const footerLinks = [
       { label: "Academic Integrity", href: "/academic-integrity" },
       { label: "Trust Center", href: "/trust" },
       { label: "AI Transparency", href: "/ai-transparency" },
+      { label: "AI Risk Register", href: "/governance/ai-risk-register" },
+      { label: "DPIA", href: "/governance/dpia" },
       { label: "Terms of Service", href: "/terms" },
       { label: "Privacy Policy", href: "/privacy" },
     ],

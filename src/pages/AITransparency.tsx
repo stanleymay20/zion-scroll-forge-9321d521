@@ -123,6 +123,29 @@ const AITransparency = () => (
       </section>
 
       <section className="space-y-4">
+        <h2 className="text-2xl font-serif flex items-center gap-2"><FileText className="h-5 w-5 text-accent" /> Vendors &amp; model cards</h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          {[
+            { name: "DeepSeek", role: "Primary LLM for tutoring, grading suggestions, rubric scoring.", dataUse: "Inference only. No training on ScrollUniversity data per contract.", region: "Sub-processor; DPA on file." },
+            { name: "Lovable AI Gateway (Google Gemini family)", role: "Fallback LLM and multimodal tasks.", dataUse: "Inference only. Google Cloud DPA / SCCs apply.", region: "Multi-region; EU routing available." },
+            { name: "D-ID", role: "Avatar video rendering for live AI lectures.", dataUse: "Faculty-authored scripts only. No learner data sent.", region: "DPA on file." },
+            { name: "ElevenLabs", role: "Text-to-speech for synthetic lecture delivery.", dataUse: "Faculty scripts only. Voice cloning restricted to consented faculty voices.", region: "DPA on file." },
+            { name: "Lovable Cloud (Supabase)", role: "Database, auth, storage, edge functions.", dataUse: "Learner data hosted with RLS; no AI training.", region: "EU region selectable." },
+          ].map((v) => (
+            <Card key={v.name}>
+              <CardHeader><CardTitle className="text-base">{v.name}</CardTitle><CardDescription>{v.role}</CardDescription></CardHeader>
+              <CardContent className="text-xs text-muted-foreground space-y-1">
+                <div><span className="font-semibold">Data use: </span>{v.dataUse}</div>
+                <div><span className="font-semibold">Compliance: </span>{v.region}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">Full register and DPAs available to learners on request: <a href="mailto:dpo@scrolluniversity.org" className="underline">dpo@scrolluniversity.org</a>. See also our <a href="/governance/ai-risk-register" className="underline">AI Risk Register</a> and <a href="/governance/dpia" className="underline">DPIA</a>.</p>
+      </section>
+
+
+      <section className="space-y-4">
         <h2 className="text-2xl font-serif flex items-center gap-2"><FileText className="h-5 w-5 text-accent" /> Governance &amp; logging</h2>
         <Card>
           <CardContent className="pt-6 text-sm text-muted-foreground space-y-2 leading-relaxed">
