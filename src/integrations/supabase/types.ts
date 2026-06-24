@@ -13202,6 +13202,80 @@ export type Database = {
           },
         ]
       }
+      student_outcome_mastery: {
+        Row: {
+          achieved_at: string | null
+          attempts: number
+          course_id: string
+          created_at: string
+          first_attempt_at: string
+          id: string
+          last_attempt_at: string
+          learning_objective_id: string
+          module_id: string
+          score_pct: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          achieved_at?: string | null
+          attempts?: number
+          course_id: string
+          created_at?: string
+          first_attempt_at?: string
+          id?: string
+          last_attempt_at?: string
+          learning_objective_id: string
+          module_id: string
+          score_pct?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string | null
+          attempts?: number
+          course_id?: string
+          created_at?: string
+          first_attempt_at?: string
+          id?: string
+          last_attempt_at?: string
+          learning_objective_id?: string
+          module_id?: string
+          score_pct?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_outcome_mastery_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_outcome_mastery_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "v_course_gradebook"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "student_outcome_mastery_learning_objective_id_fkey"
+            columns: ["learning_objective_id"]
+            isOneToOne: false
+            referencedRelation: "course_learning_outcomes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_outcome_mastery_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_qualifications: {
         Row: {
           created_at: string | null
