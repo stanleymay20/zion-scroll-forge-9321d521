@@ -23,7 +23,8 @@ function generateCertificateHTML(
   completionDate: string,
   scrollBadge: boolean,
   type: 'course' | 'graduation' = 'course',
-  degreeLevel?: string
+  degreeLevel?: string,
+  outcomes: Array<{ code: string | null; statement: string }> = []
 ): string {
   const formattedDate = new Date(completionDate).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -122,6 +123,14 @@ function generateCertificateHTML(
       ${faculty ? `<div class="faculty">${faculty}</div>` : ''}
       ${scrollBadge ? '<div class="badge">🏆 ScrollBadge Earned</div>' : ''}
       <div class="date">Conferred on ${formattedDate}</div>
+      ${outcomes.length > 0 ? `
+      <div style="margin-top:24px;padding:16px 24px;background:#faf7ff;border-left:4px solid ${accentColor};text-align:left;border-radius:4px;">
+        <div style="font-size:13px;font-weight:bold;color:${accentColor};letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Demonstrated Learning Outcomes</div>
+        <ul style="list-style:none;padding:0;margin:0;font-size:12px;color:#374151;line-height:1.6;">
+          ${outcomes.slice(0, 8).map(o => `<li style="margin:4px 0;">✓ ${o.code ? `<span style="font-family:monospace;color:#6b7280;margin-right:6px;">${o.code}</span>` : ''}${o.statement}</li>`).join('')}
+          ${outcomes.length > 8 ? `<li style="margin-top:6px;color:#6b7280;font-style:italic;">…and ${outcomes.length - 8} more outcome(s)</li>` : ''}
+        </ul>
+      </div>` : ''}
     </div>
     <div class="footer">
       <div class="signature-block">
@@ -222,9 +231,27 @@ serve(async (req) => {
       );
     }
 
+    // Fetch demonstrated outcomes (>= 70% mastery) for this course
+    const { data: masteryRows } = await supabase
+      .from('student_outcome_mastery')
+      .select('learning_objective_id, score_pct, course_learning_outcomes(code, statement)')
+      .eq('user_id', userId)
+      .eq('course_id', courseId)
+      .gte('score_pct', 70);
+
+    const seenIds = new Set<string>();
+    const demonstratedOutcomes: Array<{ code: string | null; statement: string }> = [];
+    for (const row of (masteryRows ?? []) as any[]) {
+      const oid = row.learning_objective_id;
+      if (seenIds.has(oid)) continue;
+      seenIds.add(oid);
+      const o = row.course_learning_outcomes;
+      if (o?.statement) demonstratedOutcomes.push({ code: o.code ?? null, statement: o.statement });
+    }
+
     const completionDate = new Date().toISOString();
     const html = generateCertificateHTML(
-      studentName, course.title, course.faculty || '', completionDate, true, 'course'
+      studentName, course.title, course.faculty || '', completionDate, true, 'course', undefined, demonstratedOutcomes
     );
 
     // Save certificate record

@@ -247,20 +247,28 @@ export default function CourseDetail() {
                             </p>
                           )}
 
-                          {/* Learning Objectives */}
-                          {(module.content as any)?.learning_objectives && (module.content as any).learning_objectives.length > 0 && (
-                            <div className="bg-muted/50 rounded-lg p-3">
-                              <h4 className="font-medium text-sm mb-2">Learning Objectives:</h4>
-                              <ul className="space-y-1">
-                                {(module.content as any).learning_objectives.map((objective: string, objIndex: number) => (
-                                  <li key={objIndex} className="text-sm flex items-start space-x-2">
-                                    <CheckCircle className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
-                                    <span>{objective}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
+                          {/* Learning Objectives — prefer top-level column, fallback to JSONB blob */}
+                          {(() => {
+                            const objectives: string[] = Array.isArray((module as any).learning_objectives) && (module as any).learning_objectives.length > 0
+                              ? (module as any).learning_objectives
+                              : Array.isArray((module.content as any)?.learning_objectives)
+                                ? (module.content as any).learning_objectives
+                                : [];
+                            if (objectives.length === 0) return null;
+                            return (
+                              <div className="bg-muted/50 rounded-lg p-3">
+                                <h4 className="font-medium text-sm mb-2">Learning Objectives:</h4>
+                                <ul className="space-y-1">
+                                  {objectives.map((objective: string, objIndex: number) => (
+                                    <li key={objIndex} className="text-sm flex items-start space-x-2">
+                                      <CheckCircle className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
+                                      <span>{objective}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            );
+                          })()}
 
                           {/* Learning Materials */}
                           {module.learning_materials && module.learning_materials.length > 0 && (
