@@ -202,6 +202,7 @@ const CatalogExpansion = lazy(() => import("./pages/CatalogExpansion"));
 const AcademicIntegrity = lazy(() => import("./pages/AcademicIntegrity"));
 const TermsOfService = lazy(() => import("./pages/legal/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
+const AITransparency = lazy(() => import("./pages/AITransparency"));
 const FacultyDirectory = lazy(() => import("./pages/FacultyDirectory"));
 const OutcomesDashboard = lazy(() => import("./pages/OutcomesDashboard"));
 const FoundingWall = lazy(() => import("./pages/FoundingWall"));
@@ -442,6 +443,7 @@ const App = () => (
             {/* Legal Pages */}
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/ai-transparency" element={<AITransparency />} />
             
             {/* Authentication Routes */}
             <Route path="/auth" element={<Auth />} />

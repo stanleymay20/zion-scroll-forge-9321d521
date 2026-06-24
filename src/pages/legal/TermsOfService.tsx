@@ -25,7 +25,10 @@ const TermsOfService = () => (
       <h2>4. Academic Integrity</h2>
       <p>Users must adhere to our Academic Integrity Policy. Plagiarism, cheating, or misrepresentation of credentials will result in account suspension or termination.</p>
 
-      <h2>5. Intellectual Property</h2>
+      <h2>5. AI-Assisted Services</h2>
+      <p>Tutoring, grading suggestions, rubric scoring, and lecture-avatar delivery are AI-assisted. See <a href="/ai-transparency" className="text-primary hover:underline">AI Transparency</a> for the full disclosure required by the EU AI Act. AI never issues a binding academic decision without human oversight, and you may request human review of any AI-assisted decision at any time.</p>
+
+      <h2>6. Intellectual Property</h2>
       <p>All course content, materials, and platform features are the intellectual property of ScrollUniversity or its licensors. You may not reproduce, distribute, or create derivative works without express permission.</p>
 
       <h2>6. Digital Credentials</h2>
