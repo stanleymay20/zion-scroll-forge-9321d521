@@ -12,6 +12,7 @@ const PublishBody = z.object({
   room: z.string().min(1),
   sessionId: z.string().uuid(),
   lectureTitle: z.string().nullable().optional(),
+  tutorContext: z.string().nullable().optional(),
   tutor: z
     .object({
       id: z.string().optional(),
@@ -68,6 +69,7 @@ app.post('/publish-lecturer', async (req, reply) => {
     room: body.room,
     sessionId: body.sessionId,
     lectureTitle: body.lectureTitle ?? null,
+    tutorContext: body.tutorContext ?? null,
     tutor: body.tutor ?? null,
   });
   return reply.code(result.ok ? 200 : 502).send(result);
