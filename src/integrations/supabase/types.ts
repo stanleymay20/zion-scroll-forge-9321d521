@@ -739,6 +739,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_avatar_consents: {
+        Row: {
+          created_at: string
+          id: string
+          tutor_name: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tutor_name: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tutor_name?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_conversations: {
         Row: {
           context_summary: string | null
@@ -5325,6 +5349,57 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      faculty_likeness_releases: {
+        Row: {
+          avatar_resembles_real_person: boolean
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          faculty_name: string
+          faculty_user_id: string | null
+          id: string
+          notes: string | null
+          release_document_url: string | null
+          release_signed: boolean
+          release_signed_at: string | null
+          scope: string | null
+          updated_at: string
+          voice_cloned: boolean
+        }
+        Insert: {
+          avatar_resembles_real_person?: boolean
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          faculty_name: string
+          faculty_user_id?: string | null
+          id?: string
+          notes?: string | null
+          release_document_url?: string | null
+          release_signed?: boolean
+          release_signed_at?: string | null
+          scope?: string | null
+          updated_at?: string
+          voice_cloned?: boolean
+        }
+        Update: {
+          avatar_resembles_real_person?: boolean
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          faculty_name?: string
+          faculty_user_id?: string | null
+          id?: string
+          notes?: string | null
+          release_document_url?: string | null
+          release_signed?: boolean
+          release_signed_at?: string | null
+          scope?: string | null
+          updated_at?: string
+          voice_cloned?: boolean
+        }
+        Relationships: []
       }
       faculty_productivity_snapshots: {
         Row: {

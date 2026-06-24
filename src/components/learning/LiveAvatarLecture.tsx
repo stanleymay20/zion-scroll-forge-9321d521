@@ -24,6 +24,7 @@ import ReactMarkdown from 'react-markdown';
 import { CompanionResources } from './CompanionResources';
 import { getUserFriendlyError } from "@/lib/errors";
 import { resolveTutorAvatarUrl } from '@/lib/tutorAvatar';
+import { AIAvatarConsentDialog, hasGivenAvatarConsent } from '@/components/ai/AIAvatarConsentDialog';
 
 type SpeakerRole = 'user' | 'host' | 'cohost' | 'system';
 
@@ -114,6 +115,7 @@ export function LiveAvatarLecture({
   const [micLevel, setMicLevel] = useState(0);
   const [lastMicError, setLastMicError] = useState<string | null>(null);
   const [isVoiceLoopEnabled, setIsVoiceLoopEnabled] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -1191,6 +1193,12 @@ export function LiveAvatarLecture({
 
   return (
     <Card className="w-full overflow-hidden">
+      <AIAvatarConsentDialog
+        open={consentOpen}
+        onOpenChange={setConsentOpen}
+        onAccept={() => { void connectStream(); }}
+        tutorName={tutorName}
+      />
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
@@ -1250,7 +1258,15 @@ export function LiveAvatarLecture({
 
           <div className="flex items-center gap-1.5 flex-wrap">
             {!isConnected ? (
-              <Button size="sm" onClick={connectStream} disabled={isConnecting} className="gap-1.5">
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (hasGivenAvatarConsent()) connectStream();
+                  else setConsentOpen(true);
+                }}
+                disabled={isConnecting}
+                className="gap-1.5"
+              >
                 {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
                 {isConnecting ? 'Connecting...' : 'Start Lecture'}
               </Button>
@@ -1365,6 +1381,15 @@ export function LiveAvatarLecture({
         {showVideo && (
           <div className={`grid gap-2 ${hasCohost ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1'}`}>
             <div className={`relative aspect-video bg-gradient-to-br from-primary/10 via-primary/5 to-background rounded-lg overflow-hidden border border-border ${hasCohost ? 'sm:col-span-2' : ''}`}>
+              {/* EU AI Act Art. 50(2) — persistent synthetic-media label */}
+              <div
+                className="pointer-events-none absolute top-2 left-2 z-10 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm"
+                aria-label="This content is AI-generated"
+                title="This lecturer is an AI-generated avatar (EU AI Act Art. 50 / China GenAI labelling)"
+              >
+                <Sparkles className="h-3 w-3 text-primary-foreground" />
+                <span>AI Avatar</span>
+              </div>
               {isConnected ? (
                 <>
                   <video

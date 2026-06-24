@@ -207,6 +207,7 @@ const AIRiskRegister = lazy(() => import("./pages/governance/AIRiskRegister"));
 const DPIA = lazy(() => import("./pages/governance/DPIA"));
 const RegionalAINotices = lazy(() => import("./pages/governance/RegionalAINotices"));
 const AIReviewQueue = lazy(() => import("./pages/admin/AIReviewQueue"));
+const FacultyLikenessReleases = lazy(() => import("./pages/admin/FacultyLikenessReleases"));
 const FacultyDirectory = lazy(() => import("./pages/FacultyDirectory"));
 const OutcomesDashboard = lazy(() => import("./pages/OutcomesDashboard"));
 const FoundingWall = lazy(() => import("./pages/FoundingWall"));
@@ -667,6 +668,7 @@ const App = () => (
             <Route path="admin/suyas" element={<RoleRoute allowedRoles={["admin","superadmin"]}><SUYASAdmin /></RoleRoute>} />
             <Route path="admin/activation" element={<RoleRoute allowedRoles={["admin","superadmin"]}><ActivationProgress /></RoleRoute>} />
             <Route path="admin/ai-review-queue" element={<RoleRoute allowedRoles={["admin","superadmin","faculty"]}><AIReviewQueue /></RoleRoute>} />
+            <Route path="admin/faculty-likeness-releases" element={<RoleRoute allowedRoles={["admin","superadmin"]}><FacultyLikenessReleases /></RoleRoute>} />
           </Route>
           
           {/* Catch-all route for 404 */}
