@@ -447,6 +447,8 @@ const App = () => (
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/ai-transparency" element={<AITransparency />} />
+            <Route path="/governance/ai-risk-register" element={<AIRiskRegister />} />
+            <Route path="/governance/dpia" element={<DPIA />} />
             
             {/* Authentication Routes */}
             <Route path="/auth" element={<Auth />} />
@@ -662,6 +664,7 @@ const App = () => (
             <Route path="admin/academic-terms" element={<RoleRoute allowedRoles={["admin","superadmin"]}><AcademicTermAdmin /></RoleRoute>} />
             <Route path="admin/suyas" element={<RoleRoute allowedRoles={["admin","superadmin"]}><SUYASAdmin /></RoleRoute>} />
             <Route path="admin/activation" element={<RoleRoute allowedRoles={["admin","superadmin"]}><ActivationProgress /></RoleRoute>} />
+            <Route path="admin/ai-review-queue" element={<RoleRoute allowedRoles={["admin","superadmin","faculty"]}><AIReviewQueue /></RoleRoute>} />
           </Route>
           
           {/* Catch-all route for 404 */}

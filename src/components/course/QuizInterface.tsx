@@ -21,6 +21,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ExplainScoreDialog } from '@/components/ai/ExplainScoreDialog';
 
 interface QuizInterfaceProps {
   lectureId: string;
@@ -254,13 +255,20 @@ export function QuizInterface({ lectureId, courseId, onComplete }: QuizInterface
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2">
-            <Button onClick={handleRetake} variant="outline" className="flex-1">
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleRetake} variant="outline" className="flex-1 min-w-[140px]">
               <RefreshCw className="h-4 w-4 mr-2" />
               Retake Quiz
             </Button>
+            <ExplainScoreDialog
+              score={score}
+              threshold={70}
+              aiSystem="gpt-auto-grader"
+              decisionReference={lectureId}
+              decisionType="grade"
+            />
             {score >= 70 && onComplete && (
-              <Button onClick={onComplete} className="flex-1">
+              <Button onClick={onComplete} className="flex-1 min-w-[140px]">
                 Continue to Next Lecture
               </Button>
             )}
