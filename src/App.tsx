@@ -450,6 +450,7 @@ const App = () => (
             <Route path="/ai-transparency" element={<AITransparency />} />
             <Route path="/governance/ai-risk-register" element={<AIRiskRegister />} />
             <Route path="/governance/dpia" element={<DPIA />} />
+            <Route path="/governance/regional-ai-notices" element={<RegionalAINotices />} />
             
             {/* Authentication Routes */}
             <Route path="/auth" element={<Auth />} />
