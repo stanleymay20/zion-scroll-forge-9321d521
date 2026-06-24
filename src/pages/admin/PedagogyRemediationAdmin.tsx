@@ -65,16 +65,12 @@ export default function PedagogyRemediationAdmin() {
     setModules((rows as ModuleRow[]) ?? []);
     setTotals({ passing: pass ?? 0, failing: fail ?? 0 });
 
-    // Aggregate issue counts from the loaded sample (live counts)
-    const { data: agg } = await supabase.rpc("array_agg_issues" as any).select?.() ?? { data: null };
-    if (!agg) {
-      // Fallback: compute client-side aggregation across loaded rows
-      const map = new Map<string, number>();
-      (rows as ModuleRow[] | null)?.forEach((m) =>
-        (m.quality_issues ?? []).forEach((i) => map.set(i, (map.get(i) ?? 0) + 1)),
-      );
-      setAggregates([...map.entries()].map(([issue, count]) => ({ issue, count })).sort((a, b) => b.count - a.count));
-    }
+    // Client-side aggregation across loaded rows
+    const map = new Map<string, number>();
+    (rows as ModuleRow[] | null)?.forEach((m) =>
+      (m.quality_issues ?? []).forEach((i) => map.set(i, (map.get(i) ?? 0) + 1)),
+    );
+    setAggregates([...map.entries()].map(([issue, count]) => ({ issue, count })).sort((a, b) => b.count - a.count));
     setLoading(false);
   }, []);
 
