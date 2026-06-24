@@ -29,6 +29,7 @@ const footerLinks = [
       { label: "AI Transparency", href: "/ai-transparency" },
       { label: "AI Risk Register", href: "/governance/ai-risk-register" },
       { label: "DPIA", href: "/governance/dpia" },
+      { label: "Regional AI Notices", href: "/governance/regional-ai-notices" },
       { label: "Terms of Service", href: "/terms" },
       { label: "Privacy Policy", href: "/privacy" },
     ],

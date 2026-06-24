@@ -205,6 +205,7 @@ const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const AITransparency = lazy(() => import("./pages/AITransparency"));
 const AIRiskRegister = lazy(() => import("./pages/governance/AIRiskRegister"));
 const DPIA = lazy(() => import("./pages/governance/DPIA"));
+const RegionalAINotices = lazy(() => import("./pages/governance/RegionalAINotices"));
 const AIReviewQueue = lazy(() => import("./pages/admin/AIReviewQueue"));
 const FacultyDirectory = lazy(() => import("./pages/FacultyDirectory"));
 const OutcomesDashboard = lazy(() => import("./pages/OutcomesDashboard"));
@@ -449,6 +450,7 @@ const App = () => (
             <Route path="/ai-transparency" element={<AITransparency />} />
             <Route path="/governance/ai-risk-register" element={<AIRiskRegister />} />
             <Route path="/governance/dpia" element={<DPIA />} />
+            <Route path="/governance/regional-ai-notices" element={<RegionalAINotices />} />
             
             {/* Authentication Routes */}
             <Route path="/auth" element={<Auth />} />
