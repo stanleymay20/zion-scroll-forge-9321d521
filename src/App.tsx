@@ -207,6 +207,7 @@ const AIRiskRegister = lazy(() => import("./pages/governance/AIRiskRegister"));
 const DPIA = lazy(() => import("./pages/governance/DPIA"));
 const RegionalAINotices = lazy(() => import("./pages/governance/RegionalAINotices"));
 const AIReviewQueue = lazy(() => import("./pages/admin/AIReviewQueue"));
+const FacultyLikenessReleases = lazy(() => import("./pages/admin/FacultyLikenessReleases"));
 const FacultyDirectory = lazy(() => import("./pages/FacultyDirectory"));
 const OutcomesDashboard = lazy(() => import("./pages/OutcomesDashboard"));
 const FoundingWall = lazy(() => import("./pages/FoundingWall"));
