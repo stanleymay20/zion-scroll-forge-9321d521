@@ -1252,7 +1252,15 @@ export function LiveAvatarLecture({
 
           <div className="flex items-center gap-1.5 flex-wrap">
             {!isConnected ? (
-              <Button size="sm" onClick={connectStream} disabled={isConnecting} className="gap-1.5">
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (hasGivenAvatarConsent()) connectStream();
+                  else setConsentOpen(true);
+                }}
+                disabled={isConnecting}
+                className="gap-1.5"
+              >
                 {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
                 {isConnecting ? 'Connecting...' : 'Start Lecture'}
               </Button>
