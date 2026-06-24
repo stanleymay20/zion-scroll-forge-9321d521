@@ -26,7 +26,7 @@ interface ModuleLearningContentProps {
     duration_minutes?: number;
     rewards_amount?: number;
     content?: any;
-    learning_objectives?: string[] | null;
+    learning_objectives?: any;
   };
   courseTitle: string;
   totalModules: number;
