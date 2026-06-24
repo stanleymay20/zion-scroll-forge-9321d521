@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Brain, Heart, Microscope, Coins, Briefcase } from "lucide-react";
 import { AIChat } from "@/components/AIChat";
+import { AIDisclosureBanner } from "@/components/ai/AIDisclosureBanner";
 
 const tutorDetails: Record<string, any> = {
   "scrollmentor-gpt": {
@@ -81,6 +82,8 @@ export default function AITutorChat() {
             </div>
           </div>
         </div>
+
+        <AIDisclosureBanner systemName={tutor.name} variant="chat" />
 
         <AIChat faculty={tutor.faculty} personality={tutor.personality} />
       </div>

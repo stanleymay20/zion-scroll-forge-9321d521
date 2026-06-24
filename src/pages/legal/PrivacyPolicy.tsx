@@ -25,7 +25,17 @@ const PrivacyPolicy = () => (
         <li>To maintain platform security and prevent fraud</li>
       </ul>
 
-      <h2>3. Data Sharing</h2>
+      <h2>3. AI Processing & Your Rights (EU AI Act)</h2>
+      <p>ScrollUniversity uses AI to support tutoring, content authoring, assessment, and lecture delivery. See our <a href="/ai-transparency" className="text-primary hover:underline">AI Transparency page</a> for the full system inventory. Under Articles 13, 50 and 86 of the EU AI Act you have the right to:</p>
+      <ul>
+        <li>Be informed when you are interacting with AI and when content is AI-generated</li>
+        <li>Receive a meaningful explanation of AI-assisted decisions affecting you (grades, admissions, holds, credentials)</li>
+        <li>Request human review of any such decision via the "Request human review" control or by contacting your advisor</li>
+        <li>Opt out of optional AI tutoring without academic penalty</li>
+      </ul>
+      <p>ScrollUniversity does not perform emotion inference for grading and does not use AI for social scoring outside the published academic context. We do not train foundation models on your data.</p>
+
+      <h2>4. Data Sharing</h2>
       <p>We do not sell your personal information. We may share data with:</p>
       <ul>
         <li>Credential verification services (for badge/degree validation)</li>
