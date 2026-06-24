@@ -24,6 +24,7 @@ import ReactMarkdown from 'react-markdown';
 import { CompanionResources } from './CompanionResources';
 import { getUserFriendlyError } from "@/lib/errors";
 import { resolveTutorAvatarUrl } from '@/lib/tutorAvatar';
+import { AIAvatarConsentDialog, hasGivenAvatarConsent } from '@/components/ai/AIAvatarConsentDialog';
 
 type SpeakerRole = 'user' | 'host' | 'cohost' | 'system';
 
