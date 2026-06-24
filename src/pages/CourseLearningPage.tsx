@@ -354,17 +354,26 @@ export default function CourseLearningPage() {
 
           <TabsContent value="learn">
             {currentModule ? (
-              <ModuleLearningContent
-                module={currentModule}
-                courseTitle={courseData.title}
-                totalModules={sortedModules.length}
-                onComplete={handleModuleComplete}
-                onNext={handleNextModule}
-                onPrevious={handlePreviousModule}
-                isCompleted={moduleCompletions.includes(currentModuleId!)}
-                isFirst={currentModuleIndex === 0}
-                isLast={currentModuleIndex === sortedModules.length - 1}
-              />
+              <div className="space-y-4">
+                <ModuleLearningContent
+                  module={currentModule}
+                  courseTitle={courseData.title}
+                  totalModules={sortedModules.length}
+                  onComplete={handleModuleComplete}
+                  onNext={handleNextModule}
+                  onPrevious={handlePreviousModule}
+                  isCompleted={moduleCompletions.includes(currentModuleId!)}
+                  isFirst={currentModuleIndex === 0}
+                  isLast={currentModuleIndex === sortedModules.length - 1}
+                />
+                {user?.id && currentModuleId && (
+                  <OutcomesAchievedPanel
+                    userId={user.id}
+                    moduleId={currentModuleId}
+                    title="Your Outcomes for This Module"
+                  />
+                )}
+              </div>
             ) : (
               <Card>
                 <CardContent className="py-12 text-center">
