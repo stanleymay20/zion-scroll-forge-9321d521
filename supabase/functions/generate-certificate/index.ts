@@ -231,9 +231,27 @@ serve(async (req) => {
       );
     }
 
+    // Fetch demonstrated outcomes (>= 70% mastery) for this course
+    const { data: masteryRows } = await supabase
+      .from('student_outcome_mastery')
+      .select('learning_objective_id, score_pct, course_learning_outcomes(code, statement)')
+      .eq('user_id', userId)
+      .eq('course_id', courseId)
+      .gte('score_pct', 70);
+
+    const seenIds = new Set<string>();
+    const demonstratedOutcomes: Array<{ code: string | null; statement: string }> = [];
+    for (const row of (masteryRows ?? []) as any[]) {
+      const oid = row.learning_objective_id;
+      if (seenIds.has(oid)) continue;
+      seenIds.add(oid);
+      const o = row.course_learning_outcomes;
+      if (o?.statement) demonstratedOutcomes.push({ code: o.code ?? null, statement: o.statement });
+    }
+
     const completionDate = new Date().toISOString();
     const html = generateCertificateHTML(
-      studentName, course.title, course.faculty || '', completionDate, true, 'course'
+      studentName, course.title, course.faculty || '', completionDate, true, 'course', undefined, demonstratedOutcomes
     );
 
     // Save certificate record
