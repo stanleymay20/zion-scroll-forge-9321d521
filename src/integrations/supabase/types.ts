@@ -6286,6 +6286,54 @@ export type Database = {
           },
         ]
       }
+      human_review_requests: {
+        Row: {
+          ai_output: Json | null
+          ai_system: string | null
+          created_at: string
+          decision_reference: string | null
+          decision_type: string
+          id: string
+          resolved_at: string | null
+          reviewer_id: string | null
+          reviewer_notes: string | null
+          status: string
+          updated_at: string
+          user_explanation: string
+          user_id: string
+        }
+        Insert: {
+          ai_output?: Json | null
+          ai_system?: string | null
+          created_at?: string
+          decision_reference?: string | null
+          decision_type: string
+          id?: string
+          resolved_at?: string | null
+          reviewer_id?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          updated_at?: string
+          user_explanation: string
+          user_id: string
+        }
+        Update: {
+          ai_output?: Json | null
+          ai_system?: string | null
+          created_at?: string
+          decision_reference?: string | null
+          decision_type?: string
+          id?: string
+          resolved_at?: string | null
+          reviewer_id?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          updated_at?: string
+          user_explanation?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       institution_members: {
         Row: {
           created_at: string | null
