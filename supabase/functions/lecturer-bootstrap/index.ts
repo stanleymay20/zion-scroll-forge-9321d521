@@ -77,6 +77,36 @@ Deno.serve(async (req) => {
       if (data) tutor = data as any;
     }
 
+    // Resolve module-level tutor_context for the worker prompt.
+    // Match by lecture_title first; fall back to the first module of the course with a non-null tutor_context.
+    let tutorContext: string | null = null;
+    if (session.course_id) {
+      let modRow: { tutor_context: string | null } | null = null;
+      if (session.lecture_title) {
+        const { data } = await admin
+          .from('course_modules')
+          .select('tutor_context')
+          .eq('course_id', session.course_id)
+          .ilike('title', session.lecture_title)
+          .not('tutor_context', 'is', null)
+          .limit(1)
+          .maybeSingle();
+        modRow = data as any;
+      }
+      if (!modRow) {
+        const { data } = await admin
+          .from('course_modules')
+          .select('tutor_context')
+          .eq('course_id', session.course_id)
+          .not('tutor_context', 'is', null)
+          .order('order_index', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        modRow = data as any;
+      }
+      tutorContext = modRow?.tutor_context ?? null;
+    }
+
     const lkUrl = Deno.env.get('LIVEKIT_URL');
     const apiKey = Deno.env.get('LIVEKIT_API_KEY');
     const apiSecret = Deno.env.get('LIVEKIT_API_SECRET');
@@ -149,6 +179,7 @@ Deno.serve(async (req) => {
           room: session.room_name,
           sessionId: session.id,
           lectureTitle: session.lecture_title,
+          tutorContext,
           tutor,
         }),
       });

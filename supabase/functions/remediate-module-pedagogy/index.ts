@@ -249,12 +249,25 @@ Return JSON with EXACTLY these fields:
   const raw: string = data?.choices?.[0]?.message?.content ?? "";
   try {
     const parsed = JSON.parse(raw) as RemediatedPayload;
-    if (!parsed.content_md || !Array.isArray(parsed.learning_objectives) || !Array.isArray(parsed.quiz_questions)) {
+    // Strict pedagogy gate — refuse partial payloads that would corrupt the row.
+    const reasons: string[] = [];
+    if (!parsed.content_md || parsed.content_md.length < 8000) reasons.push("content_md_too_short");
+    if (!Array.isArray(parsed.learning_objectives) || parsed.learning_objectives.length < 3) reasons.push("objectives_insufficient");
+    // Some models return a single concatenated string in element 0 — split it.
+    if (Array.isArray(parsed.learning_objectives) && parsed.learning_objectives.length === 1 && /\.\s+[A-Z]/.test(parsed.learning_objectives[0])) {
+      parsed.learning_objectives = parsed.learning_objectives[0].split(/(?<=[.?!])\s+(?=[A-Z])/).filter((s: string) => s.trim().length > 10);
+    }
+    if (typeof parsed.reflective_prompt !== "string" || parsed.reflective_prompt.length < 80) reasons.push("reflective_prompt_missing");
+    if (!Array.isArray(parsed.formative_checkpoints) || parsed.formative_checkpoints.length < 2) reasons.push("formative_checkpoints_missing");
+    if (typeof parsed.tutor_context !== "string" || parsed.tutor_context.length < 200) reasons.push("tutor_context_missing");
+    if (!Array.isArray(parsed.quiz_questions) || parsed.quiz_questions.length < 5) reasons.push("quiz_questions_insufficient");
+    if (reasons.length > 0) {
+      console.error("payload validation failed", reasons, raw.slice(0, 400));
       return null;
     }
     return parsed;
   } catch (e) {
-    console.error("json parse failed", (e as Error).message, raw.slice(0, 300));
+    console.error("json parse failed", (e as Error).message, raw.slice(0, 400));
     return null;
   }
 }

@@ -23,6 +23,7 @@ export interface RoomSessionParams {
   room: string;
   sessionId: string;
   lectureTitle?: string | null;
+  tutorContext?: string | null;
   tutor: { id?: string; name?: string; specialty?: string | null; voiceId?: string | null } | null;
 }
 
@@ -136,6 +137,7 @@ class RoomSession {
           {
             lectureTitle: this.params.lectureTitle,
             tutor: this.params.tutor,
+            tutorContext: this.params.tutorContext,
             mode: 'lecture',
           },
           kind,
@@ -162,6 +164,7 @@ class RoomSession {
           {
             lectureTitle: this.params.lectureTitle,
             tutor: this.params.tutor,
+            tutorContext: this.params.tutorContext,
             mode: 'lecture',
           },
           kind,
