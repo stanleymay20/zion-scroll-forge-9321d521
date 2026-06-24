@@ -176,100 +176,112 @@ async function draftRemediation(args: {
   const { lovableKey, deepseekKey, courseTitle, faculty, moduleTitle, existing, clos } = args;
   const cloBrief = clos.map(c => `- ${c.code} (${c.bloom_level ?? 'n/a'}): ${c.statement}`).join("\n");
 
-  const system = `You are a senior endowed-chair professor at ScrollUniversity — a faith-integrated MIT/Harvard-tier institution. You write definitive, rigorous, citation-grounded curriculum that obeys the ScrollUniversity Scroll Pedagogy Model (Revelation + Reason; Transformation over Information; Practice-First). You never produce placeholders, filler, or generic language. You respond ONLY with valid JSON matching the requested schema.`;
-
-  const user = `Remediate ONE module so it passes ScrollUniversity's pedagogy gate. Output ONLY a single JSON object — no markdown fence, no commentary.
+  // PASS 1 — pedagogy metadata + quiz (small, structured JSON)
+  const metaSystem = `You are a senior endowed-chair professor at ScrollUniversity — a faith-integrated MIT/Harvard-tier institution. You write rigorous, citation-grounded curriculum per the Scroll Pedagogy Model (Revelation + Reason; Transformation over Information; Practice-First). Respond ONLY with valid JSON.`;
+  const metaUser = `Produce ONLY the pedagogy metadata JSON for the module below. No content_md here.
 
 Course: ${courseTitle}
 Faculty: ${faculty}
 Module title: ${moduleTitle}
-Course Learning Outcomes available for tagging:
+Available Course Learning Outcomes:
 ${cloBrief}
 
 Existing module content (may be templated/thin):
 """
-${existing}
+${existing.slice(0, 1000)}
 """
 
 Return JSON with EXACTLY these fields:
 {
-  "learning_objectives": [3 module-SPECIFIC objectives — name the module's concepts, NOT the course title; verb-led; measurable],
-  "reflective_prompt": "One paragraph (>= 100 words) inviting the student to connect this module to identity, calling, and Scripture",
+  "learning_objectives": [3 module-SPECIFIC objectives — name THIS module's concepts, not the course; verb-led; measurable],
+  "reflective_prompt": "One paragraph (>=100 words) connecting the module to identity, calling, and Scripture",
   "formative_checkpoints": [
-    {"prompt": "low-stakes check 1", "expected": "concise model answer"},
-    {"prompt": "low-stakes check 2", "expected": "concise model answer"},
-    {"prompt": "low-stakes check 3", "expected": "concise model answer"}
+    {"prompt":"low-stakes check 1","expected":"concise model answer"},
+    {"prompt":"low-stakes check 2","expected":"concise model answer"},
+    {"prompt":"low-stakes check 3","expected":"concise model answer"}
   ],
-  "tutor_context": "300-500 word briefing the live AI lecturer can use to ground its turns: the module's central question, key concepts, the analogies you want the tutor to use, the misconceptions to correct, and the calling-relevant examples",
-  "content_md": "Full chapter in Markdown, 2500-3500 words, structured with these EXACT ## headings in this order: '## Ignition' (hook/opening question), '## Download' (concept teaching), '## Demonstration' (worked example or case), '## Activation' (student practice / your turn), '## Reflection' (identity & integration), '## Commission' (next step / go and do). Engage Scripture exegetically with chapter:verse. Cite real named scholarly works. Include '## Key Terms' and '## Further Reading' after Commission. No placeholders, no first-person, no AI mentions.",
-  "quiz_questions": [6 MCQs, each tagged to one of the CLOs above and a Bloom level, schema: {"prompt": "...", "options": ["A) ...","B) ...","C) ...","D) ..."], "answer": "B) ...", "explanation": "why correct + why distractors wrong", "clo_code": "CLO2", "bloom_level": "apply"}. Distribute across CLOs and rise in Bloom from remember → create. Distractors must be plausible and discipline-grounded.]
+  "tutor_context": "300-500 word briefing the live AI lecturer can use to ground turns: the module's central question, key concepts, analogies, misconceptions to correct, calling-relevant examples",
+  "quiz_questions": [6 MCQs tagged to the CLOs above with rising Bloom (remember→create). Schema per item: {"prompt":"...","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"B) ...","explanation":"why correct + why distractors fail","clo_code":"CLO2","bloom_level":"apply"}]
 }`;
 
-  // Try Lovable first
-  const callLovable = async () => {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [{ role: "system", content: system }, { role: "user", content: user }],
-        response_format: { type: "json_object" },
-      }),
-    });
-    return res;
-  };
-  const callDeepSeek = async () => {
-    const res = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${deepseekKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [{ role: "system", content: system }, { role: "user", content: user }],
-        response_format: { type: "json_object" },
-        max_tokens: 8000,
-      }),
-    });
-    return res;
-  };
+  // PASS 2 — long-form chapter (uses full token budget)
+  const contentSystem = `You are a senior endowed-chair professor at ScrollUniversity writing a definitive long-form chapter. No placeholders, no AI mentions, no first-person plural marketing tone. Engage Scripture exegetically with chapter:verse. Cite real named scholarly works. Respond ONLY with valid JSON.`;
+  const contentUser = (meta: any) => `Write the full chapter for the module below as Markdown, 2500-3500 words, using these EXACT ## headings in this order: '## Ignition', '## Download', '## Demonstration', '## Activation', '## Reflection', '## Commission', then '## Key Terms', then '## Further Reading'.
 
-  let res: Response | null = null;
-  if (lovableKey) {
-    res = await callLovable();
-    if ((res.status === 402 || res.status === 429) && deepseekKey) {
-      res = await callDeepSeek();
+Course: ${courseTitle}
+Module: ${moduleTitle}
+Learning objectives you MUST address: ${JSON.stringify(meta.learning_objectives)}
+Tutor briefing (use as ground truth for concepts, analogies, examples): ${meta.tutor_context}
+
+Return JSON: {"content_md": "..."}`;
+
+  const callLovable = async (body: any) => fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${lovableKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const callDeepSeek = async (body: any) => fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${deepseekKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const runAi = async (system: string, user: string, maxTokens: number) => {
+    const body = {
+      model: "google/gemini-2.5-pro",
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      response_format: { type: "json_object" },
+    };
+    const dsBody = {
+      model: "deepseek-chat",
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      response_format: { type: "json_object" },
+      max_tokens: maxTokens,
+    };
+    let res: Response | null = null;
+    if (lovableKey) {
+      res = await callLovable(body);
+      if ((res.status === 402 || res.status === 429) && deepseekKey) res = await callDeepSeek(dsBody);
+    } else if (deepseekKey) {
+      res = await callDeepSeek(dsBody);
     }
-  } else if (deepseekKey) {
-    res = await callDeepSeek();
-  }
-  if (!res || !res.ok) {
-    console.error("ai call failed", res?.status, await res?.text().catch(() => ""));
-    return null;
-  }
-  const data = await res.json();
-  const raw: string = data?.choices?.[0]?.message?.content ?? "";
-  try {
-    const parsed = JSON.parse(raw) as RemediatedPayload;
-    // Strict pedagogy gate — refuse partial payloads that would corrupt the row.
-    const reasons: string[] = [];
-    if (!parsed.content_md || parsed.content_md.length < 8000) reasons.push("content_md_too_short");
-    if (!Array.isArray(parsed.learning_objectives) || parsed.learning_objectives.length < 3) reasons.push("objectives_insufficient");
-    // Some models return a single concatenated string in element 0 — split it.
-    if (Array.isArray(parsed.learning_objectives) && parsed.learning_objectives.length === 1 && /\.\s+[A-Z]/.test(parsed.learning_objectives[0])) {
-      parsed.learning_objectives = parsed.learning_objectives[0].split(/(?<=[.?!])\s+(?=[A-Z])/).filter((s: string) => s.trim().length > 10);
-    }
-    if (typeof parsed.reflective_prompt !== "string" || parsed.reflective_prompt.length < 80) reasons.push("reflective_prompt_missing");
-    if (!Array.isArray(parsed.formative_checkpoints) || parsed.formative_checkpoints.length < 2) reasons.push("formative_checkpoints_missing");
-    if (typeof parsed.tutor_context !== "string" || parsed.tutor_context.length < 200) reasons.push("tutor_context_missing");
-    if (!Array.isArray(parsed.quiz_questions) || parsed.quiz_questions.length < 5) reasons.push("quiz_questions_insufficient");
-    if (reasons.length > 0) {
-      console.error("payload validation failed", reasons, raw.slice(0, 400));
+    if (!res || !res.ok) {
+      console.error("ai call failed", res?.status, await res?.text().catch(() => ""));
       return null;
     }
-    return parsed;
-  } catch (e) {
-    console.error("json parse failed", (e as Error).message, raw.slice(0, 400));
+    const data = await res.json();
+    const raw: string = data?.choices?.[0]?.message?.content ?? "";
+    try { return JSON.parse(raw); } catch (e) {
+      console.error("json parse failed", (e as Error).message, raw.slice(0, 400));
+      return null;
+    }
+  };
+
+  const meta = await runAi(metaSystem, metaUser, 4000);
+  if (!meta) return null;
+
+  const reasons: string[] = [];
+  if (!Array.isArray(meta.learning_objectives) || meta.learning_objectives.length < 3) reasons.push("objectives_insufficient");
+  if (typeof meta.reflective_prompt !== "string" || meta.reflective_prompt.length < 80) reasons.push("reflective_prompt_missing");
+  if (!Array.isArray(meta.formative_checkpoints) || meta.formative_checkpoints.length < 2) reasons.push("formative_checkpoints_missing");
+  if (typeof meta.tutor_context !== "string" || meta.tutor_context.length < 200) reasons.push("tutor_context_missing");
+  if (!Array.isArray(meta.quiz_questions) || meta.quiz_questions.length < 5) reasons.push("quiz_questions_insufficient");
+  if (reasons.length > 0) { console.error("meta validation failed", reasons); return null; }
+
+  const contentOut = await runAi(contentSystem, contentUser(meta), 16000);
+  if (!contentOut || typeof contentOut.content_md !== "string" || contentOut.content_md.length < 6000) {
+    console.error("content_md insufficient", contentOut?.content_md?.length ?? 0);
     return null;
   }
+
+  return {
+    learning_objectives: meta.learning_objectives,
+    reflective_prompt: meta.reflective_prompt,
+    formative_checkpoints: meta.formative_checkpoints,
+    tutor_context: meta.tutor_context,
+    content_md: contentOut.content_md,
+    quiz_questions: meta.quiz_questions,
+  };
 }
 
 function json(data: unknown, status = 200) {
