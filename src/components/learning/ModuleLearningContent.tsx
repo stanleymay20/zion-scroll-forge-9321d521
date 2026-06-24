@@ -26,6 +26,7 @@ interface ModuleLearningContentProps {
     duration_minutes?: number;
     rewards_amount?: number;
     content?: any;
+    learning_objectives?: string[] | null;
   };
   courseTitle: string;
   totalModules: number;
@@ -98,6 +99,39 @@ export const ModuleLearningContent = ({
           </div>
         </CardHeader>
       </Card>
+
+      {/* Learning Outcomes for this Module */}
+      {(() => {
+        const objectives: string[] = Array.isArray(module.learning_objectives) && module.learning_objectives.length > 0
+          ? module.learning_objectives
+          : Array.isArray(module.content?.learning_objectives)
+            ? module.content.learning_objectives
+            : [];
+        if (objectives.length === 0) return null;
+        return (
+          <Card className="border-accent/30 bg-accent/5">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Award className="h-4 w-4 text-accent" />
+                Learning Outcomes for This Module
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-2">
+              <ul className="space-y-2">
+                {objectives.map((obj, i) => (
+                  <li key={i} className="text-sm flex items-start gap-2 text-foreground/90">
+                    <CheckCircle2 className="h-4 w-4 text-accent/50 mt-0.5 flex-shrink-0" />
+                    <span>{obj}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground mt-3 italic">
+                Mastery for each outcome will be tracked once you complete the module assessment.
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Quick Actions Bar - Mobile Horizontal */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 lg:hidden">

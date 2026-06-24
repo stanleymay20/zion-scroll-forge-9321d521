@@ -1,79 +1,66 @@
+# Fix Learning-Outcome E2E Flow — 5 Phases
 
-# Student Study Experience — Audit & Fix Plan
+Goal: make every module's stated outcomes **visible, measurable, recorded, rewarded, and reportable** end-to-end.
 
-## Audit: what actually exists vs. what's broken
+Schema verified live against the DB. Some audit findings were corrected (see notes).
 
-I queried the live database and walked the learning UI. The student experience is **mostly built but disconnected** — content, modules, lectures and tutors all exist, but key foreign keys are NULL so the UI shows empty states.
+---
 
-### ✅ Already built and populated
+## Phase 1 — Display fixes (frontend only, ~30 min)
 
-| Asset | Count | Quality |
-|---|---|---|
-| Courses | 225 | Distributed across 16 faculties |
-| Course modules | 1,381 | Avg 6.5/course, **1,380 have 2,000+ chars of markdown** content, all have video scripts, audio scripts, study guides |
-| Learning materials | 1,576 | videos (255), PDFs (252), study guides, slides, infographics, scripts |
-| Assignments | 502 | linked to modules |
-| Quizzes | 172 | linked to modules |
-| Divine assessments | 213 | rubric-based |
-| AI tutors | 10 | one per scroll faculty domain (Sophia, Ariel, Zadok…) |
+Surface objectives where they actually matter and stop reading from wrong columns.
 
-### ✅ UI is wired and routed
-- `/courses/:id/learn` → `CourseLearningPage` with 4 tabs: **Learn / Modules / Live Avatar / AI Tutor**
-- Module reader, curriculum browser, live avatar lecture, AI tutor chat, auto-certificate on 100%, sticky progress header, confetti graduation.
+1. **`src/pages/CourseDetail.tsx`** — read `module.learning_objectives` (the real top-level column) with fallback to `module.content.learning_objectives`. Currently only the JSONB-blob path is checked, so seeded modules show nothing.
+2. **`src/hooks/useLiveClassContext.ts`** — also fetch `course_modules.learning_objectives` and include them in `learningObjectives` (currently only course-level `learning_outcomes` is sent, often empty). Pass module-level first, fallback to course-level.
+3. **`src/components/learning/ModuleLearningContent.tsx`** — add an "Outcomes for this Module" collapsible card above the reading area listing each objective with an unchecked circle (state filled in Phase 3).
 
-### ❌ The real blockers (why students see "nothing to study")
+## Phase 2 — Real quiz tied to outcomes (~½ day)
 
-1. **`ai_tutors.faculty_id` is NULL for all 10 tutors.** The Live Avatar tab in `useLiveClassContext` matches by `faculty_id` first, then falls back to `ilike specialty`. The specialties ("Systematic Theology", "Kingdom Finance") don't match the course faculty names ("Scroll Theology", "Scroll Economy"), so **every Live Avatar tab shows "No AI faculty assigned"**.
-2. **67 of 225 courses have NULL `faculty_id`.** Their `faculty` text column has a value (e.g. "Scroll Theology") but the FK was never backfilled. This breaks tutor matching, faculty filters, and faculty dashboards.
-3. **`live_sessions` table has 0 rows.** No scheduled live lectures appear anywhere even though the table, RLS, and UI exist.
-4. **`assessment_question_pools` has 0 rows.** Quizzes (172) and assignments (502) exist as titles but no playable questions → student attempts return empty.
-5. **`course_modules.learning_objectives` is `[]` on all 1,381 modules.** Module pages and Live Avatar prompts have no objectives to show.
-6. **`course_modules.quality_verified` is `false` on all 1,381 modules.** If the QualityGates publishing check is enforced anywhere, modules are silently filtered out.
+Replace mock quiz with DB-driven questions and tag every question to an outcome.
 
-## Fix plan (data + thin code, no UI rebuild)
+1. **Migration** — add `learning_objective_id UUID` and `bloom_level TEXT` to `quiz_questions`; add `course_id UUID` and `module_id UUID` so questions can be fetched per module (currently only `assignment_id`). Backfill nullable; no destructive change.
+2. **`src/components/course/QuizInterface.tsx`** — replace hardcoded `mockQuestions` with a real `supabase.from('quiz_questions').select(...).eq('module_id', moduleId)` query. Keep `ExplainScoreDialog`. If zero questions exist, show "Assessment pending" (no silent mock).
+3. **Seed helper** — small edge function `seed-module-quiz` that, given a module_id, generates 5–8 questions from the module objectives via Lovable AI Gateway (one question per objective minimum, Bloom level assigned). Admin-only.
 
-The UI is fine — this is a data wiring + seeding job, then small guardrails so it can't regress.
+## Phase 3 — Per-outcome mastery + student-visible report (~½ day)
 
-### Step 1 — Backfill foreign keys (migration)
-- `UPDATE courses SET faculty_id = f.id FROM faculties f WHERE courses.faculty_id IS NULL AND lower(trim(courses.faculty)) = lower(trim(f.name));`
-- Map the 10 tutor specialties to faculty IDs explicitly (Sophia→Scroll Theology, Ariel→Scroll Technology / Prophetic Intelligence, Zadok→Scroll Justice, Chloe→Scroll Economy, Rapha→Scroll Medicine, Boaz→Scroll Economy, Priscilla→Scroll Education, Ezra→Scroll Theology, Hadassah→Scroll Arts, Caleb→Scroll Governance).
-- Make `useLiveClassContext` also fall back by `course.faculty` text → `faculties.name` → tutor's mapped faculty so future inserts don't repeat the gap.
+Write mastery, show it, gate completion on it.
 
-### Step 2 — Backfill module learning objectives
-- For modules missing objectives, extract 3–5 bullet learning objectives from `content_md` using a `string_to_array` of the first `## Learning Objectives` block, or fall back to deriving from the first paragraph headings. No AI call needed — content already contains structured headings.
+1. **`QuizInterface` submit** — compute per-objective score (correct/total grouped by `learning_objective_id`), write mastery to `student_module_progress.mastery_level` (overall) and to a new `student_outcome_mastery` table (per objective, with `attempts`, `last_score_pct`).
+2. **Migration** — create `student_outcome_mastery` (user_id, course_id, module_id, learning_objective_id, score_pct, attempts, achieved_at) with RLS + GRANTs per project rules.
+3. **`OutcomesAchievedPanel.tsx`** (new) — rendered on the quiz results screen and on `ModuleLearningContent`. For each module objective: ✅ Achieved (≥70%) / 🟡 Approaching (50–69%) / ⭕ Not yet. Pulled from `student_outcome_mastery`.
+4. **Completion gating** — `useCompleteModule` checks that ≥70% of module objectives are "Achieved" OR the module has no quiz; otherwise blocks with a toast pointing the student to retry.
 
-### Step 3 — Verify & unlock modules
-- Flip `quality_verified = true` for any module with `content_char_count >= 2000` AND `has_video_script` AND `has_study_guide` (1,380/1,381 today). Set `verified_at = now()`.
-- This is the single switch that opens the curriculum to enrolled students.
+## Phase 4 — Real XP/ScrollGold on completion (~1 hr)
 
-### Step 4 — Seed `live_sessions`
-- For each course with at least one module and a matched tutor, insert one upcoming live session per module for the next 8 weeks (one per week per course). Status `scheduled`, `module_id` set so the tab links cleanly.
-- Adds a real timetable students can join.
+Stop lying in the toast.
 
-### Step 5 — Seed quiz question pools
-- For every assignment of `kind = 'quiz'` (or every quiz row) that has no `assessment_question_pools` row, derive 5 questions from the parent module's `content_md` using the existing `kiro-generate` edge function in batch mode. Persist `{questions, draw_count: 5, shuffle: true}`.
-- This makes the assessment pipeline render real questions.
+1. **`CourseLearningPage.tsx`** — on `module_completions` insert, also call existing `earn_scrollcoin` RPC (or `award-scrollgold` edge function — whichever is canonical in this codebase) with `amount = module.rewards_amount`. Set `xp_awarded` to the same value so the row is auditable.
+2. **`useCompleteModule`** in `useCourses.ts` — same treatment for the older path so both paths grant rewards consistently.
 
-### Step 6 — Smoke-test pipeline (post-deploy checks)
-A short SQL audit view + a `/admin/learning-readiness` page that shows live counts:
-- courses with `faculty_id` set
-- modules with `quality_verified = true`
-- tutors with `faculty_id` set
-- courses with ≥1 upcoming `live_session`
-- quizzes with question pools
+## Phase 5 — Certificate + consolidation (~1 hr + ½ day)
 
-Numbers must be 100% before onboarding opens. This is the gate.
+1. **`supabase/functions/generate-certificate/index.ts`** — append a "Demonstrated Learning Outcomes" section listing every course-level outcome the student achieved, derived from `student_outcome_mastery` aggregated by `course_learning_outcomes`.
+2. **Table consolidation** — pick `module_completions` as canonical. Add a one-time backfill SQL from `module_progress` → `module_completions`, then mark `module_progress` deprecated in code comments; keep the table to avoid breaking older queries, but route all writes to `module_completions`.
 
-## What I will NOT do in this PR
-- Re-design the learning UI (it's already complete and good).
-- Touch the certificate / graduation / SUYAS pipelines (those work).
-- Generate new course content (we have 225 courses with rich content — sufficient for launch).
+---
 
-## Files I'll change
-- `supabase/migrations/<ts>_learning_pipeline_backfill.sql` — steps 1, 2, 3, 4 in one transaction
-- `src/hooks/useLiveClassContext.ts` — add faculty-name fallback for tutor matching
-- `src/pages/admin/LearningReadiness.tsx` (new) — readiness dashboard
-- `src/App.tsx` — route for the readiness page
-- Step 5 runs as a one-shot script (`scripts/seed-quiz-pools.ts`) invoking the existing `kiro-generate` function, not a migration, because it streams AI calls.
+## Technical details
 
-Reply **approve** to ship Steps 1–4 + the readiness dashboard in one go, then **go quizzes** to run Step 5.
+- **Schema corrections vs. audit:**
+  - `courses.learning_outcomes` **does exist** (audit G1 was partly wrong) — fix is to *also* include module-level objectives, not rename a column.
+  - `quiz_questions` **does not** have `learning_objective` / `difficulty_level` columns — they need to be added (audit G3 overstated).
+  - `course_learning_outcomes` table already exists with `bloom_level` — Phase 2 questions FK into it.
+- **RLS pattern for `student_outcome_mastery`:** owner read/write via `auth.uid() = user_id`; faculty/admin read via `has_role`. GRANT to `authenticated` + `service_role` per project rule.
+- **No breaking changes** to existing UI; new components are additive. Existing certificate keeps current layout, adds a section below it.
+- **Order of execution:** Phase 1 (frontend, no migration) → Phase 2 (1 migration) → Phase 3 (1 migration) → Phase 4 (no migration) → Phase 5 (edge fn + 1 migration). Each phase is independently shippable.
+
+---
+
+## Out of scope (flagged but not in this plan)
+
+- Full Bloom's-aligned outcome generation for all existing modules (would require regenerating course content; recommend a separate batch job).
+- Replacing `module_progress` writes app-wide (Phase 5 backfills but leaves the table for backward compat).
+- C2PA / content-credentials for video — already noted in earlier AI-law work.
+
+Confirm and I'll execute Phase 1 immediately, then proceed phase-by-phase.

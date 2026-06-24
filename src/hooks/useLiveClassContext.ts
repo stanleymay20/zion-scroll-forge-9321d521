@@ -55,7 +55,7 @@ export function useLiveClassContext(moduleId?: string) {
       // Module → course
       const { data: mod, error: modErr } = await supabase
         .from('course_modules')
-        .select('id,title,content_md,course_id')
+        .select('id,title,content_md,course_id,learning_objectives')
         .eq('id', moduleId!)
         .maybeSingle();
       dbg('module', { moduleId, found: !!mod, err: modErr?.message });
@@ -200,9 +200,10 @@ export function useLiveClassContext(moduleId?: string) {
         };
       }
 
-      const objectives: string[] = Array.isArray((course as any).learning_outcomes)
-        ? (course as any).learning_outcomes
-        : [];
+      // Prefer module-level objectives (specific to this lecture), fallback to course-level outcomes.
+      const moduleObjectives = Array.isArray((mod as any).learning_objectives) ? (mod as any).learning_objectives as string[] : [];
+      const courseOutcomes = Array.isArray((course as any).learning_outcomes) ? (course as any).learning_outcomes as string[] : [];
+      const objectives: string[] = moduleObjectives.length > 0 ? moduleObjectives : courseOutcomes;
 
       return {
         ready: true,
