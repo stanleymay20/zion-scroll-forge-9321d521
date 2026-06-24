@@ -10934,9 +10934,13 @@ export type Database = {
         Row: {
           answer: string | null
           assignment_id: string | null
+          bloom_level: string | null
+          course_id: string | null
           difficulty_rating: number | null
           id: string
           kind: string | null
+          learning_objective_id: string | null
+          module_id: string | null
           options: string[] | null
           order_index: number | null
           points: number | null
@@ -10945,9 +10949,13 @@ export type Database = {
         Insert: {
           answer?: string | null
           assignment_id?: string | null
+          bloom_level?: string | null
+          course_id?: string | null
           difficulty_rating?: number | null
           id?: string
           kind?: string | null
+          learning_objective_id?: string | null
+          module_id?: string | null
           options?: string[] | null
           order_index?: number | null
           points?: number | null
@@ -10956,9 +10964,13 @@ export type Database = {
         Update: {
           answer?: string | null
           assignment_id?: string | null
+          bloom_level?: string | null
+          course_id?: string | null
           difficulty_rating?: number | null
           id?: string
           kind?: string | null
+          learning_objective_id?: string | null
+          module_id?: string | null
           options?: string[] | null
           order_index?: number | null
           points?: number | null
@@ -10970,6 +10982,34 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_questions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_questions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "v_course_gradebook"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "quiz_questions_learning_objective_id_fkey"
+            columns: ["learning_objective_id"]
+            isOneToOne: false
+            referencedRelation: "course_learning_outcomes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
             referencedColumns: ["id"]
           },
         ]
