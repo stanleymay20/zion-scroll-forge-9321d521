@@ -23,7 +23,8 @@ function generateCertificateHTML(
   completionDate: string,
   scrollBadge: boolean,
   type: 'course' | 'graduation' = 'course',
-  degreeLevel?: string
+  degreeLevel?: string,
+  outcomes: Array<{ code: string | null; statement: string }> = []
 ): string {
   const formattedDate = new Date(completionDate).toLocaleDateString('en-US', {
     year: 'numeric',
