@@ -1193,6 +1193,12 @@ export function LiveAvatarLecture({
 
   return (
     <Card className="w-full overflow-hidden">
+      <AIAvatarConsentDialog
+        open={consentOpen}
+        onOpenChange={setConsentOpen}
+        onAccept={() => { void connectStream(); }}
+        tutorName={tutorName}
+      />
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
