@@ -115,6 +115,7 @@ export function LiveAvatarLecture({
   const [micLevel, setMicLevel] = useState(0);
   const [lastMicError, setLastMicError] = useState<string | null>(null);
   const [isVoiceLoopEnabled, setIsVoiceLoopEnabled] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
