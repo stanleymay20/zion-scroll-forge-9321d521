@@ -145,30 +145,64 @@ export default function CourseLearningPage() {
     }
   }, [user?.id, courseId, certificateAwarded, existingCert, queryClient]);
 
-  // Complete module mutation
+  // Complete module mutation — also awards ScrollGold and writes auditable xp_awarded
   const completeModuleMutation = useMutation({
     mutationFn: async (moduleId: string) => {
+      const moduleObj = sortedModules.find((m: any) => m.id === moduleId);
+      const rewardAmount: number = Number(moduleObj?.rewards_amount ?? 0);
+
+      // Outcome-mastery gate: if this module has authored quiz questions tagged to outcomes,
+      // require >=70% of its outcomes to be "Achieved" before allowing completion.
+      const { data: tagged } = await (supabase as any)
+        .from('quiz_questions')
+        .select('learning_objective_id')
+        .eq('module_id', moduleId)
+        .not('learning_objective_id', 'is', null);
+      const objIds: string[] = Array.from(new Set(((tagged ?? []) as any[]).map((r) => r.learning_objective_id))).filter(Boolean);
+      if (objIds.length > 0) {
+        const { data: mastery } = await (supabase as any)
+          .from('student_outcome_mastery')
+          .select('learning_objective_id,score_pct')
+          .eq('user_id', user!.id)
+          .eq('module_id', moduleId)
+          .in('learning_objective_id', objIds);
+        const achieved = ((mastery ?? []) as any[]).filter((r) => (r.score_pct ?? 0) >= 70).length;
+        const ratio = achieved / objIds.length;
+        if (ratio < 0.7) {
+          throw new Error(`Outcome mastery required: ${achieved}/${objIds.length} achieved. Retake the assessment to reach 70%.`);
+        }
+      }
+
       const { data: existing } = await supabase
         .from('module_completions' as any)
         .select('id')
         .eq('module_id', moduleId)
         .eq('user_id', user!.id)
         .maybeSingle();
-      
+
       if (existing) return { existing: true };
 
       const { data, error } = await supabase
         .from('module_completions' as any)
-        .insert({ module_id: moduleId, user_id: user!.id, course_id: courseId })
+        .insert({ module_id: moduleId, user_id: user!.id, course_id: courseId, xp_awarded: rewardAmount })
         .select()
         .single();
-      
+
       if (error) throw error;
+
+      // Award ScrollGold (best-effort; do not block completion if economy is offline)
+      if (rewardAmount > 0) {
+        try {
+          await earnScrollGold(user!.id, rewardAmount, `Module completed: ${moduleObj?.title ?? moduleId}`);
+        } catch (e) {
+          console.warn('[CourseLearningPage] earnScrollGold failed:', e);
+        }
+      }
 
       // Update enrollment progress
       const newCompletedCount = moduleCompletions.length + 1;
       const newProgress = Math.round((newCompletedCount / sortedModules.length) * 100);
-      
+
       if (enrollment) {
         await supabase
           .from('enrollments')
@@ -176,23 +210,24 @@ export default function CourseLearningPage() {
           .eq('id', enrollment.id);
       }
 
-      return { data, progress: newProgress };
+      return { data, progress: newProgress, rewarded: rewardAmount };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['module-completions'] });
       queryClient.invalidateQueries({ queryKey: ['enrollment-learning'] });
-      
+      queryClient.invalidateQueries({ queryKey: ['outcome-mastery'] });
+
       if (!result?.existing) {
-        toast.success('Module completed! 🎉');
-        
-        // Check if course is now 100% complete
+        const rewarded = (result as any)?.rewarded ?? 0;
+        toast.success(rewarded > 0 ? `Module completed! +${rewarded} ScrollGold 🎉` : 'Module completed! 🎉');
+
         const newCount = moduleCompletions.length + 1;
         if (newCount >= sortedModules.length && sortedModules.length > 0) {
           setTimeout(() => awardCertificate(), 1000);
         }
       }
     },
-    onError: () => toast.error('Failed to mark module as complete')
+    onError: (e: any) => toast.error(e?.message ?? 'Failed to mark module as complete'),
   });
 
   const handleModuleComplete = () => {
