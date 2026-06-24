@@ -78,6 +78,7 @@ const CoursePreviewsAdmin = lazy(() => import("./pages/admin/CoursePreviewsAdmin
 const TransferRequestsAdmin = lazy(() => import("./pages/admin/TransferRequestsAdmin"));
 const AcademicIntegrityAlerts = lazy(() => import("./pages/admin/AcademicIntegrityAlerts"));
 const CurriculumDepthAdmin = lazy(() => import("./pages/admin/CurriculumDepthAdmin"));
+const PedagogyRemediationAdmin = lazy(() => import("./pages/admin/PedagogyRemediationAdmin"));
 const CurriculumReviewsQueue = lazy(() => import("./pages/faculty/CurriculumReviewsQueue"));
 const RegistrarStandingDashboard = lazy(() => import("./pages/registrar/RegistrarStandingDashboard"));
 const AccreditationReadinessAdmin = lazy(() => import("./pages/admin/AccreditationReadinessAdmin"));
@@ -533,6 +534,7 @@ const App = () => (
               <Route path="admin/super" element={<RoleRoute allowedRoles={["superadmin"]}><SuperAdmin /></RoleRoute>} />
               <Route path="admin/integrity-alerts" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><AcademicIntegrityAlerts /></RoleRoute>} />
               <Route path="admin/curriculum-depth" element={<RoleRoute allowedRoles={["admin","superadmin","faculty","registrar"]}><CurriculumDepthAdmin /></RoleRoute>} />
+              <Route path="admin/pedagogy-remediation" element={<RoleRoute allowedRoles={["admin","superadmin","faculty"]}><PedagogyRemediationAdmin /></RoleRoute>} />
               <Route path="faculty/curriculum-reviews" element={<RoleRoute allowedRoles={["admin","superadmin","faculty"]}><CurriculumReviewsQueue /></RoleRoute>} />
               <Route path="registrar/standing" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><RegistrarStandingDashboard /></RoleRoute>} />
               <Route path="admin/accreditation-readiness" element={<RoleRoute allowedRoles={["admin","superadmin","registrar","faculty"]}><AccreditationReadinessAdmin /></RoleRoute>} />

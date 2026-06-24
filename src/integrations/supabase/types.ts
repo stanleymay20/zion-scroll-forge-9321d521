@@ -2594,6 +2594,7 @@ export type Database = {
       course_modules: {
         Row: {
           activities: Json
+          clo_ids: string[]
           content: Json | null
           content_char_count: number | null
           content_md: string | null
@@ -2601,6 +2602,7 @@ export type Database = {
           created_at: string | null
           duration_minutes: number | null
           estimated_duration_min: number | null
+          formative_checkpoints: Json
           has_audio_script: boolean | null
           has_study_guide: boolean | null
           has_video_script: boolean | null
@@ -2611,8 +2613,11 @@ export type Database = {
           module_prerequisites: Json
           module_references: Json
           order_index: number | null
+          progression_level: number | null
+          quality_issues: string[]
           quality_verified: boolean | null
           quiz_data: Json | null
+          reflective_prompt: string | null
           rewards_amount: number | null
           title: string
           tutor_context: string | null
@@ -2621,6 +2626,7 @@ export type Database = {
         }
         Insert: {
           activities?: Json
+          clo_ids?: string[]
           content?: Json | null
           content_char_count?: number | null
           content_md?: string | null
@@ -2628,6 +2634,7 @@ export type Database = {
           created_at?: string | null
           duration_minutes?: number | null
           estimated_duration_min?: number | null
+          formative_checkpoints?: Json
           has_audio_script?: boolean | null
           has_study_guide?: boolean | null
           has_video_script?: boolean | null
@@ -2638,8 +2645,11 @@ export type Database = {
           module_prerequisites?: Json
           module_references?: Json
           order_index?: number | null
+          progression_level?: number | null
+          quality_issues?: string[]
           quality_verified?: boolean | null
           quiz_data?: Json | null
+          reflective_prompt?: string | null
           rewards_amount?: number | null
           title: string
           tutor_context?: string | null
@@ -2648,6 +2658,7 @@ export type Database = {
         }
         Update: {
           activities?: Json
+          clo_ids?: string[]
           content?: Json | null
           content_char_count?: number | null
           content_md?: string | null
@@ -2655,6 +2666,7 @@ export type Database = {
           created_at?: string | null
           duration_minutes?: number | null
           estimated_duration_min?: number | null
+          formative_checkpoints?: Json
           has_audio_script?: boolean | null
           has_study_guide?: boolean | null
           has_video_script?: boolean | null
@@ -2665,8 +2677,11 @@ export type Database = {
           module_prerequisites?: Json
           module_references?: Json
           order_index?: number | null
+          progression_level?: number | null
+          quality_issues?: string[]
           quality_verified?: boolean | null
           quiz_data?: Json | null
+          reflective_prompt?: string | null
           rewards_amount?: number | null
           title?: string
           tutor_context?: string | null
@@ -15990,6 +16005,10 @@ export type Database = {
         Returns: Json
       }
       ensure_default_institution_membership: { Args: never; Returns: string }
+      evaluate_module_quality: {
+        Args: { p_module_id: string }
+        Returns: string[]
+      }
       generate_accreditation_blueprint: {
         Args: never
         Returns: {
