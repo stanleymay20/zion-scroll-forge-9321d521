@@ -24,6 +24,8 @@ import { CourseCurriculumBrowser } from '@/components/learning/CourseCurriculumB
 import { AITutorAvatar } from '@/components/AITutorAvatar';
 import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
 import { useLiveClassContext } from '@/hooks/useLiveClassContext';
+import { OutcomesAchievedPanel } from '@/components/learning/OutcomesAchievedPanel';
+import { earnScrollGold } from '@/services/scrollgold';
 import confetti from 'canvas-confetti';
 
 export default function CourseLearningPage() {
