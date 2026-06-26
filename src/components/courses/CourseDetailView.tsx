@@ -32,6 +32,9 @@ import {
 } from 'lucide-react';
 import { ComprehensiveCourse, StudentEnrollment, CourseModule, Lecture, Assessment } from '../../types/course-comprehensive';
 import ComprehensiveCourseService from '../../services/ComprehensiveCourseService';
+import { usePrerequisiteCheck } from '@/hooks/usePrerequisiteCheck';
+import { PrerequisiteBlock } from './PrerequisiteBlock';
+import { Lock } from 'lucide-react';
 
 interface CourseDetailViewProps {
   courseId: string;
