@@ -71,13 +71,21 @@ jobs:
       - name: Apply migrations
         run: |
           set -e
+          mkdir -p /tmp/mig-logs
+          fail_count=0
           for f in $(ls supabase/migrations/*.sql | sort); do
-            echo "→ $f"
-            psql -v ON_ERROR_STOP=1 -f "$f" >/dev/null 2>&1 || {
-              echo "::warning::Migration $f failed (often due to Supabase-only objects); continuing"
-            }
+            log="/tmp/mig-logs/$(basename "$f").log"
+            if psql -v ON_ERROR_STOP=1 -f "$f" >"$log" 2>&1; then
+              echo "✓ $f"
+            else
+              fail_count=$((fail_count+1))
+              echo "::warning file=$f::Migration failed (continuing — academic spine repair migration is the safety net)"
+              echo "----- last 20 lines of $f -----"
+              tail -n 20 "$log" || true
+              echo "-------------------------------"
+            fi
           done
-          echo "Migrations applied."
+          echo "Migrations applied. Failures: $fail_count"
 
       - name: Run governance suite
         run: |
