@@ -41,6 +41,9 @@ serve(async (req) => {
     }
 
     const { jobId, jobType, prompt, parameters }: GenerationRequest = await req.json()
+    logUserId = user.id;
+    logJobId = jobId;
+    logModel = parameters?.model || 'gpt-4-turbo-preview';
 
     if (!jobId || !jobType || !prompt) {
       return new Response('Missing required fields', { status: 400, headers: corsHeaders })
