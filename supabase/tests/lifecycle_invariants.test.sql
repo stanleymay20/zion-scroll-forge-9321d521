@@ -163,7 +163,7 @@ BEGIN
       SELECT count(*) FROM public.graduation_candidates gc
       WHERE NOT EXISTS (
         SELECT 1 FROM public.degree_plans dp
-        WHERE dp.student_id = gc.student_id
+        WHERE dp.student_user_id = gc.user_id
       )
     $q$ INTO v;
     PERFORM pg_temp.inv(7, 'graduation candidates have degree plan', v);

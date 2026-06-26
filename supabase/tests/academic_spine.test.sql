@@ -156,7 +156,7 @@ DECLARE
   v_err text;
 BEGIN
   -- Find any real student + section pair already in the DB
-  SELECT se.section_id, se.student_id
+  SELECT se.section_id, se.student_user_id
     INTO v_section, v_student
     FROM section_enrollments se
     LIMIT 1;
@@ -270,7 +270,7 @@ DECLARE
   v_before bigint;
   v_after  bigint;
 BEGIN
-  SELECT student_id INTO v_student FROM degree_plans LIMIT 1;
+  SELECT student_user_id INTO v_student FROM degree_plans LIMIT 1;
   IF v_student IS NULL THEN
     PERFORM pg_temp.record(110, 'run_degree_audit writes audit log', true, 'skipped — no degree plans');
   ELSE
