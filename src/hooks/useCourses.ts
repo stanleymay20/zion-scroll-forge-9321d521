@@ -5,6 +5,7 @@ import { useInstitution } from '@/contexts/InstitutionContext';
 import { useToast } from '@/hooks/use-toast';
 import { underChrist } from '@/lib/lordship';
 import { logError } from '@/lib/errors';
+import { runPrerequisiteCheck } from './usePrerequisiteCheck';
 
 const useOptionalInstitution = () => {
   try {
