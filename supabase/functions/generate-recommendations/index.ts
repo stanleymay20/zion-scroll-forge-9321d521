@@ -4,6 +4,7 @@
 // No global course pool, no cross-faculty leakage.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { logAiOutput } from "../_shared/ai-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -120,6 +121,12 @@ serve(async (req) => {
         })),
       );
     }
+
+    await logAiOutput({
+      user_id: userId, feature: "recommendation", provider: "deterministic",
+      latency_ms: 0, status: "ok",
+      metadata: { program_id: student.degree_program_id, count: recommendations.length },
+    });
 
     return json({
       success: true,
