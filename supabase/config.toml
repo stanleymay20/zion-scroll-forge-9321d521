@@ -129,3 +129,6 @@ verify_jwt = false
 
 [functions.lecturer-session-patch]
 verify_jwt = false
+
+[functions.cohort-simulation]
+verify_jwt = false
