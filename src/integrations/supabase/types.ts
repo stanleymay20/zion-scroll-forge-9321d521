@@ -11457,7 +11457,7 @@ export type Database = {
             foreignKeyName: "registration_windows_term_id_fkey"
             columns: ["term_id"]
             isOneToOne: false
-            referencedRelation: "semesters"
+            referencedRelation: "academic_terms"
             referencedColumns: ["id"]
           },
         ]
