@@ -17080,20 +17080,10 @@ export type Database = {
         Args: { p_course_id: string }
         Returns: Json
       }
-      check_graduation_eligibility:
-        | { Args: { _program_id: string; _user_id: string }; Returns: Json }
-        | {
-            Args: { p_user_id: string }
-            Returns: {
-              credits_completed: number
-              credits_required: number
-              eligible: boolean
-              gpa: number
-              has_holds: boolean
-              min_gpa: number
-              missing_requirements: string[]
-            }[]
-          }
+      check_graduation_eligibility: {
+        Args: { _program_id: string; _user_id: string }
+        Returns: Json
+      }
       check_prerequisites: {
         Args: { p_course_id: string; p_student_id: string }
         Returns: Json
