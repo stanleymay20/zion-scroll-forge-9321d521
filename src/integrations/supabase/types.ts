@@ -1416,6 +1416,39 @@ export type Database = {
         }
         Relationships: []
       }
+      assessment_outcome_alignment: {
+        Row: {
+          assignment_id: string
+          clo_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          mastery_threshold: number
+          rubric_criteria: Json | null
+          weight: number
+        }
+        Insert: {
+          assignment_id: string
+          clo_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mastery_threshold?: number
+          rubric_criteria?: Json | null
+          weight?: number
+        }
+        Update: {
+          assignment_id?: string
+          clo_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mastery_threshold?: number
+          rubric_criteria?: Json | null
+          weight?: number
+        }
+        Relationships: []
+      }
       assessment_question_pools: {
         Row: {
           assignment_id: string
@@ -1993,15 +2026,39 @@ export type Database = {
       clo_plo_mapping: {
         Row: {
           clo_id: string
+          confidence: number
+          contribution_pct: number
+          created_by: string | null
+          id: string | null
+          mapping_strength: string
           plo_id: string
+          source: string
+          updated_at: string
+          weight: number
         }
         Insert: {
           clo_id: string
+          confidence?: number
+          contribution_pct?: number
+          created_by?: string | null
+          id?: string | null
+          mapping_strength?: string
           plo_id: string
+          source?: string
+          updated_at?: string
+          weight?: number
         }
         Update: {
           clo_id?: string
+          confidence?: number
+          contribution_pct?: number
+          created_by?: string | null
+          id?: string | null
+          mapping_strength?: string
           plo_id?: string
+          source?: string
+          updated_at?: string
+          weight?: number
         }
         Relationships: [
           {
@@ -6536,6 +6593,39 @@ export type Database = {
         }
         Relationships: []
       }
+      graduation_overrides: {
+        Row: {
+          granted_at: string
+          granted_by: string
+          id: string
+          program_id: string
+          reason: string
+          revoked_at: string | null
+          revoked_by: string | null
+          student_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by: string
+          id?: string
+          program_id: string
+          reason: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          student_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string
+          id?: string
+          program_id?: string
+          reason?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          student_id?: string
+        }
+        Relationships: []
+      }
       graduation_requirements: {
         Row: {
           capstone_required: boolean | null
@@ -9172,6 +9262,45 @@ export type Database = {
         }
         Relationships: []
       }
+      outcome_audit_log: {
+        Row: {
+          actor_id: string | null
+          clo_id: string | null
+          course_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+          plo_id: string | null
+          program_id: string | null
+          student_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          clo_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json
+          plo_id?: string | null
+          program_id?: string | null
+          student_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          clo_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          plo_id?: string | null
+          program_id?: string | null
+          student_id?: string | null
+        }
+        Relationships: []
+      }
       outcome_evidence_links: {
         Row: {
           created_at: string
@@ -9208,6 +9337,63 @@ export type Database = {
           reviewed?: boolean
           reviewed_at?: string | null
           reviewed_by?: string | null
+        }
+        Relationships: []
+      }
+      outcome_intervention: {
+        Row: {
+          baseline_metric: number | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          current_metric: number | null
+          finding: string
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string | null
+          recommendation: string | null
+          scope: string
+          scope_id: string
+          status: string
+          target_metric: number | null
+          updated_at: string
+        }
+        Insert: {
+          baseline_metric?: number | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          current_metric?: number | null
+          finding: string
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          recommendation?: string | null
+          scope: string
+          scope_id: string
+          status?: string
+          target_metric?: number | null
+          updated_at?: string
+        }
+        Update: {
+          baseline_metric?: number | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          current_metric?: number | null
+          finding?: string
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string | null
+          recommendation?: string | null
+          scope?: string
+          scope_id?: string
+          status?: string
+          target_metric?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -13650,42 +13836,66 @@ export type Database = {
         Row: {
           achieved_at: string | null
           attempts: number
+          clo_id: string | null
+          confidence: number
           course_id: string
           created_at: string
+          evidence_count: number
           first_attempt_at: string
           id: string
           last_attempt_at: string
+          last_evidence_at: string | null
           learning_objective_id: string
+          mastery_level: string | null
           module_id: string
+          plo_id: string | null
+          program_id: string | null
           score_pct: number
+          trend: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           achieved_at?: string | null
           attempts?: number
+          clo_id?: string | null
+          confidence?: number
           course_id: string
           created_at?: string
+          evidence_count?: number
           first_attempt_at?: string
           id?: string
           last_attempt_at?: string
+          last_evidence_at?: string | null
           learning_objective_id: string
+          mastery_level?: string | null
           module_id: string
+          plo_id?: string | null
+          program_id?: string | null
           score_pct?: number
+          trend?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           achieved_at?: string | null
           attempts?: number
+          clo_id?: string | null
+          confidence?: number
           course_id?: string
           created_at?: string
+          evidence_count?: number
           first_attempt_at?: string
           id?: string
           last_attempt_at?: string
+          last_evidence_at?: string | null
           learning_objective_id?: string
+          mastery_level?: string | null
           module_id?: string
+          plo_id?: string | null
+          program_id?: string | null
           score_pct?: number
+          trend?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -16244,8 +16454,8 @@ export type Database = {
     Functions: {
       accreditation_readiness: { Args: { _program_id: string }; Returns: Json }
       accreditation_readiness_score: {
-        Args: { p_program_id: string }
-        Returns: number
+        Args: { _program_id: string }
+        Returns: Json
       }
       admin_override_enrollment: {
         Args: { p_course_id: string; p_reason?: string; p_user_id: string }
@@ -16428,6 +16638,7 @@ export type Database = {
         Args: { p_defense_id: string }
         Returns: Database["public"]["Enums"]["thesis_recommendation"]
       }
+      course_outcome_attainment: { Args: { _course_id: string }; Returns: Json }
       create_notification: {
         Args: {
           p_body: string
@@ -16648,6 +16859,10 @@ export type Database = {
         Returns: number
       }
       normalize_faculty_name: { Args: { p_name: string }; Returns: string }
+      program_outcome_attainment: {
+        Args: { _program_id: string }
+        Returns: Json
+      }
       program_verification_surface: {
         Args: { _program_id: string }
         Returns: Json
@@ -16691,9 +16906,21 @@ export type Database = {
           title: string
         }[]
       }
+      recompute_student_clo_mastery: {
+        Args: { _course_id?: string; _student_id: string }
+        Returns: number
+      }
+      recompute_student_plo_mastery: {
+        Args: { _program_id?: string; _student_id: string }
+        Returns: number
+      }
       record_faculty_review: {
         Args: { p_comments?: string; p_course_id: string; p_state: string }
         Returns: Json
+      }
+      record_graduation_override: {
+        Args: { _program_id: string; _reason: string; _student_id: string }
+        Returns: string
       }
       registrar_assign_program: {
         Args: { p_program_id: string; p_reason: string; p_user_id: string }
