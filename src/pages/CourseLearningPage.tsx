@@ -311,13 +311,9 @@ export default function CourseLearningPage() {
   return (
     <CourseLearningGuard courseId={courseId!} courseTitle={courseData.title} navigate={navigate}>
     <div className="min-h-screen pb-24 md:pb-8">
-
-
-
-  return (
-    <div className="min-h-screen pb-24 md:pb-8">
       {/* Sticky Progress Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3">
+
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate(`/courses/${courseId}`)} className="shrink-0">
