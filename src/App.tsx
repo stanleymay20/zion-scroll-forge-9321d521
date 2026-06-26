@@ -86,6 +86,19 @@ const SectionAttendance = lazy(() => import("./pages/faculty/SectionAttendance")
 const SectionOutcomes = lazy(() => import("./pages/faculty/SectionOutcomes"));
 const FacultyAdvising = lazy(() => import("./pages/faculty/FacultyAdvising"));
 const FacultyInterventions = lazy(() => import("./pages/faculty/FacultyInterventions"));
+const StudentPortalLayout = lazy(() => import("./pages/student/StudentPortalLayout"));
+const StudentDashboardSP = lazy(() => import("./pages/student/StudentDashboard"));
+const StudentCoursesSP = lazy(() => import("./pages/student/StudentCourses"));
+const StudentScheduleSP = lazy(() => import("./pages/student/StudentSchedule"));
+const StudentDegreeAuditSP = lazy(() => import("./pages/student/StudentDegreeAudit"));
+const StudentTranscriptSP = lazy(() => import("./pages/student/StudentTranscriptPage"));
+const StudentAcademicRecordSP = lazy(() => import("./pages/student/StudentAcademicRecord"));
+const StudentGraduationReadinessSP = lazy(() => import("./pages/student/StudentGraduationReadiness"));
+const StudentAttendanceSP = lazy(() => import("./pages/student/StudentAttendance"));
+const StudentAdvisingSP = lazy(() => import("./pages/student/StudentAdvising"));
+const StudentOutcomesSP = lazy(() => import("./pages/student/StudentOutcomes"));
+const StudentNotificationsSP = lazy(() => import("./pages/student/StudentNotificationsPage"));
+const StudentProfileSP = lazy(() => import("./pages/student/StudentProfilePage"));
 const RegistrarStandingDashboard = lazy(() => import("./pages/registrar/RegistrarStandingDashboard"));
 const AccreditationReadinessAdmin = lazy(() => import("./pages/admin/AccreditationReadinessAdmin"));
 const IntegrityCasesAdmin = lazy(() => import("./pages/admin/IntegrityCasesAdmin"));
@@ -685,6 +698,23 @@ const App = () => (
             <Route path="admin/activation" element={<RoleRoute allowedRoles={["admin","superadmin"]}><ActivationProgress /></RoleRoute>} />
             <Route path="admin/ai-review-queue" element={<RoleRoute allowedRoles={["admin","superadmin","faculty"]}><AIReviewQueue /></RoleRoute>} />
             <Route path="admin/faculty-likeness-releases" element={<RoleRoute allowedRoles={["admin","superadmin"]}><FacultyLikenessReleases /></RoleRoute>} />
+
+            {/* Student Success Portal */}
+            <Route path="student" element={<StudentPortalLayout />}>
+              <Route index element={<StudentDashboardSP />} />
+              <Route path="dashboard" element={<StudentDashboardSP />} />
+              <Route path="courses" element={<StudentCoursesSP />} />
+              <Route path="schedule" element={<StudentScheduleSP />} />
+              <Route path="degree-audit" element={<StudentDegreeAuditSP />} />
+              <Route path="transcript" element={<StudentTranscriptSP />} />
+              <Route path="academic-record" element={<StudentAcademicRecordSP />} />
+              <Route path="graduation" element={<StudentGraduationReadinessSP />} />
+              <Route path="attendance" element={<StudentAttendanceSP />} />
+              <Route path="advising" element={<StudentAdvisingSP />} />
+              <Route path="outcomes" element={<StudentOutcomesSP />} />
+              <Route path="notifications" element={<StudentNotificationsSP />} />
+              <Route path="profile" element={<StudentProfileSP />} />
+            </Route>
           </Route>
           
           {/* Catch-all route for 404 */}
