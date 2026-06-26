@@ -10056,6 +10056,39 @@ export type Database = {
           },
         ]
       }
+      prerequisite_check_logs: {
+        Row: {
+          checked_at: string
+          completed_prerequisites: Json
+          course_id: string
+          eligible: boolean
+          id: string
+          missing_prerequisites: Json
+          source_page: string | null
+          student_id: string
+        }
+        Insert: {
+          checked_at?: string
+          completed_prerequisites?: Json
+          course_id: string
+          eligible: boolean
+          id?: string
+          missing_prerequisites?: Json
+          source_page?: string | null
+          student_id: string
+        }
+        Update: {
+          checked_at?: string
+          completed_prerequisites?: Json
+          course_id?: string
+          eligible?: boolean
+          id?: string
+          missing_prerequisites?: Json
+          source_page?: string | null
+          student_id?: string
+        }
+        Relationships: []
+      }
       primary_source_collections: {
         Row: {
           access_type: string
@@ -15824,6 +15857,10 @@ export type Database = {
               missing_requirements: string[]
             }[]
           }
+      check_prerequisites: {
+        Args: { p_course_id: string; p_student_id: string }
+        Returns: Json
+      }
       check_seal_criteria: { Args: { p_course_id: string }; Returns: Json }
       checkout_loan: {
         Args: { _loan_id: string }
