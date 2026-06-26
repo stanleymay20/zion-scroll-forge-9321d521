@@ -62,7 +62,7 @@ export async function getMyGrades() {
 
 export async function getMyStanding() {
   const id = await uid();
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("student_academic_standing")
     .select("*")
     .eq("student_id", id)
