@@ -26,6 +26,8 @@ import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
 import { useLiveClassContext } from '@/hooks/useLiveClassContext';
 import { OutcomesAchievedPanel } from '@/components/learning/OutcomesAchievedPanel';
 import { earnScrollGold } from '@/services/scrollgold';
+import { usePrerequisiteCheck } from '@/hooks/usePrerequisiteCheck';
+import { PrerequisiteBlock } from '@/components/courses/PrerequisiteBlock';
 import confetti from 'canvas-confetti';
 
 export default function CourseLearningPage() {
@@ -307,9 +309,11 @@ export default function CourseLearningPage() {
   }
 
   return (
+    <CourseLearningGuard courseId={courseId!} courseTitle={courseData.title} navigate={navigate}>
     <div className="min-h-screen pb-24 md:pb-8">
       {/* Sticky Progress Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3">
+
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-3">
             <Button variant="ghost" size="icon" onClick={() => navigate(`/courses/${courseId}`)} className="shrink-0">
@@ -447,5 +451,62 @@ export default function CourseLearningPage() {
         </Tabs>
       </div>
     </div>
+    </CourseLearningGuard>
   );
+}
+
+function CourseLearningGuard({
+  courseId,
+  courseTitle,
+  navigate,
+  children,
+}: {
+  courseId: string;
+  courseTitle: string;
+  navigate: (to: string) => void;
+  children: React.ReactNode;
+}) {
+  const { data: prereq, isLoading, isError, refetch } = usePrerequisiteCheck(
+    courseId,
+    'CourseLearningPage'
+  );
+
+  if (isLoading) {
+    return (
+      <PageTemplate title={courseTitle} description="">
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </PageTemplate>
+    );
+  }
+
+  if (isError || !prereq) {
+    return (
+      <PageTemplate title={courseTitle} description="">
+        <div className="text-center py-12 space-y-3">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+          <p className="text-muted-foreground">
+            Unable to verify prerequisites. Access is blocked until we can re-check.
+          </p>
+          <Button onClick={() => refetch()}>Retry</Button>
+        </div>
+      </PageTemplate>
+    );
+  }
+
+  if (!prereq.eligible) {
+    return (
+      <PageTemplate title={courseTitle} description="">
+        <div className="max-w-2xl mx-auto py-8 space-y-4">
+          <Button variant="ghost" onClick={() => navigate(`/courses/${courseId}`)}>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back to course details
+          </Button>
+          <PrerequisiteBlock result={prereq} onRetry={() => refetch()} />
+        </div>
+      </PageTemplate>
+    );
+  }
+
+  return <>{children}</>;
 }

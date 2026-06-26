@@ -32,6 +32,9 @@ import {
 } from 'lucide-react';
 import { ComprehensiveCourse, StudentEnrollment, CourseModule, Lecture, Assessment } from '../../types/course-comprehensive';
 import ComprehensiveCourseService from '../../services/ComprehensiveCourseService';
+import { usePrerequisiteCheck } from '@/hooks/usePrerequisiteCheck';
+import { PrerequisiteBlock } from './PrerequisiteBlock';
+import { Lock } from 'lucide-react';
 
 interface CourseDetailViewProps {
   courseId: string;
@@ -130,6 +133,11 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
 
   const isEnrolled = !!enrollment;
   const progressPercentage = enrollment?.progress_percentage || 0;
+  // Hard prereq enforcement — disables Enroll/Start when unmet.
+  const { data: prereq, isLoading: prereqLoading, isError: prereqError, refetch: refetchPrereq } =
+    usePrerequisiteCheck(courseId, 'CourseDetailView');
+  const prereqEligible = !!prereq?.eligible;
+  const enrollDisabled = !studentId || prereqLoading || prereqError || !prereqEligible;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -153,11 +161,17 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
             </div>
             
             {!isEnrolled ? (
-              <Button onClick={handleEnroll} size="lg">
-                <Play className="h-4 w-4 mr-2" />
-                Enroll Now
+              <Button onClick={handleEnroll} size="lg" disabled={enrollDisabled}>
+                {prereqLoading ? (
+                  <>Checking prerequisites…</>
+                ) : !prereqEligible && prereq ? (
+                  <><Lock className="h-4 w-4 mr-2" /> Prerequisites required</>
+                ) : (
+                  <><Play className="h-4 w-4 mr-2" /> Enroll Now</>
+                )}
               </Button>
             ) : (
+
               <div className="text-right">
                 <div className="text-sm text-muted-foreground mb-1">Progress</div>
                 <div className="text-2xl font-bold">{Math.round(progressPercentage)}%</div>
@@ -212,6 +226,19 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
           )}
         </CardHeader>
       </Card>
+
+      {/* Prerequisite gate */}
+      {!isEnrolled && prereq && !prereq.eligible && (
+        <PrerequisiteBlock result={prereq} onRetry={() => refetchPrereq()} />
+      )}
+      {!isEnrolled && prereqError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
+          Unable to verify prerequisites. Enrollment is blocked until we can re-check.{' '}
+          <Button size="sm" variant="outline" onClick={() => refetchPrereq()} className="ml-2">Retry</Button>
+        </div>
+      )}
+
+
 
       {/* Course Content Tabs */}
       <Tabs defaultValue="curriculum" className="w-full">

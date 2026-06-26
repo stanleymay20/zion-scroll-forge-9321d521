@@ -5,6 +5,7 @@ import { useInstitution } from '@/contexts/InstitutionContext';
 import { useToast } from '@/hooks/use-toast';
 import { underChrist } from '@/lib/lordship';
 import { logError } from '@/lib/errors';
+import { runPrerequisiteCheck } from './usePrerequisiteCheck';
 
 const useOptionalInstitution = () => {
   try {
@@ -52,6 +53,21 @@ export const useEnrollInCourse = () => {
   return useMutation({
     mutationFn: async (courseId: string) => {
       console.info('✝️ Jesus Christ is Lord over this operation');
+
+      // Hard prerequisite enforcement (RPC + audit log). Block before any insert.
+      const prereq = await runPrerequisiteCheck(user!.id, courseId, 'useEnrollInCourse');
+      if (!prereq.eligible) {
+        const titles = (prereq.missing_prerequisites ?? [])
+          .map((p) => p.title || p.course_id)
+          .join(', ');
+        const err: any = new Error(
+          `You must complete the following prerequisite course(s) before starting this course: ${titles || 'see course details'}.`
+        );
+        err.code = 'PREREQUISITES_NOT_MET';
+        err.missing_prerequisites = prereq.missing_prerequisites;
+        throw err;
+      }
+
 
       const promoteIfMatriculated = async () => {
         const { data: matriculationRecord } = await supabase
