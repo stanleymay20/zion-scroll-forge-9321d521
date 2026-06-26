@@ -8,6 +8,7 @@
 //
 // Uses Lovable AI Gateway (preferred) with DeepSeek fallback. Background-safe.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { logAiOutput } from "../_shared/ai-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
