@@ -8,6 +8,7 @@ import {
   extractAuthenticatedUser,
 } from "../_shared/validation.ts";
 import { buildTutorSystemPrompt, formatForTTS, type TutorTone, type WarmthLevel } from "../_shared/tutor-persona.ts";
+import { logAiOutput } from "../_shared/ai-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
