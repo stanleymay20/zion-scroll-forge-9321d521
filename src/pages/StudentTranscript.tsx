@@ -40,7 +40,7 @@ export default function StudentTranscript() {
       const [g, t, s] = await Promise.all([
         supabase.from("grade_records").select("*").eq("student_id", uid).order("finalized_at", { ascending: false }),
         supabase.from("official_transcripts").select("*").eq("student_id", uid).order("issued_at", { ascending: false }),
-        supabase.rpc("compute_student_gpa", { p_student_id: uid }),
+        supabase.rpc("compute_student_gpa", { _student_id: uid }),
       ]);
       setGrades((g.data as GradeRow[]) || []);
       setTranscripts((t.data as OfficialTranscript[]) || []);

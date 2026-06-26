@@ -85,7 +85,7 @@ export default function AcademicCalendarAdmin() {
 
   const issueTranscript = async (studentId: string, kind: "official" | "unofficial") => {
     const { data: gradeRows } = await supabase.from("grade_records").select("*").eq("student_id", studentId).eq("status", "final");
-    const { data: gpaRow } = await supabase.rpc("compute_student_gpa", { p_student_id: studentId });
+    const { data: gpaRow } = await supabase.rpc("compute_student_gpa", { _student_id: studentId });
     const row: any = Array.isArray(gpaRow) ? gpaRow[0] : gpaRow;
     const { error } = await supabase.from("official_transcripts").insert({
       student_id: studentId,
