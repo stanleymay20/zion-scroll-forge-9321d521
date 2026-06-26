@@ -5470,6 +5470,42 @@ export type Database = {
           },
         ]
       }
+      faculty_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string
+          created_at: string
+          id: string
+          payload: Json | null
+          section_id: string | null
+          student_user_id: string | null
+          target_id: string | null
+          target_kind: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          section_id?: string | null
+          student_user_id?: string | null
+          target_id?: string | null
+          target_kind?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          section_id?: string | null
+          student_user_id?: string | null
+          target_id?: string | null
+          target_kind?: string | null
+        }
+        Relationships: []
+      }
       faculty_competency_domains: {
         Row: {
           approved_at: string | null
@@ -12847,6 +12883,102 @@ export type Database = {
         }
         Relationships: []
       }
+      section_attendance_records: {
+        Row: {
+          id: string
+          marked_at: string
+          marked_by: string
+          notes: string | null
+          session_id: string
+          status: string
+          student_user_id: string
+        }
+        Insert: {
+          id?: string
+          marked_at?: string
+          marked_by: string
+          notes?: string | null
+          session_id: string
+          status: string
+          student_user_id: string
+        }
+        Update: {
+          id?: string
+          marked_at?: string
+          marked_by?: string
+          notes?: string | null
+          session_id?: string
+          status?: string
+          student_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_attendance_records_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "section_attendance_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      section_attendance_sessions: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          meets_end: string | null
+          meets_start: string | null
+          section_id: string
+          session_date: string
+          topic: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          meets_end?: string | null
+          meets_start?: string | null
+          section_id: string
+          session_date: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          meets_end?: string | null
+          meets_start?: string | null
+          section_id?: string
+          session_date?: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_attendance_sessions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "course_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_attendance_sessions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "section_utilization_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_attendance_sessions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "student_schedule_v"
+            referencedColumns: ["section_id"]
+          },
+        ]
+      }
       section_enrollments: {
         Row: {
           created_at: string
@@ -13354,6 +13486,137 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "academic_terms"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_advising_flags: {
+        Row: {
+          created_at: string
+          flag_type: string
+          flagged_by: string
+          id: string
+          reason: string | null
+          recommended_action: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          section_id: string | null
+          severity: string
+          status: string
+          student_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          flag_type: string
+          flagged_by: string
+          id?: string
+          reason?: string | null
+          recommended_action?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          section_id?: string | null
+          severity?: string
+          status?: string
+          student_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          flag_type?: string
+          flagged_by?: string
+          id?: string
+          reason?: string | null
+          recommended_action?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          section_id?: string | null
+          severity?: string
+          status?: string
+          student_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_advising_flags_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "course_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_advising_flags_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "section_utilization_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_advising_flags_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "student_schedule_v"
+            referencedColumns: ["section_id"]
+          },
+        ]
+      }
+      student_advising_notes: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          faculty_user_id: string
+          id: string
+          note: string
+          program_id: string | null
+          section_id: string | null
+          student_user_id: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          faculty_user_id: string
+          id?: string
+          note: string
+          program_id?: string | null
+          section_id?: string | null
+          student_user_id: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          faculty_user_id?: string
+          id?: string
+          note?: string
+          program_id?: string | null
+          section_id?: string | null
+          student_user_id?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_advising_notes_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "course_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_advising_notes_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "section_utilization_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_advising_notes_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "student_schedule_v"
+            referencedColumns: ["section_id"]
           },
         ]
       }
@@ -17051,6 +17314,18 @@ export type Database = {
       run_degree_audit: {
         Args: { _program_id?: string; _student_id: string }
         Returns: Json
+      }
+      section_attendance_summary: {
+        Args: { _section_id: string }
+        Returns: {
+          absent: number
+          attendance_pct: number
+          excused: number
+          late: number
+          present: number
+          student_user_id: string
+          total_sessions: number
+        }[]
       }
       sections_overlap: { Args: { _a: string; _b: string }; Returns: boolean }
       snapshot_all_faculty_for_term: {
