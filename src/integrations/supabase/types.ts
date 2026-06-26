@@ -9172,6 +9172,7 @@ export type Database = {
         Row: {
           body: string
           created_at: string | null
+          event_key: string | null
           id: string
           institution_id: string | null
           is_read: boolean | null
@@ -9185,6 +9186,7 @@ export type Database = {
         Insert: {
           body: string
           created_at?: string | null
+          event_key?: string | null
           id?: string
           institution_id?: string | null
           is_read?: boolean | null
@@ -9198,6 +9200,7 @@ export type Database = {
         Update: {
           body?: string
           created_at?: string | null
+          event_key?: string | null
           id?: string
           institution_id?: string | null
           is_read?: boolean | null
@@ -17185,26 +17188,7 @@ export type Database = {
         }[]
       }
       get_quiz_answer: { Args: { _question_id: string }; Returns: string }
-      get_system_health: {
-        Args: never
-        Returns: {
-          ai_calls_24h: number | null
-          ai_errors_24h: number | null
-          ai_pending_review: number | null
-          as_of: string | null
-          cron_errors_24h: number | null
-          cron_runs_24h: number | null
-          human_reviews_open: number | null
-          integrity_alerts_24h: number | null
-          notifications_24h: number | null
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "system_health_summary"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
+      get_system_health: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

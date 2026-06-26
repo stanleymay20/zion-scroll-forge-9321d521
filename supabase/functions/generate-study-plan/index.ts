@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { logAiOutput } from "../_shared/ai-log.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -112,6 +113,13 @@ serve(async (req) => {
       .single();
 
     if (error) throw error;
+
+    await logAiOutput({
+      user_id: user.id, feature: "study_plan", provider: "deterministic",
+      latency_ms: 0, status: "ok",
+      output_reference: studyPlan?.id ?? null,
+      metadata: { course_id: courseId, weeks: weeksNeeded, modules: modules.length },
+    });
 
     return new Response(
       JSON.stringify({ 

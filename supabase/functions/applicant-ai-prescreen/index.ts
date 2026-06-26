@@ -4,6 +4,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logAiOutput } from "../_shared/ai-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,6 +62,7 @@ ${student.motivation_statement}
 """
 Respond ONLY in JSON: {"score": <0-100>, "summary": "<2-3 sentences>", "recommendation": "accept|waitlist|reject"}`;
 
+    const t0 = Date.now();
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
@@ -72,6 +74,12 @@ Respond ONLY in JSON: {"score": <0-100>, "summary": "<2-3 sentences>", "recommen
     });
     if (!aiRes.ok) {
       const t = await aiRes.text();
+      await logAiOutput({
+        user_id: user.id, feature: "prescreen", model: "google/gemini-2.5-flash",
+        provider: "lovable-ai", prompt, latency_ms: Date.now() - t0,
+        status: "error", error_message: `gateway ${aiRes.status}: ${t.slice(0,200)}`,
+        metadata: { student_id },
+      });
       return json({ error: `AI gateway ${aiRes.status}: ${t}` }, 502);
     }
     const aiBody = await aiRes.json();
@@ -88,6 +96,18 @@ Respond ONLY in JSON: {"score": <0-100>, "summary": "<2-3 sentences>", "recommen
       ai_review_summary: `${summary}\n\nRecommendation: ${recommendation}`,
       ai_reviewed_at: new Date().toISOString(),
     }).eq("id", student_id);
+
+    const tokens_in = aiBody?.usage?.prompt_tokens ?? null;
+    const tokens_out = aiBody?.usage?.completion_tokens ?? null;
+    await logAiOutput({
+      user_id: user.id, feature: "prescreen", model: "google/gemini-2.5-flash",
+      provider: "lovable-ai", prompt, latency_ms: Date.now() - t0,
+      tokens_in, tokens_out,
+      confidence: score / 100,
+      human_review_required: score < 60 || recommendation === "waitlist",
+      output_reference: student_id, status: "ok",
+      metadata: { recommendation, score },
+    });
 
     return json({ ok: true, score, summary, recommendation });
   } catch (e: any) {

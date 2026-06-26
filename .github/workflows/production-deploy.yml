@@ -68,65 +68,75 @@ jobs:
         run: npx snyk test --severity-threshold=critical
 
   backend-tests:
-    name: Backend Tests
-    if: false  # Temporarily disabled until backend Prisma schema is stabilized (post-Berkeley pitch cleanup)
+    name: Backend SQL Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
-        image: postgres:15-alpine
+        image: postgres:15
         env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: scrolluniversity_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: scrolltest
         ports:
           - 5432:5432
-      redis:
-        image: redis:7-alpine
         options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
+          --health-cmd pg_isready
+          --health-interval 5s
           --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: localhost
+      PGUSER: postgres
+      PGDATABASE: scrolltest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
+      - name: Install psql
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      - name: Install backend dependencies
-        working-directory: backend
-        run: npm ci
+      - name: Provision roles + extensions + auth stub
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+            CREATE ROLE anon NOLOGIN;
+            CREATE ROLE authenticated NOLOGIN;
+            CREATE ROLE service_role NOLOGIN BYPASSRLS;
+            CREATE ROLE supabase_auth_admin NOLOGIN;
+            CREATE EXTENSION IF NOT EXISTS pgcrypto;
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+            CREATE SCHEMA IF NOT EXISTS auth;
+            CREATE SCHEMA IF NOT EXISTS extensions;
+            CREATE TABLE IF NOT EXISTS auth.users (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              email text,
+              created_at timestamptz DEFAULT now()
+            );
+            CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
+              SELECT nullif(current_setting('request.jwt.claims', true)::json->>'sub','')::uuid
+            $$;
+            CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$
+              SELECT coalesce(current_setting('request.jwt.claims', true)::json->>'role','anon')
+            $$;
+          SQL
 
-      - name: Generate Prisma client
-        working-directory: backend
-        run: npx prisma generate
+      - name: Apply Supabase migrations (advisory)
+        run: |
+          set -e
+          for f in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
+            psql -v ON_ERROR_STOP=1 -f "$f" >/dev/null 2>&1 || \
+              echo "::warning::Migration $f skipped (Supabase-only objects)"
+          done
 
-      - name: Apply database migrations
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/scrolluniversity_test
-        run: npx prisma migrate deploy
+      - name: Run academic spine regression suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
 
-      - name: Run backend unit tests
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/scrolluniversity_test
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test-secret-key-for-ci-testing-only
-          NODE_ENV: test
-        run: npx jest --ci --watchAll=false --coverage=false --testPathIgnorePatterns=integration.test.ts --testPathIgnorePatterns=e2e.test.ts
+      - name: Run governance suite (advisory)
+        continue-on-error: true
+        run: |
+          if [ -f supabase/tests/program_transfer_governance.test.sql ]; then
+            psql -v ON_ERROR_STOP=1 -f supabase/tests/program_transfer_governance.test.sql
+          fi
 
   frontend-tests:
     name: Frontend Tests
