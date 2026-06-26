@@ -80,6 +80,12 @@ const AcademicIntegrityAlerts = lazy(() => import("./pages/admin/AcademicIntegri
 const CurriculumDepthAdmin = lazy(() => import("./pages/admin/CurriculumDepthAdmin"));
 const PedagogyRemediationAdmin = lazy(() => import("./pages/admin/PedagogyRemediationAdmin"));
 const CurriculumReviewsQueue = lazy(() => import("./pages/faculty/CurriculumReviewsQueue"));
+const FacultyPortalDashboard = lazy(() => import("./pages/faculty/FacultyPortalDashboard"));
+const SectionGradebook = lazy(() => import("./pages/faculty/SectionGradebook"));
+const SectionAttendance = lazy(() => import("./pages/faculty/SectionAttendance"));
+const SectionOutcomes = lazy(() => import("./pages/faculty/SectionOutcomes"));
+const FacultyAdvising = lazy(() => import("./pages/faculty/FacultyAdvising"));
+const FacultyInterventions = lazy(() => import("./pages/faculty/FacultyInterventions"));
 const RegistrarStandingDashboard = lazy(() => import("./pages/registrar/RegistrarStandingDashboard"));
 const AccreditationReadinessAdmin = lazy(() => import("./pages/admin/AccreditationReadinessAdmin"));
 const IntegrityCasesAdmin = lazy(() => import("./pages/admin/IntegrityCasesAdmin"));
@@ -590,6 +596,12 @@ const App = () => (
               <Route path="faculty/admin" element={<RoleRoute allowedRoles={["faculty","admin","superadmin"]}><FacultyAdmin /></RoleRoute>} />
               <Route path="faculty/gradebook" element={<RoleRoute allowedRoles={["faculty","admin","superadmin"]}><FacultyGradebookIndex /></RoleRoute>} />
               <Route path="faculty/gradebook/:courseId" element={<RoleRoute allowedRoles={["faculty","admin","superadmin"]}><Gradebook /></RoleRoute>} />
+              <Route path="faculty/portal" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><FacultyPortalDashboard /></RoleRoute>} />
+              <Route path="faculty/section/:sectionId/gradebook" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><SectionGradebook /></RoleRoute>} />
+              <Route path="faculty/section/:sectionId/attendance" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><SectionAttendance /></RoleRoute>} />
+              <Route path="faculty/section/:sectionId/outcomes" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><SectionOutcomes /></RoleRoute>} />
+              <Route path="faculty/advising" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><FacultyAdvising /></RoleRoute>} />
+              <Route path="faculty/interventions" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><FacultyInterventions /></RoleRoute>} />
               <Route path="admin/admissions" element={<RoleRoute allowedRoles={["admin","superadmin"]}><AdmissionsReview /></RoleRoute>} />
               <Route path="alumni" element={<AlumniPortal />} />
               
