@@ -97,6 +97,18 @@ Respond ONLY in JSON: {"score": <0-100>, "summary": "<2-3 sentences>", "recommen
       ai_reviewed_at: new Date().toISOString(),
     }).eq("id", student_id);
 
+    const tokens_in = aiBody?.usage?.prompt_tokens ?? null;
+    const tokens_out = aiBody?.usage?.completion_tokens ?? null;
+    await logAiOutput({
+      user_id: user.id, feature: "prescreen", model: "google/gemini-2.5-flash",
+      provider: "lovable-ai", prompt, latency_ms: Date.now() - t0,
+      tokens_in, tokens_out,
+      confidence: score / 100,
+      human_review_required: score < 60 || recommendation === "waitlist",
+      output_reference: student_id, status: "ok",
+      metadata: { recommendation, score },
+    });
+
     return json({ ok: true, score, summary, recommendation });
   } catch (e: any) {
     console.error("applicant-ai-prescreen error", e);
