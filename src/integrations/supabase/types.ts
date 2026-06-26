@@ -302,6 +302,45 @@ export type Database = {
         }
         Relationships: []
       }
+      academic_records_audit: {
+        Row: {
+          actor_id: string | null
+          course_id: string | null
+          created_at: string
+          event_type: string
+          grade_record_id: string | null
+          id: string
+          payload: Json
+          section_id: string | null
+          student_id: string | null
+          term_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          event_type: string
+          grade_record_id?: string | null
+          id?: string
+          payload?: Json
+          section_id?: string | null
+          student_id?: string | null
+          term_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          event_type?: string
+          grade_record_id?: string | null
+          id?: string
+          payload?: Json
+          section_id?: string | null
+          student_id?: string | null
+          term_id?: string | null
+        }
+        Relationships: []
+      }
       academic_standing_audit: {
         Row: {
           created_at: string
@@ -1429,6 +1468,7 @@ export type Database = {
           institution_id: string | null
           module_id: string | null
           published: boolean | null
+          section_id: string | null
           title: string | null
           total_points: number | null
           type: string | null
@@ -1443,6 +1483,7 @@ export type Database = {
           institution_id?: string | null
           module_id?: string | null
           published?: boolean | null
+          section_id?: string | null
           title?: string | null
           total_points?: number | null
           type?: string | null
@@ -1457,6 +1498,7 @@ export type Database = {
           institution_id?: string | null
           module_id?: string | null
           published?: boolean | null
+          section_id?: string | null
           title?: string | null
           total_points?: number | null
           type?: string | null
@@ -6054,54 +6096,99 @@ export type Database = {
       }
       grade_records: {
         Row: {
+          assessment_id: string | null
+          attempt_number: number
           course_id: string
           created_at: string
           credit_hours: number
           finalized_at: string | null
           grade_points: number | null
+          graded_at: string | null
+          graded_by: string | null
           id: string
+          is_final: boolean
           letter_grade: string | null
           notes: string | null
+          percentage: number | null
           posted_at: string | null
           posted_by: string | null
+          section_id: string | null
+          source: string
           status: Database["public"]["Enums"]["grade_status"]
           student_id: string
           term_id: string
           updated_at: string
         }
         Insert: {
+          assessment_id?: string | null
+          attempt_number?: number
           course_id: string
           created_at?: string
           credit_hours: number
           finalized_at?: string | null
           grade_points?: number | null
+          graded_at?: string | null
+          graded_by?: string | null
           id?: string
+          is_final?: boolean
           letter_grade?: string | null
           notes?: string | null
+          percentage?: number | null
           posted_at?: string | null
           posted_by?: string | null
+          section_id?: string | null
+          source?: string
           status?: Database["public"]["Enums"]["grade_status"]
           student_id: string
           term_id: string
           updated_at?: string
         }
         Update: {
+          assessment_id?: string | null
+          attempt_number?: number
           course_id?: string
           created_at?: string
           credit_hours?: number
           finalized_at?: string | null
           grade_points?: number | null
+          graded_at?: string | null
+          graded_by?: string | null
           id?: string
+          is_final?: boolean
           letter_grade?: string | null
           notes?: string | null
+          percentage?: number | null
           posted_at?: string | null
           posted_by?: string | null
+          section_id?: string | null
+          source?: string
           status?: Database["public"]["Enums"]["grade_status"]
           student_id?: string
           term_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "grade_records_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "course_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_records_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "section_utilization_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_records_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "student_schedule_v"
+            referencedColumns: ["section_id"]
+          },
           {
             foreignKeyName: "grade_records_term_id_fkey"
             columns: ["term_id"]
@@ -16210,6 +16297,13 @@ export type Database = {
           total_credit_hours: number
         }[]
       }
+      compute_letter_grade: {
+        Args: { _pct: number }
+        Returns: {
+          grade_points: number
+          letter: string
+        }[]
+      }
       compute_practicum_outcome: {
         Args: { _placement_id: string }
         Returns: Json
@@ -16246,13 +16340,15 @@ export type Database = {
         }
       }
       compute_student_balance: { Args: { p_student: string }; Returns: number }
-      compute_student_gpa: {
-        Args: { p_student_id: string }
-        Returns: {
-          gpa: number
-          total_credit_hours: number
-        }[]
-      }
+      compute_student_gpa:
+        | { Args: { _student_id: string; _term_id?: string }; Returns: Json }
+        | {
+            Args: { p_student_id: string }
+            Returns: {
+              gpa: number
+              total_credit_hours: number
+            }[]
+          }
       compute_thesis_defense_outcome: {
         Args: { p_defense_id: string }
         Returns: Database["public"]["Enums"]["thesis_recommendation"]
@@ -16345,9 +16441,17 @@ export type Database = {
         Returns: Json
       }
       ensure_default_institution_membership: { Args: never; Returns: string }
+      evaluate_academic_standing: {
+        Args: { _student_id: string; _term_id: string }
+        Returns: string
+      }
       evaluate_module_quality: {
         Args: { p_module_id: string }
         Returns: string[]
+      }
+      evaluate_progression: {
+        Args: { _student_id: string; _term_id: string }
+        Returns: Json
       }
       generate_accreditation_blueprint: {
         Args: never
@@ -16364,6 +16468,7 @@ export type Database = {
         Args: { p_student_id: string }
         Returns: Json
       }
+      generate_transcript: { Args: { _student_id: string }; Returns: Json }
       get_assigned_next_course: {
         Args: { p_user_id: string }
         Returns: {
@@ -16661,6 +16766,16 @@ export type Database = {
       submit_assessment_attempt: {
         Args: { p_attempt_id: string; p_responses: Json; p_score?: number }
         Returns: Json
+      }
+      submit_course_grade: {
+        Args: {
+          _finalize?: boolean
+          _notes?: string
+          _percentage: number
+          _section_id: string
+          _student_id: string
+        }
+        Returns: string
       }
       submit_integrity_appeal: {
         Args: { _hold_id: string; _statement: string }

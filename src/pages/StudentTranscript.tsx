@@ -44,8 +44,8 @@ export default function StudentTranscript() {
       ]);
       setGrades((g.data as GradeRow[]) || []);
       setTranscripts((t.data as OfficialTranscript[]) || []);
-      const row = Array.isArray(s.data) ? s.data[0] : null;
-      setGpa(row ? { gpa: row.gpa, total_credit_hours: row.total_credit_hours } : null);
+      const row: any = Array.isArray(s.data) ? s.data[0] : s.data;
+      setGpa(row ? { gpa: Number(row.gpa ?? row.cumulative_gpa ?? 0), total_credit_hours: Number(row.total_credit_hours ?? row.cumulative_credits_earned ?? 0) } : null);
       setLoading(false);
     })();
   }, []);
