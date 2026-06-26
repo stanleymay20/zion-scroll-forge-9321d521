@@ -3564,6 +3564,39 @@ export type Database = {
           },
         ]
       }
+      degree_audit_log: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          degree_program_id: string | null
+          event_type: string
+          id: string
+          payload: Json
+          plan_id: string | null
+          student_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          degree_program_id?: string | null
+          event_type: string
+          id?: string
+          payload?: Json
+          plan_id?: string | null
+          student_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          degree_program_id?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          plan_id?: string | null
+          student_id?: string | null
+        }
+        Relationships: []
+      }
       degree_course_requirements: {
         Row: {
           course_id: string
@@ -3650,39 +3683,72 @@ export type Database = {
       degree_plan_items: {
         Row: {
           course_code: string
+          course_id: string | null
           course_title: string | null
           created_at: string
           credit_hours: number
+          degree_program_id: string | null
+          fulfilled_at: string | null
+          fulfilled_by_grade_record_id: string | null
           id: string
+          letter_grade: string | null
           notes: string | null
           plan_id: string
+          recommended_term: string | null
+          recommended_year: number | null
           required: boolean
+          requirement_type: string | null
           sequence: number
+          status: string
+          student_id: string | null
           term_label: string
+          updated_at: string
         }
         Insert: {
           course_code: string
+          course_id?: string | null
           course_title?: string | null
           created_at?: string
           credit_hours?: number
+          degree_program_id?: string | null
+          fulfilled_at?: string | null
+          fulfilled_by_grade_record_id?: string | null
           id?: string
+          letter_grade?: string | null
           notes?: string | null
           plan_id: string
+          recommended_term?: string | null
+          recommended_year?: number | null
           required?: boolean
+          requirement_type?: string | null
           sequence?: number
+          status?: string
+          student_id?: string | null
           term_label: string
+          updated_at?: string
         }
         Update: {
           course_code?: string
+          course_id?: string | null
           course_title?: string | null
           created_at?: string
           credit_hours?: number
+          degree_program_id?: string | null
+          fulfilled_at?: string | null
+          fulfilled_by_grade_record_id?: string | null
           id?: string
+          letter_grade?: string | null
           notes?: string | null
           plan_id?: string
+          recommended_term?: string | null
+          recommended_year?: number | null
           required?: boolean
+          requirement_type?: string | null
           sequence?: number
+          status?: string
+          student_id?: string | null
           term_label?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -3734,7 +3800,10 @@ export type Database = {
           created_at: string
           decided_at: string | null
           decided_by: string | null
+          degree_program_id: string | null
           id: string
+          last_audit_at: string | null
+          last_audit_summary: Json | null
           notes: string | null
           status: Database["public"]["Enums"]["degree_plan_status"]
           student_user_id: string
@@ -3747,7 +3816,10 @@ export type Database = {
           created_at?: string
           decided_at?: string | null
           decided_by?: string | null
+          degree_program_id?: string | null
           id?: string
+          last_audit_at?: string | null
+          last_audit_summary?: Json | null
           notes?: string | null
           status?: Database["public"]["Enums"]["degree_plan_status"]
           student_user_id: string
@@ -3760,7 +3832,10 @@ export type Database = {
           created_at?: string
           decided_at?: string | null
           decided_by?: string | null
+          degree_program_id?: string | null
           id?: string
+          last_audit_at?: string | null
+          last_audit_summary?: Json | null
           notes?: string | null
           status?: Database["public"]["Enums"]["degree_plan_status"]
           student_user_id?: string
@@ -16445,6 +16520,10 @@ export type Database = {
         Args: { _student_id: string; _term_id: string }
         Returns: string
       }
+      evaluate_graduation_candidate: {
+        Args: { _student_id: string }
+        Returns: Json
+      }
       evaluate_module_quality: {
         Args: { p_module_id: string }
         Returns: string[]
@@ -16463,6 +16542,10 @@ export type Database = {
       generate_curriculum_titles: {
         Args: { p_faculty: string; p_n: number; p_years: number }
         Returns: string[]
+      }
+      generate_degree_plan: {
+        Args: { _program_id: string; _student_id: string }
+        Returns: string
       }
       generate_student_identity: {
         Args: { p_student_id: string }
@@ -16737,6 +16820,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      run_degree_audit: {
+        Args: { _program_id?: string; _student_id: string }
+        Returns: Json
       }
       sections_overlap: { Args: { _a: string; _b: string }; Returns: boolean }
       snapshot_all_faculty_for_term: {
