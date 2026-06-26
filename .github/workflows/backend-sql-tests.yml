@@ -103,6 +103,9 @@ jobs:
       - name: Run lifecycle invariants suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_invariants.test.sql
 
+      - name: Run executive scope isolation suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/executive_scope_isolation.test.sql
+
       - name: Summary
         if: always()
         run: echo "✅ SQL test suite finished"

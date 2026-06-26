@@ -27,6 +27,7 @@ import OAuthCallback from "./pages/auth/OAuthCallback";
 import { ComingSoonPage } from "./components/layout/PageTemplate";
 
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const ExecutivePortal = lazy(() => import("@/pages/executive/ExecutivePortal"));
 const EnhancedDashboard = lazy(() => import("@/pages/EnhancedDashboard"));
 const ForgeDashboard = lazy(() => import("@/pages/ForgeDashboard"));
 const ScrollSpecs = lazy(() => import("@/pages/ScrollSpecs"));
@@ -587,6 +588,8 @@ const App = () => (
               <Route path="register" element={<CourseRegistration />} />
               <Route path="admin/registration" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><RegistrationAdmin /></RoleRoute>} />
               <Route path="admin/registrar-dashboard" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><RegistrarDashboard /></RoleRoute>} />
+              <Route path="executive" element={<ExecutivePortal />} />
+              <Route path="executive/portal" element={<ExecutivePortal />} />
               <Route path="library/catalog" element={<LibraryCatalog />} />
               <Route path="admin/library" element={<RoleRoute allowedRoles={["admin","superadmin","librarian"]}><LibraryAdmin /></RoleRoute>} />
               <Route path="scholarships/apply" element={<Scholarships />} />
