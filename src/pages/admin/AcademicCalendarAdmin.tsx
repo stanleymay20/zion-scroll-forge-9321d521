@@ -86,12 +86,12 @@ export default function AcademicCalendarAdmin() {
   const issueTranscript = async (studentId: string, kind: "official" | "unofficial") => {
     const { data: gradeRows } = await supabase.from("grade_records").select("*").eq("student_id", studentId).eq("status", "final");
     const { data: gpaRow } = await supabase.rpc("compute_student_gpa", { p_student_id: studentId });
-    const row = Array.isArray(gpaRow) ? gpaRow[0] : null;
+    const row: any = Array.isArray(gpaRow) ? gpaRow[0] : gpaRow;
     const { error } = await supabase.from("official_transcripts").insert({
       student_id: studentId,
       kind,
-      gpa: row?.gpa ?? null,
-      total_credit_hours: row?.total_credit_hours ?? 0,
+      gpa: row?.gpa ?? row?.cumulative_gpa ?? null,
+      total_credit_hours: row?.total_credit_hours ?? row?.cumulative_credits_earned ?? 0,
       snapshot: { grades: gradeRows ?? [], generated_at: new Date().toISOString() },
     });
     if (error) toast.error(error.message); else toast.success(`${kind} transcript issued`);
