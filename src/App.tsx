@@ -80,6 +80,12 @@ const AcademicIntegrityAlerts = lazy(() => import("./pages/admin/AcademicIntegri
 const CurriculumDepthAdmin = lazy(() => import("./pages/admin/CurriculumDepthAdmin"));
 const PedagogyRemediationAdmin = lazy(() => import("./pages/admin/PedagogyRemediationAdmin"));
 const CurriculumReviewsQueue = lazy(() => import("./pages/faculty/CurriculumReviewsQueue"));
+const FacultyPortalDashboard = lazy(() => import("./pages/faculty/FacultyPortalDashboard"));
+const SectionGradebook = lazy(() => import("./pages/faculty/SectionGradebook"));
+const SectionAttendance = lazy(() => import("./pages/faculty/SectionAttendance"));
+const SectionOutcomes = lazy(() => import("./pages/faculty/SectionOutcomes"));
+const FacultyAdvising = lazy(() => import("./pages/faculty/FacultyAdvising"));
+const FacultyInterventions = lazy(() => import("./pages/faculty/FacultyInterventions"));
 const RegistrarStandingDashboard = lazy(() => import("./pages/registrar/RegistrarStandingDashboard"));
 const AccreditationReadinessAdmin = lazy(() => import("./pages/admin/AccreditationReadinessAdmin"));
 const IntegrityCasesAdmin = lazy(() => import("./pages/admin/IntegrityCasesAdmin"));
