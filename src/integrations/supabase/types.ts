@@ -14355,16 +14355,16 @@ export type Database = {
           attempts: number
           clo_id: string | null
           confidence: number
-          course_id: string
+          course_id: string | null
           created_at: string
           evidence_count: number
-          first_attempt_at: string
+          first_attempt_at: string | null
           id: string
-          last_attempt_at: string
+          last_attempt_at: string | null
           last_evidence_at: string | null
-          learning_objective_id: string
+          learning_objective_id: string | null
           mastery_level: string | null
-          module_id: string
+          module_id: string | null
           plo_id: string | null
           program_id: string | null
           score_pct: number
@@ -14377,16 +14377,16 @@ export type Database = {
           attempts?: number
           clo_id?: string | null
           confidence?: number
-          course_id: string
+          course_id?: string | null
           created_at?: string
           evidence_count?: number
-          first_attempt_at?: string
+          first_attempt_at?: string | null
           id?: string
-          last_attempt_at?: string
+          last_attempt_at?: string | null
           last_evidence_at?: string | null
-          learning_objective_id: string
+          learning_objective_id?: string | null
           mastery_level?: string | null
-          module_id: string
+          module_id?: string | null
           plo_id?: string | null
           program_id?: string | null
           score_pct?: number
@@ -14399,16 +14399,16 @@ export type Database = {
           attempts?: number
           clo_id?: string | null
           confidence?: number
-          course_id?: string
+          course_id?: string | null
           created_at?: string
           evidence_count?: number
-          first_attempt_at?: string
+          first_attempt_at?: string | null
           id?: string
-          last_attempt_at?: string
+          last_attempt_at?: string | null
           last_evidence_at?: string | null
-          learning_objective_id?: string
+          learning_objective_id?: string | null
           mastery_level?: string | null
-          module_id?: string
+          module_id?: string | null
           plo_id?: string | null
           program_id?: string | null
           score_pct?: number
@@ -17080,20 +17080,10 @@ export type Database = {
         Args: { p_course_id: string }
         Returns: Json
       }
-      check_graduation_eligibility:
-        | { Args: { _program_id: string; _user_id: string }; Returns: Json }
-        | {
-            Args: { p_user_id: string }
-            Returns: {
-              credits_completed: number
-              credits_required: number
-              eligible: boolean
-              gpa: number
-              has_holds: boolean
-              min_gpa: number
-              missing_requirements: string[]
-            }[]
-          }
+      check_graduation_eligibility: {
+        Args: { _program_id: string; _user_id: string }
+        Returns: Json
+      }
       check_prerequisites: {
         Args: { p_course_id: string; p_student_id: string }
         Returns: Json
