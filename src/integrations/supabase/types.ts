@@ -16114,6 +16114,10 @@ export type Database = {
           slots_inserted: number
         }[]
       }
+      generate_curriculum_titles: {
+        Args: { p_faculty: string; p_n: number; p_years: number }
+        Returns: string[]
+      }
       generate_student_identity: {
         Args: { p_student_id: string }
         Returns: Json
