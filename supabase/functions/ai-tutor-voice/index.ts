@@ -215,12 +215,34 @@ serve(async (req) => {
       console.warn("spiritual_events_log insert failed:", e);
     }
 
+    await logAiOutput({
+      user_id: session.user_id,
+      feature: "ai_tutor",
+      provider: "lovable_ai_gateway",
+      model: "google/gemini-2.5-flash",
+      input_reference: session_id,
+      output_reference: session_id,
+      tokens_in: chatData?.usage?.prompt_tokens ?? null,
+      tokens_out: chatData?.usage?.completion_tokens ?? null,
+      latency_ms: Date.now() - t0,
+      status: "ok",
+      metadata: { source: "voice", transcript_chars: transcript.length },
+    });
+
     return json({ transcript, assistant_message: assistantMessage });
   } catch (error: any) {
     if (error instanceof ValidationError) {
       return createValidationErrorResponse(error, corsHeaders);
     }
     console.error("ai-tutor-voice error:", error);
+    await logAiOutput({
+      feature: "ai_tutor",
+      provider: "lovable_ai_gateway",
+      status: "error",
+      latency_ms: Date.now() - t0,
+      error_message: error?.message ?? String(error),
+      metadata: { source: "voice" },
+    });
     return json({ error: error?.message ?? "Internal error" }, 500);
   }
 });
