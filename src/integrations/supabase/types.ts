@@ -3149,6 +3149,67 @@ export type Database = {
         }
         Relationships: []
       }
+      curriculum_backfill_audit: {
+        Row: {
+          courses_added: number
+          created_at: string
+          degree_program_id: string
+          id: string
+          mappings_added: number
+          new_credit_total: number
+          notes: string | null
+          previous_credit_total: number
+          status: string
+          target_credit_total: number
+        }
+        Insert: {
+          courses_added?: number
+          created_at?: string
+          degree_program_id: string
+          id?: string
+          mappings_added?: number
+          new_credit_total: number
+          notes?: string | null
+          previous_credit_total: number
+          status?: string
+          target_credit_total: number
+        }
+        Update: {
+          courses_added?: number
+          created_at?: string
+          degree_program_id?: string
+          id?: string
+          mappings_added?: number
+          new_credit_total?: number
+          notes?: string | null
+          previous_credit_total?: number
+          status?: string
+          target_credit_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_backfill_audit_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "accreditation_baseline_report"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curriculum_backfill_audit_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "degree_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curriculum_backfill_audit_degree_program_id_fkey"
+            columns: ["degree_program_id"]
+            isOneToOne: false
+            referencedRelation: "program_public_render_state"
+            referencedColumns: ["program_id"]
+          },
+        ]
+      }
       curriculum_depth_scores: {
         Row: {
           assessment_diversity: number
