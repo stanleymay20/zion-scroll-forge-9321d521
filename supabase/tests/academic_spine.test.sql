@@ -226,7 +226,7 @@ DECLARE
 BEGIN
   SELECT student_id INTO v_student
     FROM grade_records
-    WHERE status IN ('posted','final')
+    WHERE status IN ('provisional','final')
     LIMIT 1;
 
   IF v_student IS NULL THEN

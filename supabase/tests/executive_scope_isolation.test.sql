@@ -4,9 +4,14 @@
 -- Two users with different scopes must not see each other's KPIs.
 -- The KPI RPC must reject unauthorized scope access at the database layer.
 
-CREATE TEMP TABLE IF NOT EXISTS exec_iso (
+\set QUIET on
+\pset pager off
+
+BEGIN;
+
+CREATE TEMP TABLE exec_iso (
   id   int, name text, ok bool, note text
-) ON COMMIT DROP;
+);
 
 CREATE OR REPLACE FUNCTION pg_temp.exec_iso_record(_id int, _name text, _ok bool, _note text DEFAULT '')
 RETURNS void LANGUAGE sql AS $$
@@ -124,3 +129,5 @@ BEGIN
     RAISE EXCEPTION '% executive-scope isolation check(s) failed', v_fail;
   END IF;
 END $$;
+
+ROLLBACK;

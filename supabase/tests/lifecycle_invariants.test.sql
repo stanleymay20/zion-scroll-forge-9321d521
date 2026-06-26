@@ -46,7 +46,7 @@ BEGIN
       WHERE COALESCE(g.is_final, false) = true
         AND NOT EXISTS (
           SELECT 1 FROM public.academic_records_audit a
-          WHERE a.entity_id::text = g.id::text
+          WHERE a.grade_record_id = g.id
         )
     $q$ INTO v;
     PERFORM pg_temp.inv(1, 'finalized grades have audit row', v);
@@ -81,14 +81,14 @@ BEGIN
   IF pg_temp.has_tbl('degree_plan_items') THEN
     EXECUTE $q$
       SELECT count(*) FROM (
-        SELECT degree_plan_id, requirement_id, count(*) c
+        SELECT plan_id, course_id, count(*) c
         FROM public.degree_plan_items
-        WHERE requirement_id IS NOT NULL
-        GROUP BY degree_plan_id, requirement_id
+        WHERE course_id IS NOT NULL
+        GROUP BY plan_id, course_id
         HAVING count(*) > 1
       ) d
     $q$ INTO v;
-    PERFORM pg_temp.inv(3, 'no duplicate degree_plan_items per requirement', v);
+    PERFORM pg_temp.inv(3, 'no duplicate degree_plan_items per (plan, course)', v);
   ELSE
     PERFORM pg_temp.inv_skip(3, 'no duplicate degree_plan_items per requirement');
   END IF;
