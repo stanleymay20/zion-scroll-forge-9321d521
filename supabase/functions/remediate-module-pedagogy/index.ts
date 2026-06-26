@@ -8,6 +8,7 @@
 //
 // Uses Lovable AI Gateway (preferred) with DeepSeek fallback. Background-safe.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { logAiOutput } from "../_shared/ai-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,6 +82,7 @@ Deno.serve(async (req) => {
     const run = async () => {
       const results: any[] = [];
       for (const mod of targets) {
+        const tStart = Date.now();
         try {
           const { data: clos } = await supabase
             .from("course_learning_outcomes")
@@ -147,8 +149,27 @@ Deno.serve(async (req) => {
           }
 
           results.push({ id: mod.id, status: "remediated", chars: payload.content_md.length, questions: qqRows.length });
+          await logAiOutput({
+            feature: "pedagogy_remediation",
+            provider: "lovable_ai_gateway",
+            model: "google/gemini-2.5-pro",
+            input_reference: mod.id,
+            output_reference: mod.id,
+            latency_ms: Date.now() - tStart,
+            status: "ok",
+            metadata: { content_chars: payload.content_md.length, questions: qqRows.length },
+          });
         } catch (e) {
           results.push({ id: mod.id, status: "exception", error: (e as Error).message });
+          await logAiOutput({
+            feature: "pedagogy_remediation",
+            provider: "lovable_ai_gateway",
+            model: "google/gemini-2.5-pro",
+            input_reference: mod.id,
+            status: "error",
+            latency_ms: Date.now() - tStart,
+            error_message: (e as Error).message,
+          });
         }
       }
       console.log(`[remediate-module-pedagogy] DONE: ${results.filter(r => r.status === "remediated").length}/${results.length}`);

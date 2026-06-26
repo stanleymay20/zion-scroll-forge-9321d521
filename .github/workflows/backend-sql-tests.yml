@@ -90,6 +90,19 @@ jobs:
       - name: Run academic spine suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
 
+      - name: Seed representative cohort fixtures
+        run: |
+          if [ -f supabase/tests/fixtures/seed_cohort.sql ]; then
+            psql -f supabase/tests/fixtures/seed_cohort.sql || \
+              echo "::warning::cohort fixtures partially skipped (expected in bootstrap)"
+          fi
+
+      - name: Run lifecycle behavior suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_behavior.test.sql
+
+      - name: Run lifecycle invariants suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_invariants.test.sql
+
       - name: Summary
         if: always()
         run: echo "✅ SQL test suite finished"

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import OpenAI from 'https://esm.sh/openai@4.20.1'
+import { logAiOutput } from '../_shared/ai-log.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,6 +20,10 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
+  const t0 = Date.now();
+  let logUserId: string | null = null;
+  let logJobId: string | null = null;
+  let logModel: string | null = null;
 
   try {
     const supabaseClient = createClient(
@@ -36,6 +41,9 @@ serve(async (req) => {
     }
 
     const { jobId, jobType, prompt, parameters }: GenerationRequest = await req.json()
+    logUserId = user.id;
+    logJobId = jobId;
+    logModel = parameters?.model || 'gpt-4-turbo-preview';
 
     if (!jobId || !jobType || !prompt) {
       return new Response('Missing required fields', { status: 400, headers: corsHeaders })
@@ -278,6 +286,21 @@ serve(async (req) => {
       }
     }
 
+    await logAiOutput({
+      user_id: logUserId,
+      feature: "content_gen",
+      provider: "openai",
+      model: logModel,
+      input_reference: logJobId,
+      output_reference: logJobId,
+      tokens_out: tokensUsed,
+      cost_estimate: estimatedCost,
+      confidence: qualityScore ? qualityScore / 10 : null,
+      latency_ms: Date.now() - t0,
+      status: "ok",
+      metadata: { job_type: jobType, quality_score: qualityScore },
+    });
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -287,7 +310,7 @@ serve(async (req) => {
         tokensUsed,
         estimatedCost
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
     )
@@ -295,34 +318,43 @@ serve(async (req) => {
   } catch (error) {
     console.error('Content generation error:', error)
 
-    // Update job status to failed
-    if (req.body) {
+    // Update job status to failed (best-effort; req.json() may already be consumed)
+    if (logJobId) {
       try {
-        const { jobId } = await req.json()
         const supabaseClient = createClient(
           Deno.env.get('SUPABASE_URL') ?? '',
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
-        
         await supabaseClient
           .from('content_generation_jobs')
           .update({
             status: 'failed',
-            error_message: error.message,
+            error_message: (error as Error).message,
             completed_at: new Date().toISOString()
           })
-          .eq('id', jobId)
+          .eq('id', logJobId)
       } catch (updateError) {
         console.error('Error updating failed job:', updateError)
       }
     }
 
+    await logAiOutput({
+      user_id: logUserId,
+      feature: "content_gen",
+      provider: "openai",
+      model: logModel,
+      input_reference: logJobId,
+      status: "error",
+      latency_ms: Date.now() - t0,
+      error_message: (error as Error).message,
+    });
+
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        success: false 
+      JSON.stringify({
+        error: (error as Error).message,
+        success: false
       }),
-      { 
+      {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
