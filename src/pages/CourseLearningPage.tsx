@@ -308,6 +308,14 @@ export default function CourseLearningPage() {
     );
   }
 
+  return <CourseLearningGuarded
+    courseId={courseId!}
+    courseData={courseData}
+    enrollment={enrollment}
+    navigate={navigate}
+    inner={(
+
+
   return (
     <div className="min-h-screen pb-24 md:pb-8">
       {/* Sticky Progress Header */}
