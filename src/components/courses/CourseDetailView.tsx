@@ -133,6 +133,11 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
 
   const isEnrolled = !!enrollment;
   const progressPercentage = enrollment?.progress_percentage || 0;
+  // Hard prereq enforcement — disables Enroll/Start when unmet.
+  const { data: prereq, isLoading: prereqLoading, isError: prereqError, refetch: refetchPrereq } =
+    usePrerequisiteCheck(courseId, 'CourseDetailView');
+  const prereqEligible = !!prereq?.eligible;
+  const enrollDisabled = !studentId || prereqLoading || prereqError || !prereqEligible;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
