@@ -14358,9 +14358,9 @@ export type Database = {
           course_id: string | null
           created_at: string
           evidence_count: number
-          first_attempt_at: string
+          first_attempt_at: string | null
           id: string
-          last_attempt_at: string
+          last_attempt_at: string | null
           last_evidence_at: string | null
           learning_objective_id: string | null
           mastery_level: string | null
@@ -14380,9 +14380,9 @@ export type Database = {
           course_id?: string | null
           created_at?: string
           evidence_count?: number
-          first_attempt_at?: string
+          first_attempt_at?: string | null
           id?: string
-          last_attempt_at?: string
+          last_attempt_at?: string | null
           last_evidence_at?: string | null
           learning_objective_id?: string | null
           mastery_level?: string | null
@@ -14402,9 +14402,9 @@ export type Database = {
           course_id?: string | null
           created_at?: string
           evidence_count?: number
-          first_attempt_at?: string
+          first_attempt_at?: string | null
           id?: string
-          last_attempt_at?: string
+          last_attempt_at?: string | null
           last_evidence_at?: string | null
           learning_objective_id?: string | null
           mastery_level?: string | null
