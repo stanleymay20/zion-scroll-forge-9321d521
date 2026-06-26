@@ -18,9 +18,11 @@ BEGIN;
 
 DROP TABLE IF EXISTS _suite_results;
 CREATE TEMP TABLE _suite_results(test_no int, name text, status text, detail text);
+-- Allow recording from non-superuser roles (anon/authenticated) during RLS smoke tests.
+GRANT INSERT, SELECT ON _suite_results TO PUBLIC;
 
 CREATE OR REPLACE FUNCTION pg_temp.record(p_no int, p_name text, p_ok boolean, p_detail text DEFAULT '')
-RETURNS void LANGUAGE plpgsql AS $$
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
   INSERT INTO _suite_results VALUES (p_no, p_name, CASE WHEN p_ok THEN 'PASS' ELSE 'FAIL' END, p_detail);
   IF NOT p_ok THEN
