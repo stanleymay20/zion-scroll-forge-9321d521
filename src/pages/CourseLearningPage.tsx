@@ -26,6 +26,8 @@ import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
 import { useLiveClassContext } from '@/hooks/useLiveClassContext';
 import { OutcomesAchievedPanel } from '@/components/learning/OutcomesAchievedPanel';
 import { earnScrollGold } from '@/services/scrollgold';
+import { usePrerequisiteCheck } from '@/hooks/usePrerequisiteCheck';
+import { PrerequisiteBlock } from '@/components/courses/PrerequisiteBlock';
 import confetti from 'canvas-confetti';
 
 export default function CourseLearningPage() {
