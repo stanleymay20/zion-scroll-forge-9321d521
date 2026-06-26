@@ -2215,6 +2215,113 @@ export type Database = {
         }
         Relationships: []
       }
+      cohort_simulation_runs: {
+        Row: {
+          blockers: Json
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          integrity: Json
+          label: string
+          started_at: string
+          status: string
+          student_count: number
+          totals: Json
+          triggered_by: string | null
+          verdict: string | null
+        }
+        Insert: {
+          blockers?: Json
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          integrity?: Json
+          label: string
+          started_at?: string
+          status?: string
+          student_count: number
+          totals?: Json
+          triggered_by?: string | null
+          verdict?: string | null
+        }
+        Update: {
+          blockers?: Json
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          integrity?: Json
+          label?: string
+          started_at?: string
+          status?: string
+          student_count?: number
+          totals?: Json
+          triggered_by?: string | null
+          verdict?: string | null
+        }
+        Relationships: []
+      }
+      cohort_simulation_stage_metrics: {
+        Row: {
+          ai_log_count: number
+          audit_events: number
+          created_at: string
+          detail: Json
+          duration_ms: number
+          errors: number
+          id: string
+          notification_count: number
+          rls_violations: number
+          rows_touched: number
+          run_id: string
+          stage: string
+          stage_order: number
+        }
+        Insert: {
+          ai_log_count?: number
+          audit_events?: number
+          created_at?: string
+          detail?: Json
+          duration_ms?: number
+          errors?: number
+          id?: string
+          notification_count?: number
+          rls_violations?: number
+          rows_touched?: number
+          run_id: string
+          stage: string
+          stage_order: number
+        }
+        Update: {
+          ai_log_count?: number
+          audit_events?: number
+          created_at?: string
+          detail?: Json
+          duration_ms?: number
+          errors?: number
+          id?: string
+          notification_count?: number
+          rls_violations?: number
+          rows_touched?: number
+          run_id?: string
+          stage?: string
+          stage_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_simulation_stage_metrics_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_simulation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       community_posts: {
         Row: {
           comments_count: number
@@ -16876,6 +16983,18 @@ export type Database = {
       }
     }
     Functions: {
+      _csim_stage: {
+        Args: {
+          p_detail?: Json
+          p_errors?: number
+          p_order: number
+          p_rows: number
+          p_run: string
+          p_stage: string
+          p_started_at: string
+        }
+        Returns: undefined
+      }
       _exec_scope_sections: {
         Args: { _scope_id: string; _scope_type: string }
         Returns: {
@@ -17002,6 +17121,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cleanup_simulation_run: { Args: { p_run_id: string }; Returns: number }
       compute_faculty_load: {
         Args: { p_faculty: string; p_term: string }
         Returns: {
@@ -17537,6 +17657,10 @@ export type Database = {
         }[]
       }
       sections_overlap: { Args: { _a: string; _b: string }; Returns: boolean }
+      simulate_cohort: {
+        Args: { p_label: string; p_student_ids: string[] }
+        Returns: string
+      }
       snapshot_all_faculty_for_term: {
         Args: { p_term: string }
         Returns: number
