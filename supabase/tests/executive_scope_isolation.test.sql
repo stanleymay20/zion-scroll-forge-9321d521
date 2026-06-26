@@ -129,3 +129,5 @@ BEGIN
     RAISE EXCEPTION '% executive-scope isolation check(s) failed', v_fail;
   END IF;
 END $$;
+
+ROLLBACK;
