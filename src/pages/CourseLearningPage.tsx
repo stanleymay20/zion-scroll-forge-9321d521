@@ -308,12 +308,10 @@ export default function CourseLearningPage() {
     );
   }
 
-  return <CourseLearningGuarded
-    courseId={courseId!}
-    courseData={courseData}
-    enrollment={enrollment}
-    navigate={navigate}
-    inner={(
+  return (
+    <CourseLearningGuard courseId={courseId!} courseTitle={courseData.title} navigate={navigate}>
+    <div className="min-h-screen pb-24 md:pb-8">
+
 
 
   return (
