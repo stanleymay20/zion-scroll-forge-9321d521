@@ -9,7 +9,7 @@ export { uid as currentUserId };
 
 export async function getGpa(studentId?: string) {
   const id = studentId ?? (await uid());
-  const { data, error } = await supabase.rpc("compute_student_gpa", { p_student_id: id });
+  const { data, error } = await supabase.rpc("compute_student_gpa", { _student_id: id });
   if (error) throw error;
   const row: any = Array.isArray(data) ? data[0] : data;
   return row

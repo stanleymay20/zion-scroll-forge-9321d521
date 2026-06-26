@@ -17176,15 +17176,10 @@ export type Database = {
         }
       }
       compute_student_balance: { Args: { p_student: string }; Returns: number }
-      compute_student_gpa:
-        | { Args: { _student_id: string; _term_id?: string }; Returns: Json }
-        | {
-            Args: { p_student_id: string }
-            Returns: {
-              gpa: number
-              total_credit_hours: number
-            }[]
-          }
+      compute_student_gpa: {
+        Args: { _student_id: string; _term_id?: string }
+        Returns: Json
+      }
       compute_thesis_defense_outcome: {
         Args: { p_defense_id: string }
         Returns: Database["public"]["Enums"]["thesis_recommendation"]

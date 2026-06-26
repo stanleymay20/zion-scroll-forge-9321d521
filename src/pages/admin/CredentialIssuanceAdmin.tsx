@@ -51,7 +51,7 @@ export default function CredentialIssuanceAdmin() {
 
   const issue = async () => {
     if (!form.student_id || !form.title) { toast.error("Student ID and title required"); return; }
-    const { data: gpaRow } = await supabase.rpc("compute_student_gpa", { p_student_id: form.student_id });
+    const { data: gpaRow } = await supabase.rpc("compute_student_gpa", { _student_id: form.student_id });
     const stats: any = Array.isArray(gpaRow) ? gpaRow[0] : gpaRow;
     const { error } = await supabase.from("issued_credentials").insert({
       student_id: form.student_id,
