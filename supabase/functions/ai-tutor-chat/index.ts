@@ -17,6 +17,7 @@ import {
   type TeachingMode,
   type TutorStudentMemory,
 } from "../_shared/tutor-pedagogy.ts";
+import { logAiOutput } from "../_shared/ai-log.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -164,6 +165,7 @@ serve(async (req) => {
       })),
     ];
 
+    const t0 = Date.now();
     const aiRes = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
@@ -182,26 +184,36 @@ serve(async (req) => {
     );
 
     if (aiRes.status === 429) {
-      return json(
-        { error: "Rate limit exceeded — please wait a moment and try again." },
-        429,
-      );
+      await logAiOutput({ user_id: user.id, feature: "ai_tutor", model: "google/gemini-2.5-pro", provider: "lovable-ai", latency_ms: Date.now()-t0, status: "error", error_message: "rate_limited_429", metadata: { session_id } });
+      return json({ error: "Rate limit exceeded — please wait a moment and try again." }, 429);
     }
     if (aiRes.status === 402) {
-      return json(
-        { error: "AI credits exhausted — please add credits in workspace settings." },
-        402,
-      );
+      await logAiOutput({ user_id: user.id, feature: "ai_tutor", model: "google/gemini-2.5-pro", provider: "lovable-ai", latency_ms: Date.now()-t0, status: "error", error_message: "credits_exhausted_402", metadata: { session_id } });
+      return json({ error: "AI credits exhausted — please add credits in workspace settings." }, 402);
     }
     if (!aiRes.ok) {
       const t = await aiRes.text().catch(() => "");
       console.error("AI gateway error", aiRes.status, t);
+      await logAiOutput({ user_id: user.id, feature: "ai_tutor", model: "google/gemini-2.5-pro", provider: "lovable-ai", latency_ms: Date.now()-t0, status: "error", error_message: `gateway_${aiRes.status}: ${t.slice(0,200)}`, metadata: { session_id } });
       return json({ error: "AI gateway error" }, 502);
     }
 
     const data = await aiRes.json();
     const assistantMessage = data?.choices?.[0]?.message?.content?.trim();
-    if (!assistantMessage) return json({ error: "Empty AI response" }, 502);
+    if (!assistantMessage) {
+      await logAiOutput({ user_id: user.id, feature: "ai_tutor", model: "google/gemini-2.5-pro", provider: "lovable-ai", latency_ms: Date.now()-t0, status: "error", error_message: "empty_response", metadata: { session_id } });
+      return json({ error: "Empty AI response" }, 502);
+    }
+
+    await logAiOutput({
+      user_id: user.id, feature: "ai_tutor", model: "google/gemini-2.5-pro",
+      provider: "lovable-ai", latency_ms: Date.now() - t0,
+      tokens_in: data?.usage?.prompt_tokens ?? null,
+      tokens_out: data?.usage?.completion_tokens ?? null,
+      status: "ok",
+      output_reference: session_id,
+      metadata: { mode: pedagogy.mode, intervene: pedagogy.shouldIntervene },
+    });
 
     // Persist assistant reply + bump counter
     await supabase.from("ai_tutor_messages").insert({
