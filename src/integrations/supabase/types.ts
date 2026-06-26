@@ -877,6 +877,75 @@ export type Database = {
           },
         ]
       }
+      ai_output_log: {
+        Row: {
+          confidence: number | null
+          cost_estimate: number | null
+          created_at: string
+          error_message: string | null
+          feature: string
+          human_review_required: boolean
+          id: string
+          input_reference: string | null
+          latency_ms: number | null
+          metadata: Json
+          model: string | null
+          output_reference: string | null
+          prompt_hash: string | null
+          provider: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          tokens_in: number | null
+          tokens_out: number | null
+          user_id: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          cost_estimate?: number | null
+          created_at?: string
+          error_message?: string | null
+          feature: string
+          human_review_required?: boolean
+          id?: string
+          input_reference?: string | null
+          latency_ms?: number | null
+          metadata?: Json
+          model?: string | null
+          output_reference?: string | null
+          prompt_hash?: string | null
+          provider?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          cost_estimate?: number | null
+          created_at?: string
+          error_message?: string | null
+          feature?: string
+          human_review_required?: boolean
+          id?: string
+          input_reference?: string | null
+          latency_ms?: number | null
+          metadata?: Json
+          model?: string | null
+          output_reference?: string | null
+          prompt_hash?: string | null
+          provider?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_tutor_common_questions: {
         Row: {
           category: string | null
@@ -3330,6 +3399,42 @@ export type Database = {
           verification_result?: Json | null
           verification_status?: string | null
           verification_type?: string | null
+        }
+        Relationships: []
+      }
+      cron_execution_log: {
+        Row: {
+          error_message: string | null
+          finished_at: string | null
+          http_status: number | null
+          id: number
+          job_name: string
+          metadata: Json
+          request_id: number | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          error_message?: string | null
+          finished_at?: string | null
+          http_status?: number | null
+          id?: number
+          job_name: string
+          metadata?: Json
+          request_id?: number | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          error_message?: string | null
+          finished_at?: string | null
+          http_status?: number | null
+          id?: number
+          job_name?: string
+          metadata?: Json
+          request_id?: number | null
+          started_at?: string
+          status?: string
         }
         Relationships: []
       }
@@ -16560,6 +16665,20 @@ export type Database = {
           },
         ]
       }
+      system_health_summary: {
+        Row: {
+          ai_calls_24h: number | null
+          ai_errors_24h: number | null
+          ai_pending_review: number | null
+          as_of: string | null
+          cron_errors_24h: number | null
+          cron_runs_24h: number | null
+          human_reviews_open: number | null
+          integrity_alerts_24h: number | null
+          notifications_24h: number | null
+        }
+        Relationships: []
+      }
       v_admin_overview: {
         Row: {
           total_enrollments: number | null
@@ -16914,6 +17033,17 @@ export type Database = {
         }
         Returns: string
       }
+      cron_log_finish: {
+        Args: {
+          _err?: string
+          _http?: number
+          _id: number
+          _req?: number
+          _status: string
+        }
+        Returns: undefined
+      }
+      cron_log_start: { Args: { _job: string }; Returns: number }
       curriculum_depth_score: { Args: { p_program_id: string }; Returns: Json }
       curriculum_depth_validator: {
         Args: { p_program_id: string }
@@ -16968,6 +17098,18 @@ export type Database = {
       earn_scrollcoin: {
         Args: { p_amount: number; p_desc: string; p_user_id: string }
         Returns: undefined
+      }
+      emit_notification: {
+        Args: {
+          _body: string
+          _metadata?: Json
+          _related_id?: string
+          _related_type?: string
+          _title: string
+          _type: string
+          _user_id: string
+        }
+        Returns: string
       }
       enforce_program_quality_gate: {
         Args: { p_program_id: string }
@@ -17043,6 +17185,26 @@ export type Database = {
         }[]
       }
       get_quiz_answer: { Args: { _question_id: string }; Returns: string }
+      get_system_health: {
+        Args: never
+        Returns: {
+          ai_calls_24h: number | null
+          ai_errors_24h: number | null
+          ai_pending_review: number | null
+          as_of: string | null
+          cron_errors_24h: number | null
+          cron_runs_24h: number | null
+          human_reviews_open: number | null
+          integrity_alerts_24h: number | null
+          notifications_24h: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "system_health_summary"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

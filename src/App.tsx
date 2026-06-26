@@ -535,7 +535,8 @@ const App = () => (
               <Route path="content-generation" element={<ContentGeneration />} />
               <Route path="community" element={<Community />} />
               <Route path="community/users/:userId" element={<UserProfilePage />} />
-              <Route path="scrollcoin" element={<ScrollCoin />} />
+              {/* LEGACY: ScrollCoin terminology deprecated — project uses ScrollGold (SG) exclusively. Redirect preserves any external links. */}
+              <Route path="scrollcoin" element={<Navigate to="/scrollgold-wallet" replace />} />
               <Route path="wallet" element={<Wallet />} />
               <Route path="spiritual-formation" element={<SpiritualFormation />} />
               <Route path="prayer-requests" element={<PrayerRequests />} />
@@ -602,9 +603,11 @@ const App = () => (
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
-              <Route path="courses-detail/:courseId" element={<CourseDetailPage />} />
+              {/* LEGACY: canonical is /courses/:courseId. Redirect kept for old shares. */}
+              <Route path="courses-detail/:courseId" element={<Navigate to="/courses" replace />} />
               <Route path="my-courses" element={<StudentStatusRoute allowedStatuses={["enrolled","active","graduated","alumni"]}><MyCourses /></StudentStatusRoute>} />
-              <Route path="quiz-taking/:quizId" element={<CourseAccessRoute accessLevel="enrolled"><QuizTaking /></CourseAccessRoute>} />
+              {/* LEGACY: canonical is /quiz/:quizId. */}
+              <Route path="quiz-taking/:quizId" element={<Navigate to="/" replace />} />
               <Route path="faculty" element={<RoleRoute allowedRoles={["faculty","admin","superadmin"]}><FacultyDashboard /></RoleRoute>} />
               <Route path="faculty/admin" element={<RoleRoute allowedRoles={["faculty","admin","superadmin"]}><FacultyAdmin /></RoleRoute>} />
               <Route path="faculty/gradebook" element={<RoleRoute allowedRoles={["faculty","admin","superadmin"]}><FacultyGradebookIndex /></RoleRoute>} />
