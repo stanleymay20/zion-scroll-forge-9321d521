@@ -20,6 +20,10 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
+  const t0 = Date.now();
+  let logUserId: string | null = null;
+  let logJobId: string | null = null;
+  let logModel: string | null = null;
 
   try {
     const supabaseClient = createClient(
