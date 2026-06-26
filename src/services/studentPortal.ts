@@ -51,7 +51,7 @@ export async function getMyEnrollments() {
 
 export async function getMyGrades() {
   const id = await uid();
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("grade_records")
     .select("*")
     .eq("student_id", id)
