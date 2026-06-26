@@ -140,6 +140,33 @@ export const getCourseDetail = underChrist(async (courseId: string, userId?: str
  * Enroll user in course with spiritual alignment validation
  */
 export const enrollInCourse = underChrist(async (userId: string, courseId: string) => {
+  // Hard prerequisite enforcement (RPC + audit log) before any insert.
+  const { data: prereq, error: prereqErr } = await (supabase as any).rpc('check_prerequisites', {
+    p_student_id: userId,
+    p_course_id: courseId,
+  });
+  if (prereqErr) throw prereqErr;
+  if (prereq && prereq.eligible === false) {
+    try {
+      await (supabase as any).from('prerequisite_check_logs').insert({
+        student_id: userId,
+        course_id: courseId,
+        eligible: false,
+        missing_prerequisites: prereq.missing_prerequisites ?? [],
+        completed_prerequisites: prereq.completed_prerequisites ?? [],
+        source_page: 'services/courses.enrollInCourse',
+      });
+    } catch (e) { console.warn('[prereq] audit log failed', e); }
+    const titles = (prereq.missing_prerequisites ?? [])
+      .map((p: any) => p.title || p.course_id).join(', ');
+    const err: any = new Error(
+      `You must complete the following prerequisite course(s) before starting this course: ${titles || 'see course details'}.`
+    );
+    err.code = 'PREREQUISITES_NOT_MET';
+    err.missing_prerequisites = prereq.missing_prerequisites;
+    throw err;
+  }
+
   // Check if already enrolled
   const { data: existingEnrollment } = await supabase
     .from('enrollments')
@@ -151,6 +178,7 @@ export const enrollInCourse = underChrist(async (userId: string, courseId: strin
   if (existingEnrollment) {
     throw new Error('Already enrolled in this course');
   }
+
 
   // Get user's current institution
   const { data: profile }: any = await supabase
