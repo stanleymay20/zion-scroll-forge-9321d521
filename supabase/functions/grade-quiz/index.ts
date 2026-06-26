@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { logAiOutput } from "../_shared/ai-log.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +14,7 @@ interface QuizSubmission {
 }
 
 serve(async (req) => {
+  const t0 = Date.now();
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -61,28 +63,50 @@ serve(async (req) => {
       .eq('id', attemptId)
       .single()
 
+    await logAiOutput({
+      user_id: user.id,
+      feature: "grading",
+      model: "rule_based:auto_grade_quiz",
+      provider: "internal",
+      input_reference: attemptId,
+      output_reference: attempt?.id ?? null,
+      confidence: attempt?.passed === true ? 0.95 : attempt?.passed === false ? 0.9 : null,
+      human_review_required: false,
+      latency_ms: Date.now() - t0,
+      metadata: { passed: attempt?.passed ?? null, score: attempt?.score ?? null },
+    });
+
     return new Response(
       JSON.stringify({
         success: true,
         attempt: attempt,
         message: attempt?.passed ? 'Congratulations! You passed the quiz.' : 'Quiz completed. Review your results and try again if possible.'
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
     )
 
   } catch (error) {
     console.error('Quiz grading error:', error)
+    await logAiOutput({
+      feature: "grading",
+      provider: "internal",
+      status: "error",
+      latency_ms: Date.now() - t0,
+      error_message: (error as Error)?.message ?? String(error),
+    });
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        success: false 
+      JSON.stringify({
+        error: (error as Error).message,
+        success: false
       }),
-      { 
+      {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
     )
+  }
+})
   }
 })
