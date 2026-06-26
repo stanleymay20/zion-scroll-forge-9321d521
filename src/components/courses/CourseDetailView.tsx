@@ -227,6 +227,19 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
         </CardHeader>
       </Card>
 
+      {/* Prerequisite gate */}
+      {!isEnrolled && prereq && !prereq.eligible && (
+        <PrerequisiteBlock result={prereq} onRetry={() => refetchPrereq()} />
+      )}
+      {!isEnrolled && prereqError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
+          Unable to verify prerequisites. Enrollment is blocked until we can re-check.{' '}
+          <Button size="sm" variant="outline" onClick={() => refetchPrereq()} className="ml-2">Retry</Button>
+        </div>
+      )}
+
+
+
       {/* Course Content Tabs */}
       <Tabs defaultValue="curriculum" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
