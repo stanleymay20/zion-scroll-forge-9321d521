@@ -240,6 +240,7 @@ const AcademicCatalog = lazy(() => import("./pages/AcademicCatalog"));
 const CoursePreview = lazy(() => import("./pages/CoursePreview"));
 const StudentIdentity = lazy(() => import("./pages/StudentIdentity"));
 const ActivationProgress = lazy(() => import("./pages/admin/ActivationProgress"));
+const SystemHealth = lazy(() => import("./pages/admin/SystemHealth"));
 
 // Route guards (eager — small, used everywhere)
 import {
@@ -546,6 +547,7 @@ const App = () => (
               <Route path="study-groups/:groupId" element={<StudyGroupChat />} />
               <Route path="achievements" element={<Achievements />} />
               <Route path="admin" element={<RoleRoute allowedRoles={["admin","superadmin"]}><AdminDashboard /></RoleRoute>} />
+              <Route path="admin/system-health" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><SystemHealth /></RoleRoute>} />
               <Route path="admin/generation-history" element={<RoleRoute allowedRoles={["admin","superadmin"]}><GenerationHistory /></RoleRoute>} />
               <Route path="admin/content-generation" element={<RoleRoute allowedRoles={["admin","superadmin"]}><ContentGenerationAdmin /></RoleRoute>} />
               <Route path="admin/institutions" element={<RoleRoute allowedRoles={["admin","superadmin"]}><InstitutionsAdmin /></RoleRoute>} />
