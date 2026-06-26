@@ -82,6 +82,7 @@ Deno.serve(async (req) => {
     const run = async () => {
       const results: any[] = [];
       for (const mod of targets) {
+        const tStart = Date.now();
         try {
           const { data: clos } = await supabase
             .from("course_learning_outcomes")
