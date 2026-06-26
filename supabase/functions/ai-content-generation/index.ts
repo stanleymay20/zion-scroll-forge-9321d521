@@ -286,6 +286,21 @@ serve(async (req) => {
       }
     }
 
+    await logAiOutput({
+      user_id: logUserId,
+      feature: "content_gen",
+      provider: "openai",
+      model: logModel,
+      input_reference: logJobId,
+      output_reference: logJobId,
+      tokens_out: tokensUsed,
+      cost_estimate: estimatedCost,
+      confidence: qualityScore ? qualityScore / 10 : null,
+      latency_ms: Date.now() - t0,
+      status: "ok",
+      metadata: { job_type: jobType, quality_score: qualityScore },
+    });
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -295,7 +310,7 @@ serve(async (req) => {
         tokensUsed,
         estimatedCost
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
     )
@@ -303,34 +318,43 @@ serve(async (req) => {
   } catch (error) {
     console.error('Content generation error:', error)
 
-    // Update job status to failed
-    if (req.body) {
+    // Update job status to failed (best-effort; req.json() may already be consumed)
+    if (logJobId) {
       try {
-        const { jobId } = await req.json()
         const supabaseClient = createClient(
           Deno.env.get('SUPABASE_URL') ?? '',
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
-        
         await supabaseClient
           .from('content_generation_jobs')
           .update({
             status: 'failed',
-            error_message: error.message,
+            error_message: (error as Error).message,
             completed_at: new Date().toISOString()
           })
-          .eq('id', jobId)
+          .eq('id', logJobId)
       } catch (updateError) {
         console.error('Error updating failed job:', updateError)
       }
     }
 
+    await logAiOutput({
+      user_id: logUserId,
+      feature: "content_gen",
+      provider: "openai",
+      model: logModel,
+      input_reference: logJobId,
+      status: "error",
+      latency_ms: Date.now() - t0,
+      error_message: (error as Error).message,
+    });
+
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        success: false 
+      JSON.stringify({
+        error: (error as Error).message,
+        success: false
       }),
-      { 
+      {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
