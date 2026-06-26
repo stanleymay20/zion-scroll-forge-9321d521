@@ -14355,16 +14355,16 @@ export type Database = {
           attempts: number
           clo_id: string | null
           confidence: number
-          course_id: string
+          course_id: string | null
           created_at: string
           evidence_count: number
           first_attempt_at: string
           id: string
           last_attempt_at: string
           last_evidence_at: string | null
-          learning_objective_id: string
+          learning_objective_id: string | null
           mastery_level: string | null
-          module_id: string
+          module_id: string | null
           plo_id: string | null
           program_id: string | null
           score_pct: number
@@ -14377,16 +14377,16 @@ export type Database = {
           attempts?: number
           clo_id?: string | null
           confidence?: number
-          course_id: string
+          course_id?: string | null
           created_at?: string
           evidence_count?: number
           first_attempt_at?: string
           id?: string
           last_attempt_at?: string
           last_evidence_at?: string | null
-          learning_objective_id: string
+          learning_objective_id?: string | null
           mastery_level?: string | null
-          module_id: string
+          module_id?: string | null
           plo_id?: string | null
           program_id?: string | null
           score_pct?: number
@@ -14399,16 +14399,16 @@ export type Database = {
           attempts?: number
           clo_id?: string | null
           confidence?: number
-          course_id?: string
+          course_id?: string | null
           created_at?: string
           evidence_count?: number
           first_attempt_at?: string
           id?: string
           last_attempt_at?: string
           last_evidence_at?: string | null
-          learning_objective_id?: string
+          learning_objective_id?: string | null
           mastery_level?: string | null
-          module_id?: string
+          module_id?: string | null
           plo_id?: string | null
           program_id?: string | null
           score_pct?: number
