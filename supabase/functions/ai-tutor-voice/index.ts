@@ -29,6 +29,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  const t0 = Date.now();
 
   try {
     const supabase = createClient(
