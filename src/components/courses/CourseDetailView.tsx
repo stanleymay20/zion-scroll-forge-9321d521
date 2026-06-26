@@ -161,11 +161,17 @@ export const CourseDetailView: React.FC<CourseDetailViewProps> = ({
             </div>
             
             {!isEnrolled ? (
-              <Button onClick={handleEnroll} size="lg">
-                <Play className="h-4 w-4 mr-2" />
-                Enroll Now
+              <Button onClick={handleEnroll} size="lg" disabled={enrollDisabled}>
+                {prereqLoading ? (
+                  <>Checking prerequisites…</>
+                ) : !prereqEligible && prereq ? (
+                  <><Lock className="h-4 w-4 mr-2" /> Prerequisites required</>
+                ) : (
+                  <><Play className="h-4 w-4 mr-2" /> Enroll Now</>
+                )}
               </Button>
             ) : (
+
               <div className="text-right">
                 <div className="text-sm text-muted-foreground mb-1">Progress</div>
                 <div className="text-2xl font-bold">{Math.round(progressPercentage)}%</div>
