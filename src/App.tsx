@@ -119,6 +119,7 @@ const MyDegreePlan = lazy(() => import("./pages/MyDegreePlan"));
 const AdvisorPlanReviews = lazy(() => import("./pages/AdvisorPlanReviews"));
 const CourseRegistration = lazy(() => import("./pages/CourseRegistration"));
 const RegistrationAdmin = lazy(() => import("./pages/admin/RegistrationAdmin"));
+const RegistrarDashboard = lazy(() => import("./pages/admin/RegistrarDashboard"));
 const LibraryCatalog = lazy(() => import("./pages/LibraryCatalog"));
 const LibraryAdmin = lazy(() => import("./pages/admin/LibraryAdmin"));
 const Scholarships = lazy(() => import("./pages/Scholarships"));
