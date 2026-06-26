@@ -5400,6 +5400,45 @@ export type Database = {
           },
         ]
       }
+      executive_scopes: {
+        Row: {
+          created_at: string
+          exec_role: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          revoked_at: string | null
+          scope_id: string
+          scope_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exec_role: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          revoked_at?: string | null
+          scope_id: string
+          scope_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exec_role?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          revoked_at?: string | null
+          scope_id?: string
+          scope_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       external_partnerships: {
         Row: {
           contact_email: string | null
@@ -16837,6 +16876,13 @@ export type Database = {
       }
     }
     Functions: {
+      _exec_scope_sections: {
+        Args: { _scope_id: string; _scope_type: string }
+        Returns: {
+          program_id: string
+          section_id: string
+        }[]
+      }
       accreditation_readiness: { Args: { _program_id: string }; Returns: Json }
       accreditation_readiness_score: {
         Args: { _program_id: string }
@@ -17187,8 +17233,16 @@ export type Database = {
           sequence_order: number
         }[]
       }
+      get_institutional_kpis: {
+        Args: { p_scope_id: string; p_scope_type: string }
+        Returns: Json
+      }
       get_quiz_answer: { Args: { _question_id: string }; Returns: string }
       get_system_health: { Args: never; Returns: Json }
+      has_executive_scope: {
+        Args: { _scope_id: string; _scope_type: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -17233,6 +17287,15 @@ export type Database = {
         Returns: Json
       }
       launch_ops_metrics: { Args: never; Returns: Json }
+      list_my_executive_scopes: {
+        Args: never
+        Returns: {
+          exec_role: string
+          label: string
+          scope_id: string
+          scope_type: string
+        }[]
+      }
       log_quality_action: {
         Args: {
           p_action_type: string
