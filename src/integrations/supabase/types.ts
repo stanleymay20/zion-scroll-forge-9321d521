@@ -17002,6 +17002,14 @@ export type Database = {
           section_id: string
         }[]
       }
+      _provision_synthetic_auth_users: {
+        Args: { p_count: number; p_run_tag: string }
+        Returns: string[]
+      }
+      _run_cohort_simulation_provisioned: {
+        Args: { p_label: string; p_size: number }
+        Returns: Json
+      }
       accreditation_readiness: { Args: { _program_id: string }; Returns: Json }
       accreditation_readiness_score: {
         Args: { _program_id: string }
