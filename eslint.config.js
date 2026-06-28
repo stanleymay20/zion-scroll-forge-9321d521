@@ -10,10 +10,6 @@ export default tseslint.config(
       "dist",
       "backend",
       "backend/**",
-      "comprehensive-src",
-      "comprehensive-src/**",
-      "src-comprehensive",
-      "src-comprehensive/**",
     ],
   },
   {
