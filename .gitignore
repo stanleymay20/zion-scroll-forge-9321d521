@@ -10,7 +10,25 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+build
+coverage
 *.local
+
+# Env files (use .env.example as template)
+.env
+.env.*
+!.env.example
+
+# Platform binaries that should be installed per-developer
+supabase
+supabase.exe
+
+# Bulk content assets — store out-of-tree (Supabase Storage / LFS / separate repo)
+ENG_EBOOKS_M100/
+
+# Lockfiles for package managers we're not standardizing on (root uses npm)
+/bun.lock
+/bun.lockb
 
 # Editor directories and files
 .vscode/*
