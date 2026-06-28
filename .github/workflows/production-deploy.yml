@@ -61,11 +61,15 @@ jobs:
           sarif_file: trivy-results.sarif
 
       - name: Run Snyk security scan advisory
-        if: ${{ secrets.SNYK_TOKEN != '' }}
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: npx snyk test --severity-threshold=critical
+        run: |
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "SNYK_TOKEN not configured; skipping Snyk scan"
+            exit 0
+          fi
+          npx snyk test --severity-threshold=critical
 
   backend-tests:
     name: Backend SQL Tests
