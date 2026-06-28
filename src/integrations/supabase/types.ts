@@ -1672,6 +1672,84 @@ export type Database = {
         }
         Relationships: []
       }
+      background_job_runs: {
+        Row: {
+          context: Json
+          correlation_id: string | null
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          job_name: string
+          rows_processed: number | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          context?: Json
+          correlation_id?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name: string
+          rows_processed?: number | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          context?: Json
+          correlation_id?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name?: string
+          rows_processed?: number | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      backup_verifications: {
+        Row: {
+          backup_snapshot_id: string | null
+          backup_taken_at: string | null
+          checksum: string | null
+          id: string
+          notes: string | null
+          size_bytes: number | null
+          status: string
+          storage_location: string | null
+          verified_at: string
+          verified_by: string | null
+        }
+        Insert: {
+          backup_snapshot_id?: string | null
+          backup_taken_at?: string | null
+          checksum?: string | null
+          id?: string
+          notes?: string | null
+          size_bytes?: number | null
+          status: string
+          storage_location?: string | null
+          verified_at?: string
+          verified_by?: string | null
+        }
+        Update: {
+          backup_snapshot_id?: string | null
+          backup_taken_at?: string | null
+          checksum?: string | null
+          id?: string
+          notes?: string | null
+          size_bytes?: number | null
+          status?: string
+          storage_location?: string | null
+          verified_at?: string
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
       billing_addresses: {
         Row: {
           city: string
@@ -6609,6 +6687,13 @@ export type Database = {
             referencedColumns: ["section_id"]
           },
           {
+            foreignKeyName: "grade_records_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_kpi_course_fill"
+            referencedColumns: ["section_id"]
+          },
+          {
             foreignKeyName: "grade_records_term_id_fkey"
             columns: ["term_id"]
             isOneToOne: false
@@ -7113,6 +7198,66 @@ export type Database = {
           updated_at?: string
           user_explanation?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      incident_log: {
+        Row: {
+          affected_surface: string | null
+          assigned_to: string | null
+          closed_at: string | null
+          context: Json
+          created_at: string
+          detected_via: string | null
+          id: string
+          opened_at: string
+          opened_by: string | null
+          postmortem_url: string | null
+          related_correlation_id: string | null
+          resolution: string | null
+          severity: string
+          status: string
+          summary: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          affected_surface?: string | null
+          assigned_to?: string | null
+          closed_at?: string | null
+          context?: Json
+          created_at?: string
+          detected_via?: string | null
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          postmortem_url?: string | null
+          related_correlation_id?: string | null
+          resolution?: string | null
+          severity: string
+          status?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          affected_surface?: string | null
+          assigned_to?: string | null
+          closed_at?: string | null
+          context?: Json
+          created_at?: string
+          detected_via?: string | null
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          postmortem_url?: string | null
+          related_correlation_id?: string | null
+          resolution?: string | null
+          severity?: string
+          status?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -8854,6 +8999,39 @@ export type Database = {
           },
         ]
       }
+      maintenance_settings: {
+        Row: {
+          banner_message: string | null
+          enabled_at: string | null
+          enabled_by: string | null
+          expected_end: string | null
+          id: boolean
+          is_enabled: boolean
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          banner_message?: string | null
+          enabled_at?: string | null
+          enabled_by?: string | null
+          expected_end?: string | null
+          id?: boolean
+          is_enabled?: boolean
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          banner_message?: string | null
+          enabled_at?: string | null
+          enabled_by?: string | null
+          expected_end?: string | null
+          id?: boolean
+          is_enabled?: boolean
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       matriculation_records: {
         Row: {
           cert_number: string | null
@@ -9477,6 +9655,60 @@ export type Database = {
           student_id?: string
           total_credit_hours?: number
           verification_code?: string
+        }
+        Relationships: []
+      }
+      ops_log: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          context: Json
+          correlation_id: string | null
+          duration_ms: number | null
+          event: string
+          fingerprint: string | null
+          http_status: number | null
+          id: number
+          message: string | null
+          occurred_at: string
+          severity: string
+          source: string
+          span_id: string | null
+          trace_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          context?: Json
+          correlation_id?: string | null
+          duration_ms?: number | null
+          event: string
+          fingerprint?: string | null
+          http_status?: number | null
+          id?: number
+          message?: string | null
+          occurred_at?: string
+          severity?: string
+          source: string
+          span_id?: string | null
+          trace_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          context?: Json
+          correlation_id?: string | null
+          duration_ms?: number | null
+          event?: string
+          fingerprint?: string | null
+          http_status?: number | null
+          id?: number
+          message?: string | null
+          occurred_at?: string
+          severity?: string
+          source?: string
+          span_id?: string | null
+          trace_id?: string | null
         }
         Relationships: []
       }
@@ -11769,6 +12001,39 @@ export type Database = {
         }
         Relationships: []
       }
+      queue_health_snapshots: {
+        Row: {
+          captured_at: string
+          context: Json
+          depth: number
+          dlq_depth: number
+          id: number
+          oldest_age_seconds: number
+          queue_name: string
+          throughput_per_minute: number | null
+        }
+        Insert: {
+          captured_at?: string
+          context?: Json
+          depth?: number
+          dlq_depth?: number
+          id?: number
+          oldest_age_seconds?: number
+          queue_name: string
+          throughput_per_minute?: number | null
+        }
+        Update: {
+          captured_at?: string
+          context?: Json
+          depth?: number
+          dlq_depth?: number
+          id?: number
+          oldest_age_seconds?: number
+          queue_name?: string
+          throughput_per_minute?: number | null
+        }
+        Relationships: []
+      }
       quiz_questions: {
         Row: {
           answer: string | null
@@ -12100,6 +12365,50 @@ export type Database = {
           },
         ]
       }
+      release_events: {
+        Row: {
+          commit_sha: string | null
+          context: Json
+          environment: string
+          id: string
+          notes: string | null
+          released_at: string
+          released_by: string | null
+          rollback_of: string | null
+          version_tag: string
+        }
+        Insert: {
+          commit_sha?: string | null
+          context?: Json
+          environment?: string
+          id?: string
+          notes?: string | null
+          released_at?: string
+          released_by?: string | null
+          rollback_of?: string | null
+          version_tag: string
+        }
+        Update: {
+          commit_sha?: string | null
+          context?: Json
+          environment?: string
+          id?: string
+          notes?: string | null
+          released_at?: string
+          released_by?: string | null
+          rollback_of?: string | null
+          version_tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_events_rollback_of_fkey"
+            columns: ["rollback_of"]
+            isOneToOne: false
+            referencedRelation: "release_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       research_outputs: {
         Row: {
           citation_count: number
@@ -12290,6 +12599,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      restore_drills: {
+        Row: {
+          data_integrity_check: string | null
+          drilled_at: string
+          drilled_by: string | null
+          evidence_url: string | null
+          id: string
+          notes: string | null
+          outcome: string
+          rpo_actual_minutes: number | null
+          rpo_target_minutes: number | null
+          rto_actual_minutes: number | null
+          rto_target_minutes: number | null
+          scenario: string
+        }
+        Insert: {
+          data_integrity_check?: string | null
+          drilled_at?: string
+          drilled_by?: string | null
+          evidence_url?: string | null
+          id?: string
+          notes?: string | null
+          outcome: string
+          rpo_actual_minutes?: number | null
+          rpo_target_minutes?: number | null
+          rto_actual_minutes?: number | null
+          rto_target_minutes?: number | null
+          scenario: string
+        }
+        Update: {
+          data_integrity_check?: string | null
+          drilled_at?: string
+          drilled_by?: string | null
+          evidence_url?: string | null
+          id?: string
+          notes?: string | null
+          outcome?: string
+          rpo_actual_minutes?: number | null
+          rpo_target_minutes?: number | null
+          rto_actual_minutes?: number | null
+          rto_target_minutes?: number | null
+          scenario?: string
+        }
+        Relationships: []
       }
       retention_snapshots: {
         Row: {
@@ -13231,6 +13585,13 @@ export type Database = {
             referencedRelation: "student_schedule_v"
             referencedColumns: ["section_id"]
           },
+          {
+            foreignKeyName: "section_attendance_sessions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_kpi_course_fill"
+            referencedColumns: ["section_id"]
+          },
         ]
       }
       section_enrollments: {
@@ -13302,6 +13663,13 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "student_schedule_v"
+            referencedColumns: ["section_id"]
+          },
+          {
+            foreignKeyName: "section_enrollments_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_kpi_course_fill"
             referencedColumns: ["section_id"]
           },
           {
@@ -13811,6 +14179,13 @@ export type Database = {
             referencedRelation: "student_schedule_v"
             referencedColumns: ["section_id"]
           },
+          {
+            foreignKeyName: "student_advising_flags_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_kpi_course_fill"
+            referencedColumns: ["section_id"]
+          },
         ]
       }
       student_advising_notes: {
@@ -13870,6 +14245,13 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "student_schedule_v"
+            referencedColumns: ["section_id"]
+          },
+          {
+            foreignKeyName: "student_advising_notes_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_kpi_course_fill"
             referencedColumns: ["section_id"]
           },
         ]
@@ -16981,6 +17363,146 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_kpi_accreditation_readiness: {
+        Row: {
+          evidence_items: number | null
+          verification_state: string | null
+        }
+        Relationships: []
+      }
+      vw_kpi_ai_review_backlog: {
+        Row: {
+          oldest_open: string | null
+          request_count: number | null
+          status: string | null
+        }
+        Relationships: []
+      }
+      vw_kpi_course_completion: {
+        Row: {
+          day: string | null
+          distinct_students: number | null
+          modules_completed: number | null
+        }
+        Relationships: []
+      }
+      vw_kpi_course_fill: {
+        Row: {
+          course_id: string | null
+          enrolled_count: number | null
+          fill_rate: number | null
+          seat_capacity: number | null
+          section_id: string | null
+          term_id: string | null
+        }
+        Insert: {
+          course_id?: string | null
+          enrolled_count?: never
+          fill_rate?: never
+          seat_capacity?: number | null
+          section_id?: string | null
+          term_id?: string | null
+        }
+        Update: {
+          course_id?: string | null
+          enrolled_count?: never
+          fill_rate?: never
+          seat_capacity?: number | null
+          section_id?: string | null
+          term_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_sections_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_sections_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "v_course_gradebook"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "course_sections_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_kpi_enrollment: {
+        Row: {
+          day: string | null
+          enrollments_active: number | null
+          enrollments_created: number | null
+          enrollments_dropped: number | null
+          enrollments_waitlisted: number | null
+        }
+        Relationships: []
+      }
+      vw_kpi_faculty_utilization: {
+        Row: {
+          avg_course_count: number | null
+          avg_on_time_post_rate: number | null
+          avg_student_count: number | null
+          distinct_faculty: number | null
+          faculty_rows: number | null
+          week: string | null
+        }
+        Relationships: []
+      }
+      vw_kpi_financial_health: {
+        Row: {
+          billed_total: number | null
+          collected_total: number | null
+          invoices_created: number | null
+          invoices_overdue: number | null
+          invoices_paid: number | null
+          month: string | null
+        }
+        Relationships: []
+      }
+      vw_kpi_graduation_pipeline: {
+        Row: {
+          candidate_count: number | null
+          status: string | null
+        }
+        Relationships: []
+      }
+      vw_kpi_outcome_mastery: {
+        Row: {
+          avg_score_pct: number | null
+          distinct_students: number | null
+          mastery_rows: number | null
+          week: string | null
+        }
+        Relationships: []
+      }
+      vw_kpi_retention: {
+        Row: {
+          avg_completion_rate: number | null
+          avg_retention_rate: number | null
+          month: string | null
+          snapshots: number | null
+        }
+        Relationships: []
+      }
+      vw_kpi_system_health: {
+        Row: {
+          avg_duration_ms: number | null
+          distinct_correlations: number | null
+          error_events: number | null
+          hour: string | null
+          log_events: number | null
+          warn_events: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _csim_stage: {
@@ -17028,6 +17550,7 @@ export type Database = {
         Returns: boolean
       }
       archive_academic_year: { Args: { p_year_id: string }; Returns: boolean }
+      assert_not_maintenance: { Args: never; Returns: undefined }
       assessment_rigor_score: { Args: { p_course_id: string }; Returns: Json }
       award_by_rule: {
         Args: {
@@ -17381,6 +17904,7 @@ export type Database = {
         Args: { p_course_id: string; p_program_id: string }
         Returns: boolean
       }
+      is_maintenance_mode: { Args: never; Returns: boolean }
       is_registration_open: {
         Args: { p_term_id: string; p_user_id: string }
         Returns: boolean
@@ -17444,6 +17968,20 @@ export type Database = {
         Returns: number
       }
       normalize_faculty_name: { Args: { p_name: string }; Returns: string }
+      ops_log_write: {
+        Args: {
+          _context?: Json
+          _correlation_id?: string
+          _duration_ms?: number
+          _event: string
+          _fingerprint?: string
+          _http_status?: number
+          _message?: string
+          _severity?: string
+          _source: string
+        }
+        Returns: number
+      }
       program_outcome_attainment: {
         Args: { _program_id: string }
         Returns: Json
