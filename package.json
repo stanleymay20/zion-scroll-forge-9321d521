@@ -15,7 +15,8 @@
     "lodash": "^4.17.21",
     "socket.io-parser": "^4.2.6",
     "react-router": "^6.30.3",
-    "react-router-dom": "^6.30.3"
+    "react-router-dom": "^6.30.3",
+    "nanoid": "^5.0.9"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
