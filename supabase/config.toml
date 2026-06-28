@@ -132,3 +132,6 @@ verify_jwt = false
 
 [functions.cohort-simulation]
 verify_jwt = false
+
+[functions.kpi-service]
+verify_jwt = false
