@@ -123,6 +123,9 @@ jobs:
       - name: Run faculty office hours suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_office_hours.test.sql
 
+      - name: Run faculty gradebook suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_gradebook.test.sql
+
       - name: Summary
         if: always()
         run: echo "✅ SQL test suite finished"

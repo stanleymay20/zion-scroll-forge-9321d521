@@ -91,6 +91,7 @@ const FacultyAdvising = lazy(() => import("./pages/faculty/FacultyAdvising"));
 const FacultyInterventions = lazy(() => import("./pages/faculty/FacultyInterventions"));
 const FacultyOfficeHours = lazy(() => import("./pages/faculty/FacultyOfficeHours"));
 const OfficeHoursBrowse = lazy(() => import("./pages/OfficeHoursBrowse"));
+const FacultyGradebook = lazy(() => import("./pages/faculty/FacultyGradebook"));
 const StudentPortalLayout = lazy(() => import("./pages/student/StudentPortalLayout"));
 const StudentDashboardSP = lazy(() => import("./pages/student/StudentDashboard"));
 const StudentCoursesSP = lazy(() => import("./pages/student/StudentCourses"));
@@ -631,6 +632,7 @@ const App = () => (
               <Route path="faculty/interventions" element={<RoleRoute allowedRoles={["faculty","admin","superadmin","registrar"]}><FacultyInterventions /></RoleRoute>} />
               <Route path="faculty/office-hours" element={<RoleRoute allowedRoles={["faculty","admin","superadmin"]}><FacultyOfficeHours /></RoleRoute>} />
               <Route path="office-hours" element={<OfficeHoursBrowse />} />
+              <Route path="faculty/section/:sectionId/grid" element={<RoleRoute allowedRoles={["faculty","admin","superadmin"]}><FacultyGradebook /></RoleRoute>} />
               <Route path="admin/admissions" element={<RoleRoute allowedRoles={["admin","superadmin"]}><AdmissionsReview /></RoleRoute>} />
               <Route path="alumni" element={<AlumniPortal />} />
               

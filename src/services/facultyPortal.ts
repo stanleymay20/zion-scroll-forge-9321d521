@@ -89,6 +89,54 @@ export async function submitCourseGrade(opts: {
   return data as string;
 }
 
+// Sprint D3.4 — bulk publish wrapper for the inline gradebook UI.
+// Calls the new gradebook_publish_grades RPC which is itself a thin
+// wrapper around submit_course_grade (one transaction, shared
+// correlation_id, ops_log batch).
+export type BulkPublishMode = 'publish' | 'provisional' | 'finalize';
+export type BulkPublishRow = {
+  studentId: string;
+  percentage: number;
+  notes?: string;
+  finalize?: boolean; // honored only in 'publish' mode
+};
+export type BulkPublishResult = {
+  correlation_id: string;
+  section_id: string;
+  publish_mode: BulkPublishMode;
+  total: number;
+  published: number;
+  rows: { student_id: string; grade_id: string; finalize: boolean }[];
+};
+
+export async function gradebookPublishGrades(opts: {
+  sectionId: string;
+  rows: BulkPublishRow[];
+  mode?: BulkPublishMode;
+}): Promise<BulkPublishResult> {
+  const payload = opts.rows.map((r) => ({
+    student_id: r.studentId,
+    percentage: r.percentage,
+    notes: r.notes ?? null,
+    finalize: r.finalize ?? false,
+  }));
+  const { data, error } = await (supabase as any).rpc('gradebook_publish_grades', {
+    _section_id: opts.sectionId,
+    _rows: payload,
+    _publish_mode: opts.mode ?? 'publish',
+  });
+  if (error) throw error;
+  await writeAudit({
+    action: 'gradebook_bulk_published',
+    target_kind: 'section',
+    target_id: opts.sectionId,
+    section_id: opts.sectionId,
+    payload: { mode: opts.mode ?? 'publish', count: opts.rows.length,
+               correlation_id: (data as any)?.correlation_id ?? null },
+  });
+  return data as BulkPublishResult;
+}
+
 export async function getSectionGrades(sectionId: string) {
   const { data, error } = await supabase
     .from('grade_records')

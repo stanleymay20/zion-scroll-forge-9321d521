@@ -561,3 +561,112 @@ N/A Executive scope isolation          (no change)
 
 ### Next
 Continue with whichever is most strategic next: D3.4 (bulk grading grid), D3.5 (workload planner), or move to D4 (Registrar Operations). All three D3.x sub-sprints landed (D3.1 + D3.2 + D3.3) deliver the pieces D4 was waiting on — term rollover RPC, the KPI envelope as the analytics contract, and a working faculty operations surface that doesn't depend on schema cleanups still pending.
+
+---
+
+## Sprint D3.4 — Faculty Gradebook & Assessment Workspace (spine)
+
+**Status:** ✅ Closed (spine); D3.4.2 (rubric editor + AI suggestions) and D3.4.3 (student feedback view) explicitly deferred.
+**Date:** 2026-06-29
+**Migration:** `supabase/migrations/20260629150000_sprint_d3_4_faculty_gradebook.sql`
+**Test:** `supabase/tests/faculty_gradebook.test.sql` (12 BLOCKING tests, both workflows)
+**Page:** `src/pages/faculty/FacultyGradebook.tsx` (single file with 6 co-located components)
+**Service:** `src/services/facultyPortal.ts` — added `gradebookPublishGrades` + types
+**Route:** `/faculty/section/:sectionId/grid` (faculty/admin/superadmin)
+**ADR:** Reuses ADR-0001 (no new architectural decisions — D3.4 adds a single wrapper RPC + a rubric scaffold; every grade write still flows through the existing `submit_course_grade` engine).
+
+### Guiding-rule compliance (per spec)
+> "Do not modify the validated academic engine except through existing RPCs."
+
+No academic-engine change. All grade writes — including the new bulk publish path — call `public.submit_course_grade(...)`. The new `gradebook_publish_grades` RPC is **strictly a thin batch wrapper**: it iterates the input array, calls `submit_course_grade` per row, and emits ops_log events. It contains no role check (defers to the engine), no letter-grade computation (defers), no grade_records write (defers). If `submit_course_grade` errors on any row, the entire batch rolls back inside the wrapper's transaction.
+
+### Delivered
+
+**Schema (new):**
+- `gradebook_publish_grades(_section_id uuid, _rows jsonb, _publish_mode text)` → `jsonb` — bulk wrapper RPC. Modes: `publish` (per-row finalize honored), `provisional` (forces finalize=false), `finalize` (forces finalize=true). Returns `{correlation_id, section_id, publish_mode, total, published, rows: [{student_id, grade_id, finalize}, …]}`. Emits one `gradebook.bulk_publish_started` event, one `grade.published` per row, one `gradebook.bulk_published` summary — all sharing `correlation_id`.
+- `grade_rubrics`, `grade_rubric_criteria`, `grade_rubric_scores` — rubric scaffold per spec section 5 (criterion / weight / score / feedback). RLS-protected: faculty/admin can manage rubrics + criteria; **scores have admin-only direct-write RLS so a future D3.4.2 RPC `rubric_compute_total` becomes the only path that maps rubric totals into `grade_records`** (preventing parallel grade systems per spec). Students can SELECT their own score rows.
+
+**Existing RPCs reused (no duplication):**
+- `public.submit_course_grade(_student_id, _section_id, _percentage, _notes, _finalize)` — called by both single-cell saves and the bulk wrapper. Engine handles RBAC, attempt tracking, letter-grade computation, `is_final` / `finalized_at`, `posted_at`, `notes`, `source='manual'`.
+- `public.compute_letter_grade(_pct)` — invoked transitively via `submit_course_grade`.
+- `writeAudit(...)` (existing facultyPortal wrapper) — fires alongside both single and bulk calls.
+
+**UI** — `src/pages/faculty/FacultyGradebook.tsx` (one file, 6 components):
+- **GradeGrid** — roster rows × percentage column, inline editing, keyboard navigation (Enter saves, Shift+Enter saves & finalizes, ArrowUp/Down navigates rows), per-row state badge (idle / dirty / saving / saved / error), 0–100 validation, disabled when `is_final=true`.
+- **BulkActionsBar** — top-right, shows unsaved-row count, three buttons: Provisional save all / Publish all pending / Finalize.
+- **PublishDialog** — confirms mode, shows post-publish summary card (mode, section, correlation_id, audit pointer).
+- **FeedbackDrawer** — per-student notes editor; notes persisted via the same `submit_course_grade` call (existing `_notes` parameter). Disabled when `is_final`.
+- **AssessmentEditor** — scaffold: lists `assignments` rows for the section (read-only). Full create/edit/archive/weight/lock editor deferred to **D3.4.2** because `assignments` has 3 competing migration definitions; building the editor before schema unification would shape it to one definition and break the others.
+- **RubricPanel** — scaffold: read-only display of rubrics + criteria. Full editor + `rubric_compute_total` → `grade_records` RPC deferred to **D3.4.2**.
+
+Single-file structure was a deliberate choice — every component on a faculty member's gradebook screen is mutually dependent (shared drafts state, shared invalidation queue, shared RPC). One file keeps the spine reviewable.
+
+### SQL regression — `supabase/tests/faculty_gradebook.test.sql`
+12 BLOCKING tests inside BEGIN/ROLLBACK. Same env patterns as D3.1/D3.3 (DISABLE TRIGGER ALL, drop legacy user_roles CHECK).
+
+| # | Asserts |
+|---|---|
+| 1 | `gradebook_publish_grades` function exists |
+| 2 | Rubric scaffold tables have the spec columns (criterion / weight / score / feedback) |
+| 3 | `ai_output_log` contract present (D3.4.3 writes here; verify shape now) |
+| 4 | Validates section_id + rows-must-be-array |
+| 5 | Rejects unknown publish_mode |
+| 6 | Empty rows array OK; row missing required fields rejected |
+| 7 | ops_log batch: start + complete share `correlation_id` |
+| 8 | `grade_rubric_scores` direct insert blocked for faculty (RLS forces D3.4.2 RPC) |
+| 9 | `grade_rubric_scores` SELECT visible to student-self |
+| 10 | `grade_rubric_scores` SELECT hidden from unrelated student |
+| 11 | Requires authentication (`auth_required` exception) |
+| 12 | Returns documented envelope shape (`{correlation_id, section_id, publish_mode, total, published, rows}`) |
+
+The suite is **structural / contract-focused**: it verifies the new wrapper RPC's argument validation, return shape, RLS on the new scaffold tables, and ops_log batch contract. It deliberately does **not** insert fixture sections / faculty assignments / grade rows to exercise the live engine end-to-end — that path depends on `course_sections` + `faculty_teaching_assignments` + `grade_records` schema drift that's well-documented to differ between CI and production. Once a regression env runs the canonical schema fully, D3.4.x can add data-asserting tests for: rollback-on-failure, finalized-immutability, AI suggestion logging, notification triggers.
+
+Wired into both `backend-sql-tests.yml` and `production-deploy.yml` as BLOCKING.
+
+### Audit
+| Layer | Where it writes |
+|---|---|
+| Per-row grade write | `submit_course_grade` engine writes `grade_records` (with `graded_by`, `graded_at`, `posted_by`, `posted_at`, `is_final`, `finalized_at`, `attempt_number`); existing engine triggers fire on `academic_records_audit`. |
+| Single-cell UI save | Calls `submitCourseGrade` which also writes `writeAudit('grade_submitted'\|'grade_finalized')` to ops_log via existing facultyPortal helper. |
+| Bulk UI save | Calls `gradebookPublishGrades` service wrapper which (a) invokes the RPC (batch + per-row ops_log events with shared `correlation_id`) and (b) writes `writeAudit('gradebook_bulk_published')` separately so the UI-side action is independently auditable from the RPC-side emissions. |
+| AI suggestions (D3.4.3) | `ai_output_log` contract verified in test #3; D3.4.3 will add the writer + the suggestion-approval UI. |
+
+### Sprint exit checklist
+
+```text
+✅ Migrations applied                  (single new file with own D1 substrate shims)
+✅ Types regenerated                   (next regen pulls gradebook_publish_grades; UI uses (supabase as any).rpc in the meantime)
+✅ Typecheck clean                     (npx tsc --noEmit -p tsconfig.app.json → 0 errors)
+✅ SQL regression suite passes         (academic_spine + term_rollover + faculty_analytics_kpis + faculty_office_hours + faculty_gradebook)
+N/A Lifecycle behavior suite           (no behavior change — every write is through the existing engine)
+N/A Lifecycle invariants               (no invariant change)
+N/A Executive scope isolation          (no executive-scope change)
+✅ UI smoke verified                   (single-cell save, dirty/saving/saved badges, keyboard nav, bulk publish dialog with correlation_id summary — all paths exercise the new wrapper or the existing engine; no React-side grading logic)
+✅ RLS verified                        (rubric tables: 5 enumerated policies; matrix walked above; grade_rubric_scores DIRECT writes blocked even for faculty)
+✅ Performance regression              (bulk wrapper iterates N rows in one transaction; submit_course_grade is the per-row hot path and unchanged)
+✅ Documentation updated               (this entry + COMMENT ON on the wrapper RPC and the 3 rubric tables)
+✅ ADR recorded                        (no new ADR — reuses ADR-0001)
+✅ D0 governance gate signed           (no academic-engine modification; new tables disjoint from spine; new RPC is a thin wrapper)
+✅ Readiness delta published           (below)
+```
+
+### Readiness delta
+- **Faculty productivity:** ↑↑ — inline grid replaces the per-student-dialog workflow; keyboard nav lets a faculty member grade a 20-student roster in a single sitting.
+- **Batch atomicity:** ↑ — bulk publish is single-transaction with shared `correlation_id`. Either all rows land or none do.
+- **Auditability:** ↑↑ — every bulk publish leaves a 3-tier audit trail (UI-side `writeAudit`, RPC-side ops_log batch with correlation_id, engine-side `academic_records_audit` per row).
+- **Architectural invariant held:** ↑ — third KPI envelope and second wrapper-RPC consumer (after D3.1 + D3.2 + D3.3 set the pattern). Engine integrity untouched.
+
+### Out of scope (deferred to numbered follow-ups)
+- **D3.4.2** — Rubric editor + `rubric_compute_total(rubric_id, student_id)` RPC that maps rubric totals into `grade_records` via `submit_course_grade`. Also: AssessmentEditor full CRUD (create / edit / archive / weight / lock) — blocked on `assignments` schema unification (D4 territory).
+- **D3.4.3** — AI suggestion plumbing (edge function for draft-feedback / rubric-comments / plagiarism-indicators / grading-inconsistencies, with `ai_output_log` writer + faculty-approval UI gating every suggestion before any `submit_course_grade` call).
+- **D3.4.4** — Student feedback view (`/student/section/:sectionId/grades` showing grade + rubric + lecturer comments + optional AI explanation, read-only after release).
+- **AssessmentEditor full CRUD** — see D3.4.2 above.
+
+### Next
+After D3.4.2/.3/.4 (or in parallel), **D3.5 (Faculty Workload Planner)** is the last D3.x slice before the Faculty domain is considered complete, then **D4 (Registrar Operations)** can begin. All three vertical slices already shipped (D3.1, D3.2, D3.3) plus the gradebook spine (D3.4) give D4 the audit + atomicity + UI patterns to follow.
+
+### Remaining D3 work
+- D3.4.2: Rubric + AssessmentEditor full editors
+- D3.4.3: AI grading-assistance suggestions
+- D3.4.4: Student feedback view
+- D3.5: Faculty Workload Planner
