@@ -62,9 +62,12 @@ DECLARE
   v_corr   uuid := COALESCE(p_correlation_id, gen_random_uuid());
 BEGIN
   -- 1. AuthZ — admin / superadmin / registrar only
-  IF NOT (public.has_role(v_actor,'admin'::public.app_role)
-          OR public.has_role(v_actor,'superadmin'::public.app_role)
-          OR public.has_role(v_actor,'registrar'::public.app_role)) THEN
+  -- Note: literal text args (no ::app_role cast) for compatibility with
+  -- both has_role(uuid,text,uuid) and has_role(uuid,app_role) signatures
+  -- — mirrors the pattern used by existing course_sections RLS policies.
+  IF NOT (public.has_role(v_actor,'admin')
+          OR public.has_role(v_actor,'superadmin')
+          OR public.has_role(v_actor,'registrar')) THEN
     RAISE EXCEPTION 'forbidden'
       USING HINT = 'clone_section_for_term requires admin, superadmin, or registrar.';
   END IF;
@@ -168,9 +171,12 @@ DECLARE
   v_new_id uuid;
 BEGIN
   -- 1. AuthZ
-  IF NOT (public.has_role(v_actor,'admin'::public.app_role)
-          OR public.has_role(v_actor,'superadmin'::public.app_role)
-          OR public.has_role(v_actor,'registrar'::public.app_role)) THEN
+  -- Note: literal text args (no ::app_role cast) for compatibility with
+  -- both has_role(uuid,text,uuid) and has_role(uuid,app_role) signatures
+  -- — mirrors the pattern used by existing course_sections RLS policies.
+  IF NOT (public.has_role(v_actor,'admin')
+          OR public.has_role(v_actor,'superadmin')
+          OR public.has_role(v_actor,'registrar')) THEN
     RAISE EXCEPTION 'forbidden'
       USING HINT = 'rollover_term requires admin, superadmin, or registrar.';
   END IF;
