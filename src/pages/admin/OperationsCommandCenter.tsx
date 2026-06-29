@@ -210,23 +210,6 @@ const useBackups = () =>
     },
   });
 
-const useDrills = () =>
-  useQuery({
-    queryKey: ["ops", "drills"],
-    refetchInterval: 120_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("restore_drills")
-        .select("*")
-        .order("drilled_at", { ascending: false })
-        .limit: undefined as never, // placeholder removed below
-      } as any).limit?.(25) ?? { data: [], error: null };
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-// (override useDrills cleanly — the inline trick above is replaced)
 function useDrillsClean() {
   return useQuery({
     queryKey: ["ops", "drills"],
