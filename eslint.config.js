@@ -8,8 +8,8 @@ export default tseslint.config(
   {
     ignores: [
       "dist",
-      "backend",
-      "backend/**",
+      "archive",
+      "archive/**",
     ],
   },
   {
