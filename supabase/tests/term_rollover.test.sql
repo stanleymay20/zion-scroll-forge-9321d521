@@ -14,6 +14,14 @@
 
 BEGIN;
 
+-- The CI env may have a handle_new_user() trigger on auth.users that
+-- writes into public.profiles using a column shape that differs from
+-- this environment's profiles table (e.g., missing `email`). Since
+-- we're seeding fixture auth.users rows only to satisfy FK targets,
+-- disable all auth.users triggers for the duration of this transaction.
+-- ROLLBACK at suite end restores them.
+ALTER TABLE auth.users DISABLE TRIGGER ALL;
+
 DROP TABLE IF EXISTS _suite_results;
 CREATE TEMP TABLE _suite_results(test_no int, name text, status text, detail text);
 
