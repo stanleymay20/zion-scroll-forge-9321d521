@@ -19,8 +19,9 @@ coverage
 .env.*
 !.env.example
 
-# Platform binaries that should be installed per-developer
-supabase
+# Platform binaries that should be installed per-developer.
+# (The bare `supabase` line previously ignored the whole supabase/ project
+# directory — only the .exe needs to be ignored.)
 supabase.exe
 
 # Bulk content assets — store out-of-tree (Supabase Storage / LFS / separate repo)

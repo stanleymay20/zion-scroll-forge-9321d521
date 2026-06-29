@@ -34,7 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Activity, AlertTriangle, Wrench, Server, Database, BookOpen,
   RefreshCw, ShieldAlert, GitBranch, HardDrive, ClipboardList,
-  CheckCircle2, XCircle, Clock,
+  CheckCircle2, XCircle, Clock, Repeat,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -897,6 +897,228 @@ const DrillsPanel: React.FC = () => {
   );
 };
 
+// ---------------------------------------------------------------------------
+// Term Rollover — D3.1 RPC consumer
+// ---------------------------------------------------------------------------
+
+type RolloverSummary = {
+  correlation_id: string;
+  source_term: string;
+  target_term: string;
+  total: number;
+  cloned: number;
+  skipped_existing: number;
+  only_active: boolean;
+};
+
+const useDistinctTermLabels = () =>
+  useQuery({
+    queryKey: ["ops", "term_labels"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("course_sections")
+        .select("term_label")
+        .order("term_label", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      const set = new Set<string>();
+      for (const r of (data ?? []) as { term_label: string }[]) {
+        if (r.term_label) set.add(r.term_label);
+      }
+      return Array.from(set);
+    },
+  });
+
+const TermRolloverPanel: React.FC = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const labelsQ = useDistinctTermLabels();
+  const [source, setSource] = useState("");
+  const [target, setTarget] = useState("");
+  const [onlyActive, setOnlyActive] = useState(true);
+  const [summary, setSummary] = useState<RolloverSummary | null>(null);
+
+  // Preview: what's in the source, what already exists in the target.
+  const previewQ = useQuery({
+    queryKey: ["ops", "rollover_preview", source, target, onlyActive],
+    enabled: !!source && !!target && source !== target,
+    queryFn: async () => {
+      const [srcRes, tgtRes] = await Promise.all([
+        supabase
+          .from("course_sections")
+          .select("id, course_code, section_code, active")
+          .eq("term_label", source)
+          .limit(500),
+        supabase
+          .from("course_sections")
+          .select("course_code, section_code")
+          .eq("term_label", target)
+          .limit(500),
+      ]);
+      if (srcRes.error) throw srcRes.error;
+      if (tgtRes.error) throw tgtRes.error;
+      const tgtKeys = new Set(
+        (tgtRes.data ?? []).map((r: any) => `${r.course_code}|${r.section_code}`)
+      );
+      const filtered = (srcRes.data ?? []).filter(
+        (r: any) => !onlyActive || r.active === true
+      );
+      return filtered.map((r: any) => ({
+        ...r,
+        already_in_target: tgtKeys.has(`${r.course_code}|${r.section_code}`),
+      }));
+    },
+  });
+
+  const run = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await (supabase as any).rpc("rollover_term", {
+        p_source_term_label: source,
+        p_target_term_label: target,
+        p_only_active: onlyActive,
+      });
+      if (error) throw error;
+      await auditedWrite("term.rollover_invoked", {
+        source_term: source,
+        target_term: target,
+        only_active: onlyActive,
+        correlation_id: (data as any)?.correlation_id ?? null,
+      });
+      return data as RolloverSummary;
+    },
+    onSuccess: (data) => {
+      setSummary(data);
+      qc.invalidateQueries({ queryKey: ["ops", "rollover_preview"] });
+      qc.invalidateQueries({ queryKey: ["ops", "term_labels"] });
+      toast({
+        title: "Rollover complete",
+        description: `Cloned ${data.cloned} / skipped ${data.skipped_existing} of ${data.total}`,
+      });
+    },
+    onError: (e: any) =>
+      toast({ title: "Rollover failed", description: e.message, variant: "destructive" }),
+  });
+
+  const sourceLabels = labelsQ.data ?? [];
+  const willClone =
+    previewQ.data?.filter((r: any) => !r.already_in_target).length ?? 0;
+  const willSkip =
+    previewQ.data?.filter((r: any) => r.already_in_target).length ?? 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Term Rollover</CardTitle>
+        <CardDescription>
+          Bulk-clone <code>course_sections</code> from one <code>term_label</code> to
+          another via <code>rollover_term()</code>. Atomic, idempotent, audited
+          (events <code>term.rollover_started</code>, <code>section.cloned</code>,
+          <code>section.clone_skipped_existing</code>, <code>term.rolled_over</code>
+          share a correlation_id). Maintenance-mode aware; admin / superadmin /
+          registrar only.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <Label>Source term_label</Label>
+            <Select value={source} onValueChange={setSource}>
+              <SelectTrigger><SelectValue placeholder="Pick source term…" /></SelectTrigger>
+              <SelectContent>
+                {sourceLabels.map((l) => (
+                  <SelectItem key={l} value={l}>{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Target term_label</Label>
+            <Input
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              placeholder="e.g. FA2026 or Fall-2026"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Free text — current contract is per <code>course_sections.term_label</code>.
+              Unifying with <code>academic_terms.code</code> is on the D4 plan.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Switch checked={onlyActive} onCheckedChange={setOnlyActive} />
+          <span className="text-sm">
+            Only active sections{" "}
+            <span className="text-muted-foreground">
+              (sections with <code>active = false</code> are skipped from the source)
+            </span>
+          </span>
+        </div>
+
+        {source && target && source !== target && (
+          <div className="border rounded-md p-3 text-sm">
+            <div className="font-medium mb-1">Preview</div>
+            {previewQ.isLoading ? (
+              <p className="text-muted-foreground">Loading preview…</p>
+            ) : previewQ.error ? (
+              <p className="text-destructive">
+                Preview failed: {(previewQ.error as Error).message}
+              </p>
+            ) : (
+              <>
+                <p>
+                  Source has{" "}
+                  <Badge variant="secondary">{previewQ.data?.length ?? 0}</Badge>{" "}
+                  candidate section(s). Will clone{" "}
+                  <Badge variant="default">{willClone}</Badge> and skip{" "}
+                  <Badge variant="outline">{willSkip}</Badge> already in target.
+                </p>
+                {willSkip > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Skipped means the target already has a section with the same
+                    (course_code, section_code).
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3">
+          <Button
+            disabled={!source || !target || source === target || run.isPending}
+            onClick={() => run.mutate()}
+          >
+            <Repeat className="h-4 w-4 mr-2" />
+            {run.isPending ? "Running…" : "Run rollover"}
+          </Button>
+          {source === target && source !== "" && (
+            <span className="text-xs text-destructive">
+              Source and target must differ.
+            </span>
+          )}
+        </div>
+
+        {summary && (
+          <div className="border rounded-md p-3 text-sm space-y-1">
+            <div className="font-medium">Last result</div>
+            <div>
+              <Badge variant="default">{summary.cloned} cloned</Badge>{" "}
+              <Badge variant="outline">{summary.skipped_existing} skipped</Badge>{" "}
+              <Badge variant="secondary">{summary.total} total</Badge>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {summary.source_term} → {summary.target_term} ·{" "}
+              correlation_id <code>{summary.correlation_id}</code>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const RUNBOOK_REPO_BASE =
   "https://github.com/stanleymay20/zion-scroll-forge-9321d521/blob/main/docs/runbooks";
 
@@ -976,6 +1198,7 @@ export const OperationsCommandCenter: React.FC = () => {
           <TabsTrigger value="releases"><GitBranch className="h-4 w-4 mr-1" />Releases</TabsTrigger>
           <TabsTrigger value="backups"><HardDrive className="h-4 w-4 mr-1" />Backups</TabsTrigger>
           <TabsTrigger value="drills"><ShieldAlert className="h-4 w-4 mr-1" />Restore Drills</TabsTrigger>
+          <TabsTrigger value="rollover"><Repeat className="h-4 w-4 mr-1" />Term Rollover</TabsTrigger>
           <TabsTrigger value="runbooks"><BookOpen className="h-4 w-4 mr-1" />Runbooks</TabsTrigger>
         </TabsList>
         <TabsContent value="incidents"><IncidentsPanel /></TabsContent>
@@ -986,6 +1209,7 @@ export const OperationsCommandCenter: React.FC = () => {
         <TabsContent value="releases"><ReleasesPanel /></TabsContent>
         <TabsContent value="backups"><BackupsPanel /></TabsContent>
         <TabsContent value="drills"><DrillsPanel /></TabsContent>
+        <TabsContent value="rollover"><TermRolloverPanel /></TabsContent>
         <TabsContent value="runbooks"><RunbooksPanel /></TabsContent>
       </Tabs>
 

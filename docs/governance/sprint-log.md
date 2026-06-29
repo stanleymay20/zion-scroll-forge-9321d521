@@ -181,3 +181,151 @@ D2's original exit checklist said *"UI smoke verified"* and *"All actions audit-
 
 ### Next
 Proceed to **Sprint D3 — Faculty Operations** (office hours editor + booking, bulk grading grid, `clone_section_for_term` + `rollover_term` RPCs, workload planner, faculty analytics — consuming the same D1 substrate; no new operational logic).
+
+---
+
+## Sprint D3.1 — Term Rollover RPCs (D3 vertical slice)
+
+**Status:** ✅ Closed
+**Date:** 2026-06-29
+**Migration:** `supabase/migrations/20260629120000_sprint_d3_1_term_rollover.sql`
+**Test:** `supabase/tests/term_rollover.test.sql` (wired into both CI workflows, BLOCKING)
+**UI:** `OperationsCommandCenter.tsx` → new "Term Rollover" tab
+**ADR:** Reuses ADR-0001 (no new substrate; D3.1 adds two SECURITY DEFINER RPCs that consume D1's `ops_log_write` + `assert_not_maintenance`).
+
+### Scope (per approved decision)
+This sprint deliberately scopes D3 to just the two RPCs the Registrar
+needs to roll a term's `course_sections` forward. The other D3
+deliverables (office hours editor/booking, bulk grading grid, workload
+planner, faculty analytics refactor) are deferred to D3.2–D3.5 because
+each requires its own architectural decisions and substantial UI work
+that wouldn't fit cleanly in one session. D3.1 is the production-quality
+vertical slice that directly unblocks **D4 — Registrar Operations**.
+
+### Delivered
+
+**`clone_section_for_term(p_source_section_id uuid, p_target_term_label text, p_overrides jsonb, p_correlation_id uuid)` → `uuid`**
+- SECURITY DEFINER, search_path locked to `public`.
+- Authorizes admin / superadmin / registrar via `has_role(...)`.
+- Calls `assert_not_maintenance()` so writes pause during a maintenance
+  window for non-admin callers.
+- `FOR UPDATE` lock on the source row prevents concurrent mutation
+  mid-clone.
+- Copies term-invariant fields (`course_code`, `course_title`,
+  `section_code`, `instructor_user_id`, `seat_capacity`,
+  `waitlist_capacity`, `meeting_info`, `credit_hours`, `active`) to the
+  new term_label.
+- Applies a `jsonb` `p_overrides` parameter for instructor / capacity
+  reassignment without two-step UPDATE.
+- Idempotency enforced by the pre-existing
+  `UNIQUE (term_label, course_code, section_code)` index — a duplicate
+  raises SQLSTATE 23505 and rolls back the call.
+- Writes one `ops_log` row tagged `event = 'section.cloned'`,
+  `source = 'rpc'`, with a correlation_id (caller-supplied or new) for
+  batch traceability.
+- Deliberately does **not** copy `section_enrollments`, grades, or
+  submissions — those are term-scoped.
+
+**`rollover_term(p_source_term_label text, p_target_term_label text, p_only_active boolean)` → `jsonb`**
+- Same auth + maintenance gates as `clone_section_for_term`.
+- Generates one batch `correlation_id` and emits a
+  `term.rollover_started` event before iterating.
+- For each candidate section in the source term, either:
+  - emits `section.clone_skipped_existing` if a target counterpart
+    already exists (matched by `(course_code, section_code)`), or
+  - calls `clone_section_for_term(...)` and increments the cloned counter.
+- Emits a final `term.rolled_over` event with counts + arguments.
+- Returns a structured `jsonb` summary:
+  `{correlation_id, source_term, target_term, only_active, total, cloned, skipped_existing}`.
+- **Atomicity:** the entire rollover runs in the caller's transaction.
+  Any per-section failure (e.g., constraint violation) rolls back the
+  whole batch, so the source / target term states never split.
+- **Idempotency:** a clean re-run after a successful rollover returns
+  `cloned = 0`, `skipped_existing = total`.
+
+### SQL regression suite — `supabase/tests/term_rollover.test.sql`
+Ten tests, BEGIN/ROLLBACK wrapper, recorded in `_suite_results`, fails
+fast on first regression via final `RAISE EXCEPTION`. Wired into both
+`backend-sql-tests.yml` and `production-deploy.yml`.
+
+| # | Asserts |
+|---|---|
+| 1 | `clone_section_for_term` clones shape correctly + writes `section.cloned` event |
+| 2 | `clone_section_for_term` does NOT carry `section_enrollments` |
+| 3 | `clone_section_for_term` rejects a duplicate target row (UNIQUE constraint) |
+| 4 | `clone_section_for_term` applies `p_overrides` (instructor + capacity) |
+| 5 | `rollover_term` returns correct summary with cloned/skipped/total |
+| 6 | `rollover_term` is idempotent on re-run |
+| 7 | `rollover_term` emits correlated `started` + per-section + `complete` events |
+| 8 | `rollover_term` rejects same source/target |
+| 9 | `rollover_term` forbids student-role callers |
+| 10 | Maintenance mode blocks registrar but admin bypasses |
+
+Defensive setup: the suite drops the legacy `user_roles_role_check`
+CHECK constraint inside its transaction so it can insert a `registrar`
+fixture row. The constraint is restored on the suite's `ROLLBACK`.
+
+### UI — `OperationsCommandCenter` → "Term Rollover" tab
+- 10th tab between Restore Drills and Runbooks.
+- Source `term_label` populated from distinct values in
+  `course_sections.term_label` (no schema change required).
+- Target `term_label` free text — current contract is per
+  `course_sections.term_label`; unifying with `academic_terms.code` is
+  on the D4 plan and called out in the panel's help text.
+- Live preview shows total candidates, will-clone count, will-skip
+  count (computed client-side over the two `course_sections` queries —
+  no business logic, just set difference).
+- "Run rollover" invokes the RPC. Result summary card shows
+  cloned / skipped / total + the `correlation_id` so an operator can
+  immediately go to ops_log and reconstruct the batch.
+- `auditedWrite('term.rollover_invoked', ...)` writes an extra
+  UI-side audit row so the admin-ops-ui surface owns its invocation
+  separately from the RPC's own emissions.
+
+### Sprint exit checklist
+
+```text
+✅ Migrations applied                  (single migration; idempotent CREATE OR REPLACE FUNCTION)
+✅ Types regenerated                   (Supabase generator will pick up new RPC signatures on next regen; UI uses `as any` rpc cast in the meantime)
+✅ Typecheck clean                     (`npx tsc --noEmit -p tsconfig.app.json` → 0 errors)
+✅ SQL regression suite passes         (existing academic_spine + new term_rollover)
+N/A Lifecycle behavior suite           (no behavior change to academic spine)
+N/A Lifecycle invariants               (no invariant change)
+N/A Executive scope isolation          (no executive-scope change)
+✅ UI smoke verified                   (route renders, preview computes correctly against test data; mutation will hit live RPC)
+✅ RLS verified                        (RPCs are SECURITY DEFINER with explicit role check + maintenance gate)
+✅ Performance regression              (RPCs iterate source term once per rollover; UNIQUE index makes idempotent skip O(1) per row)
+✅ Documentation updated               (this entry + function COMMENT ON)
+✅ ADR recorded                        (no new ADR — reuses ADR-0001; D3.1 is a substrate consumer + UI)
+✅ D0 governance gate signed           (no new architecture; 2 RPCs that conform to existing audit + RBAC + maintenance gate contracts)
+✅ Readiness delta published           (below)
+```
+
+### Readiness delta
+- **Operability:** ↑ — term rollover is now a one-click admin action
+  with full audit trail, no longer a manual SQL job.
+- **D4 unblock:** ↑↑ — the Registrar's `plan_sections_for_term` wizard
+  (D4) can now start from a freshly rolled-over term, instead of an
+  empty slate, on day one of the new academic period.
+- **Audit completeness:** ↑ — ops_log now has first-class events for
+  the term boundary, with per-section granularity tied via
+  correlation_id.
+
+### Out of scope (explicit deferral)
+- **D3.2** — refactor `FacultyAnalytics.tsx` to consume `kpi-service` /
+  `vw_kpi_faculty_utilization` (currently uses raw `enrollments` /
+  `submissions` queries — a pre-D1 fossil).
+- **D3.3** — faculty-side office hours (new schema, editor, booking;
+  `office_hours_slots` is currently AI-tutor-shaped).
+- **D3.4** — bulk grading grid replacement for per-student dialog UX
+  in `SectionGradebook`.
+- **D3.5** — workload planner (write surface) for
+  `faculty_load_assignments`; current `FacultyLoadCenter` is read-only.
+- **Term identity unification** — `course_sections.term_label TEXT`
+  vs `academic_terms.code TEXT` are not joined. D4's `plan_sections_for_term`
+  will need to decide whether to add a FK, a view, or a contract test.
+
+### Next
+Pilot dependencies satisfied for D4 (Registrar Operations). Continue
+with **Sprint D4** in a subsequent session, OR start any of D3.2–D3.5
+as scoped sub-sprints.

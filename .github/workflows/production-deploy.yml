@@ -127,6 +127,9 @@ jobs:
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
 
+      - name: Run term rollover suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/term_rollover.test.sql
+
       - name: Run governance suite (advisory)
         continue-on-error: true
         run: |

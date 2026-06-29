@@ -114,6 +114,9 @@ jobs:
       - name: Run executive scope isolation suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/executive_scope_isolation.test.sql
 
+      - name: Run term rollover suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/term_rollover.test.sql
+
       - name: Summary
         if: always()
         run: echo "✅ SQL test suite finished"
