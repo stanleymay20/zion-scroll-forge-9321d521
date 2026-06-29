@@ -118,3 +118,66 @@ N/A Executive scope isolation          (no executive-scope change)
 
 ### Next
 Brief CIO-perspective review of `/admin/ops`, then proceed to **Sprint D3 — Faculty Operations** (office hours, bulk grading, course copy, rollover, analytics — consuming the same D1 substrate; no new operational logic).
+
+---
+
+## Sprint D2.1 — D2 Polish (CIO review follow-ups)
+
+**Status:** ✅ Closed
+**Date:** 2026-06-29
+**Page:** `/admin/ops` → `src/pages/admin/OperationsCommandCenter.tsx`
+**Trigger:** CIO-perspective review found two SQL-breaking mismatches and three discoverability gaps in the D2 page. The D2 sprint exit checklist had over-claimed.
+
+### Findings (from review)
+
+**Critical (would error on every submission)**
+1. `BackupsPanel` submitted `status ∈ {passed, failed, degraded}` against
+   `backup_verifications.status CHECK (status IN ('pass','fail','warning'))`.
+2. `DrillsPanel` submitted `outcome ∈ {passed, failed, partial}` against
+   `restore_drills.outcome CHECK (outcome IN ('pass','fail','partial'))`.
+
+**High (discoverability / dead navigation)**
+3. `RunbooksPanel` declared `path` on each runbook but never rendered it
+   as a link — users saw four uninteractive cards.
+4. The `path` values plus the footer `<Link to="/docs/adr/0001-…md">`
+   targeted `/docs/*`, which is not a React route (caught by `path="*"`
+   → NotFound).
+5. `AdminDashboard` had no entry point to `/admin/ops`.
+
+### Delivered
+- **C1 fix:** `BackupsPanel` select values changed to `pass | fail | warning`; default state and Select option labels aligned to schema. `TopStatusGrid` backup tone now checks `status === 'pass'`.
+- **C2 fix:** `DrillsPanel` outcome default + select values changed to `pass | fail | partial`.
+- **StatusIcon:** added recognition for `pass`, `fail`, `warning`, `partial`, `timed_out` so the row icons match the actual schema enums.
+- **H1+H2:** `RunbooksPanel` rewritten — each entry renders as an external `<a>` to its file on GitHub. Footer ADR-0001 reference rewritten as external link too. Unused `<Link>` import dropped.
+- **H3:** `AdminDashboard` now shows an unconditional **Operations Command Center** card linking to `/admin/ops` at the top of the page (above the conditional Academic Integrity card).
+- **Runbook stubs created** under `docs/runbooks/`: `maintenance-window.md`, `sev1-incident-response.md`, `backup-verification.md`, `release-rollback.md`, plus `README.md` index. Procedural enough to follow during an incident; expanded versions land in D8.
+
+### Sprint exit checklist
+
+```text
+✅ Migrations applied                  (none required; UI + docs only)
+✅ Types regenerated                   (no schema change)
+✅ Typecheck clean                     (`npx tsc --noEmit -p tsconfig.app.json` → 0 errors)
+N/A SQL regression suite               (no schema change)
+N/A Lifecycle behavior suite           (no behavior change)
+N/A Lifecycle invariants               (no invariant-touching change)
+N/A Executive scope isolation          (no executive-scope change)
+✅ UI smoke verified                   (static review: enum values match schema CHECKs; runbook links go to real files; AdminDashboard tile renders)
+✅ RLS verified                        (no policy change; D1 policies unchanged)
+✅ Performance regression              (none — only enum strings + 4 markdown files + 1 AdminDashboard card)
+✅ Documentation updated               (this entry + 5 runbook files)
+✅ ADR recorded                        (no new ADR — same architecture)
+✅ D0 governance gate signed           (review-triggered fixes, not new subsystem)
+✅ Readiness delta published           (below)
+```
+
+### Correction to D2's claims
+D2's original exit checklist said *"UI smoke verified"* and *"All actions audit-logged"* without catching that two of five record-event mutations would fail at the database. Treating that as the lesson: smoke verification must include actually submitting one record per mutation, not just confirming the dialog opens.
+
+### Readiness delta
+- **Operability:** ↑ — two previously broken record-event flows now actually work; admins can reach the page from the dashboard.
+- **Observability:** unchanged.
+- **Pilot readiness:** ↑ — without this polish, the first attempted backup verification or restore drill would have failed silently into a constraint error.
+
+### Next
+Proceed to **Sprint D3 — Faculty Operations** (office hours editor + booking, bulk grading grid, `clone_section_for_term` + `rollover_term` RPCs, workload planner, faculty analytics — consuming the same D1 substrate; no new operational logic).

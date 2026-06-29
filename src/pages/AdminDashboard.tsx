@@ -78,6 +78,23 @@ export const AdminDashboard: React.FC = () => {
         </p>
       </div>
 
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Activity className="h-6 w-6 text-muted-foreground" />
+            <div>
+              <CardTitle className="text-base">Operations Command Center</CardTitle>
+              <CardDescription>
+                Incidents, maintenance, jobs, queues, releases, backups, restore drills, runbooks
+              </CardDescription>
+            </div>
+          </div>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/admin/ops">Open</Link>
+          </Button>
+        </CardHeader>
+      </Card>
+
       {openIntegrityAlerts.total > 0 && (
         <Card className={openIntegrityAlerts.critical > 0 ? 'border-destructive' : ''}>
           <CardHeader className="flex flex-row items-start justify-between gap-4">

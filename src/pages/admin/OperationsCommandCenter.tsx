@@ -17,8 +17,7 @@
  *   - record an `ops_log` entry tagged `source = 'admin-ops-ui'`.
  */
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -339,7 +338,7 @@ const TopStatusGrid: React.FC = () => {
       icon: HardDrive,
       value: latestBackup?.status ?? "—",
       detail: latestBackup ? `Verified ${fmtAge(latestBackup.verified_at)}` : "No verification on record",
-      tone: !latestBackup ? "bad" : latestBackup.status === "passed" ? "ok" : "warn",
+      tone: !latestBackup ? "bad" : latestBackup.status === "pass" ? "ok" : "warn",
       source: "backup_verifications",
     },
     {
@@ -586,8 +585,9 @@ const SimpleTable: React.FC<{
 );
 
 const StatusIcon: React.FC<{ s?: string }> = ({ s }) => {
-  if (s === "passed" || s === "succeeded" || s === "ok") return <CheckCircle2 className="h-4 w-4 text-emerald-600 inline" />;
-  if (s === "failed" || s === "error") return <XCircle className="h-4 w-4 text-destructive inline" />;
+  if (s === "pass" || s === "passed" || s === "succeeded" || s === "ok") return <CheckCircle2 className="h-4 w-4 text-emerald-600 inline" />;
+  if (s === "fail" || s === "failed" || s === "error" || s === "timed_out") return <XCircle className="h-4 w-4 text-destructive inline" />;
+  if (s === "warning" || s === "partial") return <AlertTriangle className="h-4 w-4 text-amber-600 inline" />;
   if (s === "running" || s === "in_progress") return <Clock className="h-4 w-4 text-amber-600 inline" />;
   return <span className="text-muted-foreground">—</span>;
 };
@@ -737,7 +737,7 @@ const BackupsPanel: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [snap, setSnap] = useState("");
   const [loc, setLoc] = useState("");
-  const [status, setStatus] = useState("passed");
+  const [status, setStatus] = useState<"pass" | "fail" | "warning">("pass");
   const [notes, setNotes] = useState("");
 
   const create = useMutation({
@@ -777,12 +777,12 @@ const BackupsPanel: React.FC = () => {
               <div><Label>Snapshot ID</Label><Input value={snap} onChange={(e) => setSnap(e.target.value)} /></div>
               <div><Label>Storage location</Label><Input value={loc} onChange={(e) => setLoc(e.target.value)} /></div>
               <div><Label>Status</Label>
-                <Select value={status} onValueChange={setStatus}>
+                <Select value={status} onValueChange={(v) => setStatus(v as "pass" | "fail" | "warning")}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="passed">passed</SelectItem>
-                    <SelectItem value="failed">failed</SelectItem>
-                    <SelectItem value="degraded">degraded</SelectItem>
+                    <SelectItem value="pass">pass</SelectItem>
+                    <SelectItem value="fail">fail</SelectItem>
+                    <SelectItem value="warning">warning</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -818,7 +818,7 @@ const DrillsPanel: React.FC = () => {
   const [rtoA, setRtoA] = useState("");
   const [rpoT, setRpoT] = useState("15");
   const [rpoA, setRpoA] = useState("");
-  const [outcome, setOutcome] = useState("passed");
+  const [outcome, setOutcome] = useState<"pass" | "fail" | "partial">("pass");
   const [notes, setNotes] = useState("");
 
   const create = useMutation({
@@ -866,11 +866,11 @@ const DrillsPanel: React.FC = () => {
                 <div><Label>RPO actual (min)</Label><Input value={rpoA} onChange={(e) => setRpoA(e.target.value)} /></div>
               </div>
               <div><Label>Outcome</Label>
-                <Select value={outcome} onValueChange={setOutcome}>
+                <Select value={outcome} onValueChange={(v) => setOutcome(v as "pass" | "fail" | "partial")}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="passed">passed</SelectItem>
-                    <SelectItem value="failed">failed</SelectItem>
+                    <SelectItem value="pass">pass</SelectItem>
+                    <SelectItem value="fail">fail</SelectItem>
                     <SelectItem value="partial">partial</SelectItem>
                   </SelectContent>
                 </Select>
@@ -897,28 +897,41 @@ const DrillsPanel: React.FC = () => {
   );
 };
 
+const RUNBOOK_REPO_BASE =
+  "https://github.com/stanleymay20/zion-scroll-forge-9321d521/blob/main/docs/runbooks";
+
+const RUNBOOKS = [
+  { title: "Maintenance window", file: "maintenance-window.md",       desc: "Enable maintenance mode, announce window, verify writes paused, restore." },
+  { title: "Sev1 incident response", file: "sev1-incident-response.md", desc: "Triage → incident_log → mitigate → postmortem within 5 business days." },
+  { title: "Backup verification", file: "backup-verification.md",       desc: "Restore latest snapshot to staging, run integrity checks, record verification." },
+  { title: "Release rollback", file: "release-rollback.md",             desc: "Re-deploy prior tag, smoke-test, record rollback as a new release event." },
+] as const;
+
 const RunbooksPanel: React.FC = () => {
-  const runbooks = [
-    { title: "Maintenance window", path: "/docs/governance/sprint-log.md", desc: "Enable maintenance mode, announce window, verify writes paused." },
-    { title: "Sev1 incident response", path: "/docs/adr/0001-operations-foundation-and-kpi-envelope.md", desc: "Triage → incident_log → mitigate → postmortem." },
-    { title: "Backup verification", path: "/docs/governance/sprint-log.md", desc: "Restore latest snapshot to staging, record verification." },
-    { title: "Release rollback", path: "/docs/governance/sprint-log.md", desc: "Re-deploy prior tag, record release with rollback_of." },
-  ];
   return (
     <Card>
       <CardHeader>
         <CardTitle>Runbooks</CardTitle>
-        <CardDescription>Operational procedures. Detailed pages land in D8 (Documentation).</CardDescription>
+        <CardDescription>
+          Operational procedures. Live source: <code>docs/runbooks/*.md</code>.
+          Expanded documentation lands in D8.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        {runbooks.map((r) => (
-          <div key={r.title} className="border rounded-md p-3 flex items-center justify-between">
+        {RUNBOOKS.map((r) => (
+          <a
+            key={r.title}
+            href={`${RUNBOOK_REPO_BASE}/${r.file}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border rounded-md p-3 flex items-center justify-between hover:bg-muted/40 transition-colors"
+          >
             <div>
               <div className="font-medium flex items-center gap-2"><BookOpen className="h-4 w-4" />{r.title}</div>
               <p className="text-sm text-muted-foreground">{r.desc}</p>
             </div>
-            <Badge variant="outline">draft</Badge>
-          </div>
+            <Badge variant="outline">view</Badge>
+          </a>
         ))}
       </CardContent>
     </Card>
@@ -980,7 +993,12 @@ export const OperationsCommandCenter: React.FC = () => {
         All mutations on this page are written through audited paths and recorded in{" "}
         <code>ops_log</code> with <code>source = 'admin-ops-ui'</code>. Writes respect maintenance
         mode via <code>assert_not_maintenance()</code>. See{" "}
-        <Link to="/docs/adr/0001-operations-foundation-and-kpi-envelope.md" className="underline">ADR-0001</Link>.
+        <a
+          href="https://github.com/stanleymay20/zion-scroll-forge-9321d521/blob/main/docs/adr/0001-operations-foundation-and-kpi-envelope.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline"
+        >ADR-0001</a>.
       </div>
     </div>
   );
