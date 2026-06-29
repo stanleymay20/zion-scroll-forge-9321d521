@@ -49,6 +49,14 @@ const METRICS: Record<string, MetricDef> = {
   financial_health:        { view: "vw_kpi_financial_health",        orderBy: { column: "month", ascending: false }, limit: 24, requiresAdmin: true },
   system_health:           { view: "vw_kpi_system_health",           orderBy: { column: "hour", ascending: false }, limit: 96, requiresAdmin: true },
   ai_review_backlog:       { view: "vw_kpi_ai_review_backlog",       requiresAdmin: true },
+  // Sprint D3.2: Faculty Analytics — consumed by /faculty-analytics
+  // (route gated to faculty/admin/superadmin). All three views are
+  // aggregate-only, no PII; safe for any authenticated caller of the
+  // route's allowed roles. Per-faculty scoping is deferred to D4
+  // pending courses/ai_tutors faculty-id schema unification.
+  faculty_enrollment_trends: { view: "vw_kpi_faculty_enrollment_trends", orderBy: { column: "week", ascending: false }, limit: 26 },
+  faculty_performance:       { view: "vw_kpi_faculty_performance",       limit: 1 },
+  faculty_ai_tutor_usage:    { view: "vw_kpi_faculty_ai_tutor_usage",    orderBy: { column: "week", ascending: false }, limit: 26 },
 };
 
 async function logOp(

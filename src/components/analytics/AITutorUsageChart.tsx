@@ -1,34 +1,36 @@
+/**
+ * Sprint D3.2 — consumes pre-aggregated rows from
+ * kpi-service · faculty_ai_tutor_usage, shape:
+ *   { week: string, session_count: number, total_messages: number, ... }
+ * No client-side bucketing.
+ */
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { format, parseISO } from 'date-fns';
 
-interface Props {
-  data: any[];
+export interface AITutorUsageRow {
+  week: string;
+  session_count: number;
+  total_messages: number;
+  avg_satisfaction: number;
+  satisfaction_response_count: number;
 }
 
-export const AITutorUsageChart = ({ data }: Props) => {
-  const chartData = data.reduce((acc: any[], session: any) => {
-    const date = format(parseISO(session.created_at), 'MMM dd');
-    const existing = acc.find(item => item.date === date);
-    
-    if (existing) {
-      existing.sessions += 1;
-      existing.messages += session.total_messages || 0;
-    } else {
-      acc.push({ 
-        date, 
-        sessions: 1,
-        messages: session.total_messages || 0,
-      });
-    }
-    
-    return acc;
-  }, []);
+interface Props {
+  rows: AITutorUsageRow[];
+}
+
+export const AITutorUsageChart = ({ rows }: Props) => {
+  const data = [...rows].reverse().map((r) => ({
+    label: r.week ? format(parseISO(r.week), 'MMM dd') : '—',
+    sessions: r.session_count,
+    messages: r.total_messages,
+  }));
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <AreaChart data={chartData}>
+      <AreaChart data={data}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" />
+        <XAxis dataKey="label" />
         <YAxis />
         <Tooltip />
         <Legend />

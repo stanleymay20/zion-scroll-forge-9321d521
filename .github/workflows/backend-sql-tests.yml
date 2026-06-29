@@ -117,6 +117,9 @@ jobs:
       - name: Run term rollover suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/term_rollover.test.sql
 
+      - name: Run faculty analytics KPIs suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_analytics_kpis.test.sql
+
       - name: Summary
         if: always()
         run: echo "✅ SQL test suite finished"

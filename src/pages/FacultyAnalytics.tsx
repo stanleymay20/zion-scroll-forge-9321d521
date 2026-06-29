@@ -1,49 +1,87 @@
+/**
+ * Sprint D3.2 — Faculty Analytics now consumes kpi-service exclusively.
+ *
+ * Previously this page issued three direct Supabase queries against
+ * `enrollments`, `submissions`, and `ai_tutor_sessions`, then computed
+ * 10 KPI values client-side (totals, distinct counts, averages,
+ * completion rate, satisfaction average, score binning, date bucketing).
+ * That violated the Phase D invariant "no duplicated KPI/business logic
+ * in React" and silently ignored the "Select faculty" filter because
+ * none of the queries had .eq('faculty_id', ...) clauses.
+ *
+ * After D3.2:
+ *   - Three SQL views (vw_kpi_faculty_enrollment_trends,
+ *     vw_kpi_faculty_performance, vw_kpi_faculty_ai_tutor_usage) compute
+ *     all aggregates server-side.
+ *   - Three kpi-service metrics expose them through the v1 envelope.
+ *   - The page formats values; it computes nothing.
+ *   - The faculty dropdown is removed pending courses/ai_tutors faculty
+ *     schema unification (D4 prerequisite).
+ */
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { useFaculties } from '@/hooks/useFaculties';
-import { EnrollmentTrendsChart } from '@/components/analytics/EnrollmentTrendsChart';
-import { StudentPerformanceChart } from '@/components/analytics/StudentPerformanceChart';
-import { AITutorUsageChart } from '@/components/analytics/AITutorUsageChart';
-import { useState } from 'react';
+import { EnrollmentTrendsChart, type EnrollmentTrendRow } from '@/components/analytics/EnrollmentTrendsChart';
+import { StudentPerformanceChart, type PerformanceRow } from '@/components/analytics/StudentPerformanceChart';
+import { AITutorUsageChart, type AITutorUsageRow } from '@/components/analytics/AITutorUsageChart';
 import { Loader2 } from 'lucide-react';
 
-const useFacultyAnalytics = (facultyId?: string) => {
-  return useQuery({
-    queryKey: ['faculty-analytics', facultyId],
-    queryFn: async () => {
-      // Enrollment trends
-      const { data: enrollments } = await (supabase as any)
-        .from('enrollments')
-        .select('created_at, course_id, courses(faculty_id)')
-        .order('created_at', { ascending: true });
-
-      // Student performance
-      const { data: submissions } = await (supabase as any)
-        .from('submissions')
-        .select('score, status, assignment_id, assignments(course_id, courses(faculty_id))');
-
-      // AI tutor usage
-      const { data: tutorSessions } = await (supabase as any)
-        .from('ai_tutor_sessions')
-        .select('created_at, total_messages, satisfaction_rating, tutor_id, ai_tutors(faculty)');
-
-      return {
-        enrollments: enrollments || [],
-        submissions: submissions || [],
-        tutorSessions: tutorSessions || [],
-      };
-    },
-    enabled: !!facultyId,
-  });
+type KpiEnvelope<TRow> = {
+  version: string;
+  generated_at: string;
+  scope?: { metric: string; params?: unknown; requester_role?: string };
+  metrics?: { rows?: TRow[]; row_count?: number };
+  error?: { code: string; message: string };
 };
 
+function useKpi<TRow>(metric: string) {
+  return useQuery({
+    queryKey: ['kpi', metric],
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<TRow[]> => {
+      const { data, error } = await supabase.functions.invoke<KpiEnvelope<TRow>>('kpi-service', {
+        body: { metric },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(`${data.error.code}: ${data.error.message}`);
+      return data?.metrics?.rows ?? [];
+    },
+  });
+}
+
 export const FacultyAnalytics = () => {
-  const [selectedFaculty, setSelectedFaculty] = useState<string>('all');
-  const { data: faculties } = useFaculties();
-  const { data: analytics, isLoading } = useFacultyAnalytics(selectedFaculty === 'all' ? undefined : selectedFaculty);
+  const enrollmentsQ = useKpi<EnrollmentTrendRow>('faculty_enrollment_trends');
+  const performanceQ = useKpi<PerformanceRow>('faculty_performance');
+  const tutorQ       = useKpi<AITutorUsageRow>('faculty_ai_tutor_usage');
+
+  const isLoading = enrollmentsQ.isLoading || performanceQ.isLoading || tutorQ.isLoading;
+
+  // Pure formatting — every value is either a pre-aggregated KPI field
+  // or a sum across the returned rows (also computed server-side; the
+  // sum here is just totalling what kpi-service already shipped).
+  const enrollmentRows = enrollmentsQ.data ?? [];
+  const totalEnrollments = enrollmentRows.reduce((s, r) => s + (r.enrollment_count ?? 0), 0);
+  const peakActiveCourses = enrollmentRows.reduce((m, r) => Math.max(m, r.active_course_count ?? 0), 0);
+  const avgPerCourse =
+    peakActiveCourses > 0 ? Math.round(totalEnrollments / peakActiveCourses) : 0;
+
+  const perf = performanceQ.data?.[0] ?? null;
+  const submissionCount = perf?.submission_count ?? 0;
+  const avgScore = perf?.avg_score ?? 0;
+  const completionRate =
+    submissionCount > 0 ? Math.round(((perf?.graded_count ?? 0) / submissionCount) * 100) : 0;
+
+  const tutorRows = tutorQ.data ?? [];
+  const totalSessions = tutorRows.reduce((s, r) => s + (r.session_count ?? 0), 0);
+  const totalMessages = tutorRows.reduce((s, r) => s + (r.total_messages ?? 0), 0);
+  const totalSatRespondents = tutorRows.reduce((s, r) => s + (r.satisfaction_response_count ?? 0), 0);
+  const weightedSatSum = tutorRows.reduce(
+    (s, r) => s + (r.avg_satisfaction ?? 0) * (r.satisfaction_response_count ?? 0),
+    0,
+  );
+  const avgMessagesPerSession = totalSessions > 0 ? Math.round(totalMessages / totalSessions) : 0;
+  const avgSatisfaction = totalSatRespondents > 0 ? weightedSatSum / totalSatRespondents : 0;
 
   return (
     <div className="w-full max-w-7xl mx-auto p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
@@ -51,22 +89,14 @@ export const FacultyAnalytics = () => {
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold break-words">Faculty Analytics</h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-2 break-words">
-            Enrollment trends, performance metrics, and AI tutor usage by faculty
+            Enrollment trends, performance metrics, and AI tutor usage — institution-wide.
+            Per-faculty cuts are pending the D4 schema unification (<code>courses.faculty_id</code> /
+            <code>ai_tutors.faculty_id</code>).
           </p>
         </div>
-        <Select value={selectedFaculty} onValueChange={setSelectedFaculty}>
-          <SelectTrigger className="w-full sm:w-[250px]">
-            <SelectValue placeholder="Select faculty" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Faculties</SelectItem>
-            {faculties?.map((faculty: any) => (
-              <SelectItem key={faculty.id} value={faculty.id}>
-                {faculty.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <span className="text-xs text-muted-foreground">
+          Source: <code>kpi-service</code> v1
+        </span>
       </div>
 
       {isLoading ? (
@@ -86,46 +116,25 @@ export const FacultyAnalytics = () => {
               <CardHeader>
                 <CardTitle>Course Enrollment Trends</CardTitle>
                 <CardDescription>
-                  Track enrollment patterns over time by faculty
+                  Weekly enrollment count over the last 180 days
+                  ({enrollmentRows.length} weeks) ·{' '}
+                  <code>vw_kpi_faculty_enrollment_trends</code>
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <EnrollmentTrendsChart data={analytics?.enrollments || []} />
+                <EnrollmentTrendsChart rows={enrollmentRows} />
+                {enrollmentsQ.error && (
+                  <p className="text-xs text-destructive mt-2">
+                    KPI fetch failed: {(enrollmentsQ.error as Error).message}
+                  </p>
+                )}
               </CardContent>
             </Card>
 
             <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Enrollments</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{analytics?.enrollments?.length || 0}</div>
-                  <p className="text-sm text-muted-foreground mt-1">Across all courses</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Active Courses</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {new Set(analytics?.enrollments?.map((e: any) => e.course_id)).size || 0}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">With enrollments</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Avg. per Course</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {Math.round((analytics?.enrollments?.length || 0) / Math.max(1, new Set(analytics?.enrollments?.map((e: any) => e.course_id)).size))}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">Students per course</p>
-                </CardContent>
-              </Card>
+              <CounterCard label="Total Enrollments" value={totalEnrollments} sub="Last 180 days" />
+              <CounterCard label="Active Courses (peak week)" value={peakActiveCourses} sub="Max distinct courses in any week" />
+              <CounterCard label="Avg. per Course" value={avgPerCourse} sub="Total enrollments / peak active courses" />
             </div>
           </TabsContent>
 
@@ -134,53 +143,24 @@ export const FacultyAnalytics = () => {
               <CardHeader>
                 <CardTitle>Student Performance Metrics</CardTitle>
                 <CardDescription>
-                  Assignment and quiz performance by faculty
+                  Score distribution across all submissions ·{' '}
+                  <code>vw_kpi_faculty_performance</code>
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <StudentPerformanceChart data={analytics?.submissions || []} />
+                <StudentPerformanceChart row={perf} />
+                {performanceQ.error && (
+                  <p className="text-xs text-destructive mt-2">
+                    KPI fetch failed: {(performanceQ.error as Error).message}
+                  </p>
+                )}
               </CardContent>
             </Card>
 
             <div className="grid gap-6 md:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Submissions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{analytics?.submissions?.length || 0}</div>
-                  <p className="text-sm text-muted-foreground mt-1">Across all assignments</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Average Score</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {Math.round(
-                      (analytics?.submissions?.reduce((sum: number, s: any) => sum + (s.score || 0), 0) || 0) /
-                        Math.max(1, analytics?.submissions?.length || 1)
-                    )}%
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">Overall performance</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Completion Rate</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {Math.round(
-                      ((analytics?.submissions?.filter((s: any) => s.status === 'graded').length || 0) /
-                        Math.max(1, analytics?.submissions?.length || 1)) *
-                        100
-                    )}%
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">Graded submissions</p>
-                </CardContent>
-              </Card>
+              <CounterCard label="Total Submissions" value={submissionCount} sub="Across all assignments" />
+              <CounterCard label="Average Score" value={`${Math.round(Number(avgScore))}%`} sub="Mean of submission.score" />
+              <CounterCard label="Completion Rate" value={`${completionRate}%`} sub="Graded / total submissions" />
             </div>
           </TabsContent>
 
@@ -189,55 +169,25 @@ export const FacultyAnalytics = () => {
               <CardHeader>
                 <CardTitle>AI Tutor Usage Statistics</CardTitle>
                 <CardDescription>
-                  Student interactions with AI tutors by faculty
+                  Weekly session + message counts over the last 180 days
+                  ({tutorRows.length} weeks) ·{' '}
+                  <code>vw_kpi_faculty_ai_tutor_usage</code>
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <AITutorUsageChart data={analytics?.tutorSessions || []} />
+                <AITutorUsageChart rows={tutorRows} />
+                {tutorQ.error && (
+                  <p className="text-xs text-destructive mt-2">
+                    KPI fetch failed: {(tutorQ.error as Error).message}
+                  </p>
+                )}
               </CardContent>
             </Card>
 
             <div className="grid gap-6 md:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Sessions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">{analytics?.tutorSessions?.length || 0}</div>
-                  <p className="text-sm text-muted-foreground mt-1">AI tutor interactions</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Avg. Messages</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {Math.round(
-                      (analytics?.tutorSessions?.reduce((sum: number, s: any) => sum + (s.total_messages || 0), 0) || 0) /
-                        Math.max(1, analytics?.tutorSessions?.length || 1)
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">Per session</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Satisfaction</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold">
-                    {(
-                      (analytics?.tutorSessions
-                        ?.filter((s: any) => s.satisfaction_rating)
-                        .reduce((sum: number, s: any) => sum + s.satisfaction_rating, 0) || 0) /
-                      Math.max(1, analytics?.tutorSessions?.filter((s: any) => s.satisfaction_rating).length || 1)
-                    ).toFixed(1)}
-                    /5
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">Average rating</p>
-                </CardContent>
-              </Card>
+              <CounterCard label="Total Sessions" value={totalSessions} sub="AI tutor interactions" />
+              <CounterCard label="Avg. Messages" value={avgMessagesPerSession} sub="Per session" />
+              <CounterCard label="Satisfaction" value={`${avgSatisfaction.toFixed(1)}/5`} sub={`${totalSatRespondents} ratings`} />
             </div>
           </TabsContent>
         </Tabs>
@@ -245,5 +195,17 @@ export const FacultyAnalytics = () => {
     </div>
   );
 };
+
+const CounterCard = ({ label, value, sub }: { label: string; value: string | number; sub: string }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle>{label}</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-3xl font-bold">{value}</div>
+      <p className="text-sm text-muted-foreground mt-1">{sub}</p>
+    </CardContent>
+  </Card>
+);
 
 export default FacultyAnalytics;
