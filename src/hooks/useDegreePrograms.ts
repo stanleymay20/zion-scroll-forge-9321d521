@@ -182,9 +182,10 @@ export async function enrollInDegree(degreeId: string) {
 }
 
 export async function updateDegreeEnrollment(enrollmentId: string, updates: Partial<DegreeEnrollment>) {
+  const { degree: _degree, ...persistable } = updates;
   const { data, error } = await supabase
     .from("student_degree_enrollments")
-    .update(updates)
+    .update(persistable)
     .eq("id", enrollmentId)
     .select()
     .single();

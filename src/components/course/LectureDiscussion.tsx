@@ -79,10 +79,8 @@ export function LectureDiscussion({ lectureId, courseId, userId }: LectureDiscus
         .from('discussion_posts')
         .insert({
           lecture_id: lectureId,
-          course_id: courseId,
           user_id: userId,
           content,
-          parent_id: parentId || null,
           likes_count: 0
         });
 

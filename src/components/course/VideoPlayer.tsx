@@ -55,8 +55,8 @@ export function VideoPlayer({
         .upsert({
           enrollment_id: enrollmentId,
           lecture_id: lectureId,
-          progress_percentage: progress,
-          last_watched_at: new Date().toISOString()
+          progress,
+          updated_at: new Date().toISOString()
         }, {
           onConflict: 'enrollment_id,lecture_id'
         });

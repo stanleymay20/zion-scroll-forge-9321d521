@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import { PostWithAuthor, ModerationStatus } from '@/types/community';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -107,7 +108,7 @@ export const ModerationQueue: React.FC = () => {
       const { data: { user } } = await supabase.auth.getUser();
       const newStatus = action === 'approve' ? 'dismissed' : action === 'reject' ? 'removed' : 'flagged';
 
-      const updatePayload: Record<string, any> = {
+      const updatePayload: TablesUpdate<'post_reports'> = {
         status: newStatus,
         reviewed_by: user?.id ?? null,
         reviewed_at: new Date().toISOString(),

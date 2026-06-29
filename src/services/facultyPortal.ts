@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { TablesUpdate } from '@/integrations/supabase/types';
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 export type AdvisingVisibility = 'faculty_only' | 'registrar_visible' | 'student_visible';
@@ -267,7 +268,7 @@ export async function listAdvisingFlags(status: 'open' | 'in_progress' | 'resolv
 
 export async function updateFlagStatus(id: string, status: 'open' | 'in_progress' | 'resolved' | 'dismissed') {
   const me = await uid();
-  const patch: Record<string, unknown> = { status };
+  const patch: TablesUpdate<'student_advising_flags'> = { status };
   if (status === 'resolved') { patch.resolved_by = me; patch.resolved_at = new Date().toISOString(); }
   const { error } = await supabase.from('student_advising_flags').update(patch).eq('id', id);
   if (error) throw error;
