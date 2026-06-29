@@ -85,7 +85,7 @@ async function auditedWrite(event: string, ctx: Record<string, unknown>) {
       actor_id: u.user?.id ?? null,
       actor_role: "admin",
       message: event,
-      context: ctx,
+      context: ctx as any,
     });
   } catch (_) {/* swallow telemetry */}
 }
