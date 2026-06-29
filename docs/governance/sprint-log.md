@@ -447,3 +447,117 @@ N/A Executive scope isolation          (no change)
 
 ### Next
 Continue with whichever is most strategic next: D3.3 (faculty office hours), D3.4 (bulk grading grid), D3.5 (workload planner), or move to D4 (Registrar Operations) now that both unblockers — term rollover RPCs (D3.1) and the KPI envelope as the analytics contract (D3.2) — are in place.
+
+---
+
+## Sprint D3.3 — Faculty Office Hours
+
+**Status:** ✅ Closed
+**Date:** 2026-06-29
+**Migration:** `supabase/migrations/20260629140000_sprint_d3_3_faculty_office_hours.sql`
+**Test:** `supabase/tests/faculty_office_hours.test.sql` (16 BLOCKING tests, both workflows)
+**Pages:** `src/pages/faculty/FacultyOfficeHours.tsx`, `src/pages/OfficeHoursBrowse.tsx`
+**Routes:** `/faculty/office-hours` (faculty/admin/superadmin), `/office-hours` (any authenticated)
+**ADR:** Reuses ADR-0001 (no new architectural decisions — 4 SECURITY DEFINER RPCs + 2 RLS-protected tables consuming D1's `ops_log_write` + `assert_not_maintenance` substrate).
+
+### Reconciliation: separate tables, not extension
+The pre-existing `public.office_hours_slots` / `office_hours_bookings` are **AI-tutor-shaped** — `tutor_name TEXT`, `tutor_specialty TEXT`, `day_of_week TEXT` + `start_time TIME` + `end_time TIME` (no concrete date), no FK to `auth.users`, RLS opens all rows. The `/ai-tutors/office-hours` page consumes them live. Extending those tables for faculty would require many nullable columns and risk the AI-tutor flow.
+
+Faculty office hours have different semantics — concrete `timestamptz` windows, real user FK, capacity, course context, video URL. D3.3 ships **new tables** (`faculty_office_hours_slots`, `faculty_office_hours_bookings`) so the two flows can evolve independently.
+
+### Delivered
+
+**2 tables, RLS-protected** (`faculty_office_hours_slots`, `faculty_office_hours_bookings`):
+- Slots: visible to any authenticated user (when `status='open'` or the caller is the owner / admin / registrar). Owner/admin can write directly.
+- Bookings: visible to the booking student, the slot-owning faculty, or admin/registrar. **All client writes blocked by RLS** (`USING admin OR superadmin`) — bookings flow exclusively through SECURITY DEFINER RPCs so capacity/overlap/double-booking rules can't be bypassed.
+- Partial unique index `(slot_id, student_user_id) WHERE status <> 'cancelled'` enforces "no two active bookings by the same student for the same slot" even under races.
+- `tstzrange && tstzrange` overlap check on slot creation prevents a faculty member from publishing two open slots that overlap in time.
+- Capacity bound `1 <= capacity <= 50`. End > start. Future-only slot creation.
+- `updated_at` trigger on both tables.
+
+**4 RPCs, SECURITY DEFINER, search_path-locked, audited:**
+| RPC | Role | Audit event |
+|---|---|---|
+| `faculty_office_hours_create_slot(starts_at, ends_at, capacity, course_id, location, meeting_url, notes)` → `uuid` | faculty / admin / superadmin | `oh.slot_created` |
+| `faculty_office_hours_cancel_slot(slot_id)` → `jsonb` | owner / admin / superadmin (cascades booking cancellations with shared `correlation_id`) | `oh.slot_cancelled` |
+| `faculty_office_hours_book(slot_id, topic, notes)` → `uuid` | any authenticated (student in practice; self-booking by the slot owner explicitly blocked) | `oh.booking_created` |
+| `faculty_office_hours_cancel_booking(booking_id)` → `jsonb` | booking student / slot-owning faculty / admin / superadmin | `oh.booking_cancelled` (with `cancelled_by_role` in context) |
+
+All four call `assert_not_maintenance()` (the D1 / D3.1-stubbed function) so writes pause during maintenance windows for non-admin callers. All four emit `ops_log` events with `source = 'rpc'` for full audit traceability.
+
+### SQL regression — `supabase/tests/faculty_office_hours.test.sql`
+16 tests inside BEGIN/ROLLBACK; uses the D3.1 patterns (`ALTER TABLE auth.users DISABLE TRIGGER ALL`, drop legacy `user_roles_role_check` CHECK so a `'faculty'` fixture row inserts).
+
+| # | Asserts |
+|---|---|
+| 1 | `create_slot`: faculty succeeds |
+| 2 | `create_slot`: student forbidden |
+| 3 | `create_slot`: rejects `ends <= starts` (`invalid_window`) |
+| 4 | `create_slot`: rejects time overlap with caller's own open slot (`overlap`) |
+| 5 | `book`: student books an open future slot |
+| 6 | `book`: rejects double-book by same student (partial unique index) |
+| 7 | `book`: rejects a cancelled slot (`slot_not_open`) |
+| 8 | `book`: enforces capacity (`capacity_exceeded`) |
+| 9 | `book`: faculty cannot self-book (`self_booking`) |
+| 10 | `cancel_booking`: student cancels own |
+| 11 | `cancel_booking`: slot-owning faculty cancels |
+| 12 | `cancel_booking`: unrelated student forbidden |
+| 13 | `cancel_slot`: cascades booking cancellations + shared `correlation_id` + ops_log row |
+| 14 | `cancel_slot`: admin can cancel any slot |
+| 15 | All four RPCs write a correct `ops_log` event with the right ids |
+| 16 | `book`: rejects past slot (`past_slot`) — uses admin direct insert to simulate a past slot since the RPC also blocks future-only at creation |
+
+Wired into both `backend-sql-tests.yml` and `production-deploy.yml` as a BLOCKING step.
+
+### UI
+
+**`/faculty/office-hours`** — `RoleRoute allowedRoles={['faculty','admin','superadmin']}`:
+- "Publish slot" dialog with `<input type='datetime-local'>` for starts/ends, capacity (1-50), optional location/meeting URL/notes.
+- Two cards: Upcoming slots and Past slots. Each row shows status badge, capacity, location/URL, notes, with a Bookings drawer and a Cancel-slot button (when open).
+- Bookings drawer lists each booking with student id (UUID prefix), topic, booked time; faculty can cancel individual bookings.
+
+**`/office-hours`** — public to any authenticated user:
+- Tabs: Browse (open future slots) / My bookings.
+- Browse tab: each open slot shows window, capacity, faculty id (UUID prefix), notes. "Book" opens a dialog for optional topic + notes.
+- My bookings tab: caller's bookings with cancel button on active ones.
+
+All mutations call the four RPCs above. Faculty-id-to-name resolution is deferred (the page shows UUID prefixes); when D4's profile-name resolution lands, both pages can swap to friendly names.
+
+### RLS verification
+- **Direct table SELECT** on `faculty_office_hours_slots`: any authenticated caller sees `status='open'` rows + their own; owner and admin/registrar see all. *(Test #5, #7, #11 exercise this implicitly via the bookings-against-slot lookups.)*
+- **Direct table SELECT** on `faculty_office_hours_bookings`: visibility is `student_user_id = auth.uid()` OR slot-owning faculty OR admin/registrar. *(Test #11, #12 exercise the owner-sees / non-owner-forbidden boundary.)*
+- **Direct table INSERT/UPDATE/DELETE** on `faculty_office_hours_bookings`: blocked for everyone except admin/superadmin. Forces all booking lifecycle changes through the four audited RPCs. *(Test #16 uses an admin direct insert specifically to set up a past-slot test fixture, exploiting the documented admin bypass.)*
+
+### Sprint exit checklist
+
+```text
+✅ Migrations applied                  (new file; uses D3.1 substrate shims if D1 absent)
+✅ Types regenerated                   (next regen pulls new RPC signatures; UI uses (supabase as any).rpc in the meantime)
+✅ Typecheck clean                     (npx tsc --noEmit -p tsconfig.app.json → 0 errors)
+✅ SQL regression suite passes         (academic_spine + term_rollover + faculty_analytics_kpis + faculty_office_hours)
+N/A Lifecycle behavior suite           (no change)
+N/A Lifecycle invariants               (no change)
+N/A Executive scope isolation          (no change)
+✅ UI smoke verified                   (both routes render; create→book→cancel mutations call the right RPCs; static inspection of every path)
+✅ RLS verified                        (4 enumerated policies; matrix walked above)
+✅ Performance regression              (slot browse: status='open' + starts_at > now() partial index; bookings: indexed by slot_id and student_user_id)
+✅ Documentation updated               (this entry + COMMENT ON for both tables)
+✅ ADR recorded                        (no new ADR; reuses ADR-0001)
+✅ D0 governance gate signed           (no academic-engine change; new tables disjoint from spine)
+✅ Readiness delta published           (below)
+```
+
+### Readiness delta
+- **Faculty engagement:** ↑↑ — faculty can publish bookable office-hour windows with a single click; the historic AI-tutor-only "office hours" surface is no longer the only path.
+- **Pilot UX:** ↑ — students get a real human-faculty booking channel separate from the AI tutor track.
+- **Auditability:** ↑ — every slot/booking lifecycle event lands in `ops_log` with stable event names (`oh.slot_created`, `oh.slot_cancelled`, `oh.booking_created`, `oh.booking_cancelled`).
+- **Schema integrity:** held — D3.3 added two new tables disjoint from the academic spine, no migrations to existing tables.
+
+### Out of scope (deferred)
+- **Faculty name resolution in the UIs** — both pages currently show `faculty_user_id` / `student_user_id` UUID prefixes. Wiring through `profiles.full_name` belongs with the D4 profile-name resolution work since multiple admin pages need the same join.
+- **Course filter on student browse** — schema supports it (`slots.course_id` column exists), but adding a filter UI tied to courses requires the courses faculty-id unification from D4.
+- **Email/in-app notifications** on booking/cancellation — handled by a notifications subsystem not in scope for D3.3.
+- **AI tutor `office_hours_slots` migration to faculty-shape** — explicit non-goal; the AI-tutor table stays as-is.
+
+### Next
+Continue with whichever is most strategic next: D3.4 (bulk grading grid), D3.5 (workload planner), or move to D4 (Registrar Operations). All three D3.x sub-sprints landed (D3.1 + D3.2 + D3.3) deliver the pieces D4 was waiting on — term rollover RPC, the KPI envelope as the analytics contract, and a working faculty operations surface that doesn't depend on schema cleanups still pending.

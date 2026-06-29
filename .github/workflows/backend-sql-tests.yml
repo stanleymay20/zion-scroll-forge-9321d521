@@ -120,6 +120,9 @@ jobs:
       - name: Run faculty analytics KPIs suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_analytics_kpis.test.sql
 
+      - name: Run faculty office hours suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_office_hours.test.sql
+
       - name: Summary
         if: always()
         run: echo "✅ SQL test suite finished"
