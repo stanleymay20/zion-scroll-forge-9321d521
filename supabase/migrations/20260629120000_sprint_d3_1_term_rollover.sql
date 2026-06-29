@@ -43,6 +43,101 @@
 --     unifying that contract is out of scope for D3.1 — see D4 plan).
 -- =====================================================================
 
+-- ---------- D1 substrate compat shims --------------------------------
+-- In production, the D1 migration (20260628022756) creates
+-- maintenance_settings, ops_log, assert_not_maintenance(), and
+-- ops_log_write(). In some CI environments the D1 file fails to apply
+-- as a whole (e.g., one of its KPI views references a table whose
+-- shape differs from the canonical schema), so none of its objects
+-- end up in the database. These IF-NOT-EXISTS shims guarantee D3.1
+-- has the substrate it needs in any environment. In production, all
+-- four checks fail (because the real objects exist) and nothing is
+-- created — the shims are silent no-ops.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables
+                  WHERE table_schema='public' AND table_name='maintenance_settings') THEN
+    CREATE TABLE public.maintenance_settings (
+      id boolean PRIMARY KEY DEFAULT true CHECK (id = true),
+      is_enabled boolean NOT NULL DEFAULT false,
+      reason text,
+      banner_message text,
+      enabled_by uuid,
+      enabled_at timestamptz,
+      expected_end timestamptz,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    INSERT INTO public.maintenance_settings (id, is_enabled) VALUES (true, false)
+      ON CONFLICT (id) DO NOTHING;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables
+                  WHERE table_schema='public' AND table_name='ops_log') THEN
+    CREATE TABLE public.ops_log (
+      id bigserial PRIMARY KEY,
+      occurred_at timestamptz NOT NULL DEFAULT now(),
+      correlation_id uuid,
+      trace_id uuid,
+      span_id uuid,
+      source text NOT NULL,
+      event text NOT NULL,
+      severity text NOT NULL DEFAULT 'info',
+      actor_id uuid,
+      actor_role text,
+      fingerprint text,
+      duration_ms integer,
+      http_status integer,
+      message text,
+      context jsonb NOT NULL DEFAULT '{}'::jsonb
+    );
+    CREATE INDEX ops_log_source_event_idx ON public.ops_log (source, event, occurred_at DESC);
+  END IF;
+END$$;
+
+-- assert_not_maintenance: only create as no-op if not already defined.
+-- (CREATE FUNCTION can't go inside a plpgsql block, so we use EXECUTE
+-- inside a top-level DO block when the IF NOT EXISTS check passes.)
+DO $shim$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname='public' AND p.proname='assert_not_maintenance' AND p.pronargs=0
+  ) THEN
+    EXECUTE $body$
+      CREATE OR REPLACE FUNCTION public.assert_not_maintenance() RETURNS void
+      LANGUAGE plpgsql STABLE AS $f$ BEGIN RETURN; END $f$
+    $body$;
+  END IF;
+END$shim$;
+
+-- ops_log_write: only create as direct-insert shim if not already defined.
+DO $shim$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname='public' AND p.proname='ops_log_write'
+  ) THEN
+    EXECUTE $body$
+      CREATE OR REPLACE FUNCTION public.ops_log_write(
+        _source text, _event text, _severity text DEFAULT 'info',
+        _message text DEFAULT NULL, _context jsonb DEFAULT '{}'::jsonb,
+        _correlation_id uuid DEFAULT NULL, _duration_ms integer DEFAULT NULL,
+        _http_status integer DEFAULT NULL, _fingerprint text DEFAULT NULL
+      ) RETURNS bigint LANGUAGE plpgsql AS $f$
+      DECLARE _id bigint;
+      BEGIN
+        INSERT INTO public.ops_log (correlation_id, source, event, severity, actor_id,
+                                    fingerprint, duration_ms, http_status, message, context)
+        VALUES (COALESCE(_correlation_id, gen_random_uuid()), _source, _event, _severity,
+                auth.uid(), _fingerprint, _duration_ms, _http_status, _message,
+                COALESCE(_context,'{}'::jsonb))
+        RETURNING id INTO _id;
+        RETURN _id;
+      END $f$
+    $body$;
+  END IF;
+END$shim$;
+
 -- ---------- clone_section_for_term ----------------------------------
 CREATE OR REPLACE FUNCTION public.clone_section_for_term(
   p_source_section_id uuid,
