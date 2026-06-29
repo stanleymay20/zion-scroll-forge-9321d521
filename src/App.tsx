@@ -63,6 +63,7 @@ const StudyGroupChat = lazy(() => import("./pages/StudyGroupChat"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const LaunchOps = lazy(() => import("./pages/LaunchOps"));
+const OperationsCommandCenter = lazy(() => import("./pages/admin/OperationsCommandCenter"));
 const Apply = lazy(() => import("./pages/Apply"));
 const FacultyDashboard = lazy(() => import("./pages/FacultyDashboard"));
 const Gradebook = lazy(() => import("./pages/Gradebook"));
