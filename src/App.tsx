@@ -610,6 +610,7 @@ const App = () => (
               <Route path="admin/analytics" element={<RoleRoute allowedRoles={["admin","superadmin","registrar"]}><AnalyticsAdmin /></RoleRoute>} />
               <Route path="integrity-center" element={<StudentIntegrityCenter />} />
               <Route path="admin/launch-ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><LaunchOps /></RoleRoute>} />
+              <Route path="admin/ops" element={<RoleRoute allowedRoles={["admin","superadmin"]}><OperationsCommandCenter /></RoleRoute>} />
               <Route path="apply" element={<Apply />} />
               {/* LEGACY: canonical is /courses/:courseId. Redirect kept for old shares. */}
               <Route path="courses-detail/:courseId" element={<Navigate to="/courses" replace />} />
