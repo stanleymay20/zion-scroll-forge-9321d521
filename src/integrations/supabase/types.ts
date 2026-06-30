@@ -1566,6 +1566,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           due_at: string | null
+          grade_load_minutes_override: number | null
           id: string
           institution_id: string | null
           module_id: string | null
@@ -1581,6 +1582,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_at?: string | null
+          grade_load_minutes_override?: number | null
           id?: string
           institution_id?: string | null
           module_id?: string | null
@@ -1596,6 +1598,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           due_at?: string | null
+          grade_load_minutes_override?: number | null
           id?: string
           institution_id?: string | null
           module_id?: string | null
@@ -6303,6 +6306,149 @@ export type Database = {
         }
         Relationships: []
       }
+      faculty_workload_policies: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_default: boolean
+          max_advisees: number
+          max_ai_avatar_sessions_supervised: number
+          max_credit_hours: number
+          max_distinct_preps: number
+          max_sections: number
+          max_weekly_grading_minutes: number
+          max_weekly_office_hours_minutes: number
+          max_weekly_support_minutes: number
+          policy_code: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          max_advisees?: number
+          max_ai_avatar_sessions_supervised?: number
+          max_credit_hours?: number
+          max_distinct_preps?: number
+          max_sections?: number
+          max_weekly_grading_minutes?: number
+          max_weekly_office_hours_minutes?: number
+          max_weekly_support_minutes?: number
+          policy_code: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          max_advisees?: number
+          max_ai_avatar_sessions_supervised?: number
+          max_credit_hours?: number
+          max_distinct_preps?: number
+          max_sections?: number
+          max_weekly_grading_minutes?: number
+          max_weekly_office_hours_minutes?: number
+          max_weekly_support_minutes?: number
+          policy_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      faculty_workload_proposals: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          faculty_user_id: string
+          id: string
+          notes: string | null
+          proposed_by: string | null
+          role: string
+          section_id: string | null
+          status: string
+          term_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          faculty_user_id: string
+          id?: string
+          notes?: string | null
+          proposed_by?: string | null
+          role: string
+          section_id?: string | null
+          status?: string
+          term_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          faculty_user_id?: string
+          id?: string
+          notes?: string | null
+          proposed_by?: string | null
+          role?: string
+          section_id?: string | null
+          status?: string
+          term_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faculty_workload_proposals_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "course_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_workload_proposals_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "section_utilization_v"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "faculty_workload_proposals_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "student_schedule_v"
+            referencedColumns: ["section_id"]
+          },
+          {
+            foreignKeyName: "faculty_workload_proposals_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_a"]
+          },
+          {
+            foreignKeyName: "faculty_workload_proposals_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_b"]
+          },
+          {
+            foreignKeyName: "faculty_workload_proposals_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_kpi_course_fill"
+            referencedColumns: ["section_id"]
+          },
+          {
+            foreignKeyName: "faculty_workload_proposals_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       faculty_workloads: {
         Row: {
           assigned_courses: number | null
@@ -6685,6 +6831,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "student_schedule_v"
             referencedColumns: ["section_id"]
+          },
+          {
+            foreignKeyName: "grade_records_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_a"]
+          },
+          {
+            foreignKeyName: "grade_records_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_b"]
           },
           {
             foreignKeyName: "grade_records_section_id_fkey"
@@ -13589,6 +13749,20 @@ export type Database = {
             foreignKeyName: "section_attendance_sessions_section_id_fkey"
             columns: ["section_id"]
             isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_a"]
+          },
+          {
+            foreignKeyName: "section_attendance_sessions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_b"]
+          },
+          {
+            foreignKeyName: "section_attendance_sessions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
             referencedRelation: "vw_kpi_course_fill"
             referencedColumns: ["section_id"]
           },
@@ -13664,6 +13838,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "student_schedule_v"
             referencedColumns: ["section_id"]
+          },
+          {
+            foreignKeyName: "section_enrollments_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_a"]
+          },
+          {
+            foreignKeyName: "section_enrollments_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_b"]
           },
           {
             foreignKeyName: "section_enrollments_section_id_fkey"
@@ -14183,6 +14371,20 @@ export type Database = {
             foreignKeyName: "student_advising_flags_section_id_fkey"
             columns: ["section_id"]
             isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_a"]
+          },
+          {
+            foreignKeyName: "student_advising_flags_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_b"]
+          },
+          {
+            foreignKeyName: "student_advising_flags_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
             referencedRelation: "vw_kpi_course_fill"
             referencedColumns: ["section_id"]
           },
@@ -14246,6 +14448,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "student_schedule_v"
             referencedColumns: ["section_id"]
+          },
+          {
+            foreignKeyName: "student_advising_notes_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_a"]
+          },
+          {
+            foreignKeyName: "student_advising_notes_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "vw_faculty_workload_conflicts"
+            referencedColumns: ["section_b"]
           },
           {
             foreignKeyName: "student_advising_notes_section_id_fkey"
@@ -17363,6 +17579,36 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_faculty_workload_conflicts: {
+        Row: {
+          course_a: string | null
+          course_b: string | null
+          faculty_user_id: string | null
+          meeting_info: string | null
+          section_a: string | null
+          section_b: string | null
+          section_code_a: string | null
+          section_code_b: string | null
+          term_label: string | null
+        }
+        Relationships: []
+      }
+      vw_faculty_workload_term: {
+        Row: {
+          advisee_count: number | null
+          ai_avatar_sessions_supervised: number | null
+          conflict_count: number | null
+          credit_hours: number | null
+          distinct_preps: number | null
+          faculty_user_id: string | null
+          section_count: number | null
+          term_label: string | null
+          weekly_grading_minutes: number | null
+          weekly_office_hours_minutes: number | null
+          weekly_support_minutes: number | null
+        }
+        Relationships: []
+      }
       vw_kpi_accreditation_readiness: {
         Row: {
           evidence_items: number | null
@@ -18302,6 +18548,11 @@ export type Database = {
         Args: { p_request_id: string }
         Returns: boolean
       }
+      workload_propose_assignment: {
+        Args: { _notes?: string; _role?: string; _section_id: string }
+        Returns: string
+      }
+      workload_submit_proposals: { Args: { _term_id: string }; Returns: number }
     }
     Enums: {
       academic_term_status:

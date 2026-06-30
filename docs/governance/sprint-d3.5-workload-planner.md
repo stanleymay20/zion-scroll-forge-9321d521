@@ -35,22 +35,38 @@ No new grading semantics. No new academic-engine writes. Workload Planner is a *
 
 ### 1. Schema (one migration)
 
-- `faculty_workload_policies` — per-rank caps (max sections, max credit hours,
-  max distinct preps, max advisees). Seeded with a default `'standard'` row;
-  per-faculty overrides via `policy_overrides jsonb`.
+- `faculty_workload_policies` — per-rank caps for **all six load dimensions**:
+  `max_sections`, `max_credit_hours`, `max_distinct_preps`, `max_advisees`,
+  `max_weekly_grading_minutes`, `max_weekly_office_hours_minutes`,
+  `max_weekly_support_minutes`, `max_ai_avatar_sessions_supervised`.
+  Seeded with default `'standard'` row; per-faculty overrides via
+  `policy_overrides jsonb`.
 - `faculty_workload_proposals` — staging table the planner writes to. Columns:
   `id`, `faculty_user_id`, `term_id`, `section_id`, `role` (`primary` /
   `co_instructor` / `ta`), `proposed_by`, `status` (`draft` / `submitted` /
   `accepted` / `rejected`), `notes`, `created_at`, `decided_at`, `decided_by`.
-- `vw_faculty_workload_term` — aggregate view: per-faculty per-term section
-  count, credit hours, distinct preps, advisee count, conflict count. Read by
-  the new KPI endpoint.
+- `vw_faculty_workload_term` — aggregate per-faculty per-term, surfacing **all
+  six dimensions** with cap deltas:
+  - **Teaching load**: section_count, credit_hours, distinct_preps (from
+    `faculty_teaching_assignments` + `course_sections`)
+  - **Grading load**: estimated weekly grading minutes — derived from active
+    assignments × roster size × per-assessment baseline minutes (default 8
+    min / submission, override via `grade_load_minutes_override` column on
+    `assignments`). Read-only, never writes back into the academic engine.
+  - **Office-hours load**: weekly minutes from `office_hours_slots` joined
+    on faculty_user_id (D3.3 substrate).
+  - **Student-support load**: advisee count from `advising_assignments` +
+    open `student_advising_flags` for the faculty.
+  - **AI avatar oversight load**: count of `ai_tutor_sessions` /
+    `lecture_sessions` where the faculty is the human reviewer-of-record,
+    plus open `human_review_requests` rows assigned to them.
+  - **Conflict count**: rows from `vw_faculty_workload_conflicts`.
 - `vw_faculty_workload_conflicts` — pairs of sections taught by the same
-  faculty whose `meeting_pattern` time windows overlap. Pure SQL, no
-  application logic.
+  faculty whose `meeting_pattern` time windows overlap. Pure SQL.
 
-All four objects: GRANT, RLS, `service_role` ALL, `authenticated` SELECT;
+All five objects: GRANT, RLS, `service_role` ALL, `authenticated` SELECT;
 proposals additionally allow `INSERT/UPDATE` to the owning faculty + admins.
+Policies table is admin-write only; faculty SELECT for their effective row.
 
 ### 2. RPC (one function, append-only)
 
