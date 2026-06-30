@@ -38,7 +38,7 @@ import {
   type BulkPublishMode, type BulkPublishResult,
 } from '@/services/facultyPortal';
 import { supabase } from '@/integrations/supabase/client';
-import { Check, AlertCircle, Loader2, MessageSquare, Lock, FileText, BookOpen } from 'lucide-react';
+import { Check, AlertCircle, Loader2, MessageSquare, Lock, FileText, BookOpen, Download } from 'lucide-react';
 
 type RowState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 type RowDraft = {
