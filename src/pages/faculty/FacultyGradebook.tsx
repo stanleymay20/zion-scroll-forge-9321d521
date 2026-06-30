@@ -231,6 +231,39 @@ const FacultyGradebook = () => {
 
   const loading = sectionQ.isLoading || rosterQ.isLoading || gradesQ.isLoading;
 
+  const exportCsv = () => {
+    const sec = sectionQ.data;
+    const header = ['student_id', 'display_name', 'email', 'percentage', 'notes', 'status', 'is_final'];
+    const lines = [header.join(',')];
+    for (const r of orderedRoster) {
+      const sid = r.student_user_id;
+      const d = drafts[sid];
+      const prof = profilesQ.data?.[sid] ?? {};
+      const cells = [
+        sid,
+        (prof.display_name ?? '').toString(),
+        (prof.email ?? '').toString(),
+        d?.serverPercentage ?? '',
+        (d?.serverNotes ?? '').toString().replace(/\r?\n/g, ' '),
+        d?.isFinal ? 'final' : (d?.serverPercentage != null ? 'posted' : 'ungraded'),
+        d?.isFinal ? 'true' : 'false',
+      ].map((c) => {
+        const s = String(c ?? '');
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      });
+      lines.push(cells.join(','));
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.download = `gradebook_${sec?.section_code ?? sectionId?.slice(0, 8) ?? 'section'}_${stamp}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${orderedRoster.length} rows`);
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -250,12 +283,17 @@ const FacultyGradebook = () => {
             <code>gradebook_publish_grades()</code> (single transaction, audited).
           </p>
         </div>
-        <BulkActionsBar
-          dirtyCount={dirtyRows.length}
-          onPublish={() => { setPublishMode('publish'); setPublishOpen(true); }}
-          onProvisional={() => { setPublishMode('provisional'); setPublishOpen(true); }}
-          onFinalize={() => { setPublishMode('finalize'); setPublishOpen(true); }}
-        />
+        <div className="flex flex-col items-end gap-2">
+          <Button size="sm" variant="ghost" onClick={exportCsv} disabled={orderedRoster.length === 0}>
+            <Download className="h-3 w-3 mr-1" /> Export CSV
+          </Button>
+          <BulkActionsBar
+            dirtyCount={dirtyRows.length}
+            onPublish={() => { setPublishMode('publish'); setPublishOpen(true); }}
+            onProvisional={() => { setPublishMode('provisional'); setPublishOpen(true); }}
+            onFinalize={() => { setPublishMode('finalize'); setPublishOpen(true); }}
+          />
+        </div>
       </div>
 
       <Tabs defaultValue="grid">
