@@ -1,6 +1,6 @@
 # Sprint D3.6 — Skill Taxonomy & Skill-Attested Learning
 
-**Status:** Draft (pending approval)
+**Status:** Approved with revisions (2026-07-04) — ready to build
 **Depends on:** D3.4 (Faculty Gradebook), D3.5 (Workload Planner)
 **Blocks:** D4 (Registrar Operations) — mastery-gated unlock + skill-attested transcripts
 **Size:** Small (1 sprint slot, pre-D4)
@@ -9,12 +9,12 @@
 
 ## 1. Goal
 
-Add a lightweight **skill taxonomy** that connects courses, modules, assessments, and student progress to concrete skills — **without changing the academic engine**. Skills complement CLO/PLO mastery, GPA, standing, and graduation; they do not override them.
+Add a lightweight, **versioned** skill taxonomy that connects courses, modules, assessments, and student progress to concrete skills — **without changing the academic engine**. Skills complement CLO/PLO mastery, GPA, standing, and graduation; they do not override them.
 
 The output is a queryable, auditable answer to:
 
-- *What skills does this course/module/assessment teach?*
-- *What skills has this student demonstrated, at what level, from what evidence?*
+- *What skills does this course/module/assessment teach, at what taxonomy version?*
+- *What skills has this student demonstrated (evidence) vs. inferred (soft signals), at what level, from what source, and how fresh is it?*
 - *Where are the gaps between a student's skill profile and their program's declared skills?*
 
 ---
@@ -25,43 +25,60 @@ Already in the database:
 
 | Table | Purpose | Status |
 |---|---|---|
-| `skills_catalog` | Canonical skill list (name, category, faculty, parent, difficulty, xp, sg) | ✅ exists — reuse as taxonomy root |
-| `student_skills` | Per-student skill records | ⚠️ exists — normalize into `student_skill_mastery` view |
-| `skill_endorsements` | Peer/faculty endorsement of a `student_skill` | ✅ keep unchanged |
-| `course_learning_outcomes` (CLO) | Per-course outcomes | ✅ evidence source — do NOT modify |
-| `program_learning_outcomes` (PLO) | Per-program outcomes | ✅ evidence source — do NOT modify |
-| `clo_plo_mapping`, `assessment_outcome_alignment`, `learning_outcome_mappings` | Outcome graph | ✅ untouched |
+| `skills_catalog` | Canonical skill list | ✅ reuse as taxonomy root — extend with versioning |
+| `student_skills` | Per-student skill records | ⚠️ read-only legacy — superseded by `student_skill_events` projection |
+| `skill_endorsements` | Peer/faculty endorsement | ✅ becomes an evidence emitter |
+| `course_learning_outcomes` / `program_learning_outcomes` / `clo_plo_mapping` / `assessment_outcome_alignment` / `learning_outcome_mappings` | Outcome graph | ✅ evidence source — do NOT modify |
 | `student_module_progress.mastery_level` | Module mastery 0-100 | ✅ evidence source |
 | `SkillsAssessment.tsx` + `skills-assessment` edge function | Aggregates by *faculty* today | 🔧 extend to aggregate by *skill* |
 
-**Rule:** everything above stays. This sprint only *adds* mapping tables and read-side RPCs.
+Everything above stays. This sprint only *adds* versioning, mapping tables, an append-only evidence ledger, and read-side RPCs.
 
 ---
 
 ## 3. Schema changes
 
-### 3.1 New mapping tables
+### 3.1 Skill taxonomy versioning (Edit #1)
 
-All follow the same shape: `(entity_id, skill_id, weight, created_by, created_at)`.
+Universities evolve curricula; skills must too. A transcript should be able to say *"demonstrated AI Governance v2.1"* five years from now.
+
+Add to `skills_catalog`:
 
 ```sql
--- Course → Skill
+ALTER TABLE public.skills_catalog
+  ADD COLUMN skill_version    text        NOT NULL DEFAULT '1.0',
+  ADD COLUMN effective_from   timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN effective_to     timestamptz,
+  ADD COLUMN is_current       boolean     NOT NULL DEFAULT true,
+  ADD COLUMN external_ids     jsonb       NOT NULL DEFAULT '{}'::jsonb;
+-- external_ids reserved for future employer mapping (Edit #5): { "esco": "...", "onet": "...", "sfia": "..." }
+
+CREATE UNIQUE INDEX skills_catalog_current_name_uidx
+  ON public.skills_catalog (lower(name)) WHERE is_current = true;
+```
+
+Retiring a skill = set `is_current=false`, stamp `effective_to`, insert successor row. Evidence keeps pointing at the historical `skill_id`.
+
+### 3.2 Mapping tables
+
+Same shape: `(entity_id, skill_id, weight, source, created_by, created_at)`.
+
+```sql
 CREATE TABLE public.course_skills (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   course_id uuid NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  skill_id uuid NOT NULL REFERENCES skills_catalog(id) ON DELETE CASCADE,
-  weight numeric NOT NULL DEFAULT 1.0 CHECK (weight > 0 AND weight <= 1.0),
-  source text NOT NULL DEFAULT 'manual', -- manual | backfill | clo_derived
+  skill_id  uuid NOT NULL REFERENCES skills_catalog(id) ON DELETE CASCADE,
+  weight    numeric NOT NULL DEFAULT 1.0 CHECK (weight > 0 AND weight <= 1.0),
+  source    text NOT NULL DEFAULT 'manual', -- manual | backfill | clo_derived
   created_by uuid REFERENCES auth.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (course_id, skill_id)
 );
 
--- Module → Skill
 CREATE TABLE public.module_skills (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   module_id uuid NOT NULL REFERENCES course_modules(id) ON DELETE CASCADE,
-  skill_id uuid NOT NULL REFERENCES skills_catalog(id) ON DELETE CASCADE,
+  skill_id  uuid NOT NULL REFERENCES skills_catalog(id) ON DELETE CASCADE,
   weight numeric NOT NULL DEFAULT 1.0 CHECK (weight > 0 AND weight <= 1.0),
   source text NOT NULL DEFAULT 'manual',
   created_by uuid REFERENCES auth.users(id),
@@ -69,12 +86,11 @@ CREATE TABLE public.module_skills (
   UNIQUE (module_id, skill_id)
 );
 
--- Assessment → Skill (assignments + divine_assessments; use polymorphic pair)
 CREATE TABLE public.assessment_skills (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   assessment_type text NOT NULL CHECK (assessment_type IN ('assignment','divine_assessment','quiz','exam')),
-  assessment_id uuid NOT NULL,
-  skill_id uuid NOT NULL REFERENCES skills_catalog(id) ON DELETE CASCADE,
+  assessment_id   uuid NOT NULL,
+  skill_id  uuid NOT NULL REFERENCES skills_catalog(id) ON DELETE CASCADE,
   weight numeric NOT NULL DEFAULT 1.0 CHECK (weight > 0 AND weight <= 1.0),
   source text NOT NULL DEFAULT 'manual',
   created_by uuid REFERENCES auth.users(id),
@@ -83,93 +99,150 @@ CREATE TABLE public.assessment_skills (
 );
 ```
 
-### 3.2 Auditable evidence table
+### 3.3 Append-only evidence ledger (Edit #2 + #3)
+
+Renamed to `student_skill_events` and treated as immutable — no UPDATE, no DELETE. The current profile is a **projection**, mirroring how `ops_log` and other audit trails work.
+
+`evidence_kind` cleanly separates **demonstrated** (Edit #3) from **inferred** signals so the transcript can render them separately.
 
 ```sql
-CREATE TABLE public.student_skill_mastery (
+CREATE TABLE public.student_skill_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id  uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   skill_id uuid NOT NULL REFERENCES skills_catalog(id) ON DELETE CASCADE,
+
+  evidence_kind text NOT NULL CHECK (evidence_kind IN ('demonstrated','inferred')),
+  source_type   text NOT NULL,     -- module_progress | assessment | endorsement | ai_tutor | manual
+  source_id     uuid,              -- polymorphic pointer to the evidence row
   mastery_score numeric NOT NULL CHECK (mastery_score BETWEEN 0 AND 100),
-  evidence_count integer NOT NULL DEFAULT 0,
-  source_type text NOT NULL,     -- module_progress | assessment | endorsement | manual
-  source_id uuid,                -- polymorphic pointer to the evidence row
-  confidence numeric NOT NULL DEFAULT 0.5 CHECK (confidence BETWEEN 0 AND 1),
-  last_evidence_at timestamptz,
-  computed_at timestamptz NOT NULL DEFAULT now(),
+  confidence    numeric NOT NULL DEFAULT 0.5 CHECK (confidence BETWEEN 0 AND 1),
+
+  occurred_at timestamptz NOT NULL DEFAULT now(),  -- when the evidence was earned
+  recorded_at timestamptz NOT NULL DEFAULT now(),  -- when we wrote the row
+
   UNIQUE (user_id, skill_id, source_type, source_id)
 );
+
+-- Immutability: block UPDATE/DELETE at the DB level.
+CREATE OR REPLACE FUNCTION public.reject_mutation()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN RAISE EXCEPTION 'student_skill_events is append-only'; END $$;
+
+CREATE TRIGGER student_skill_events_no_update
+  BEFORE UPDATE OR DELETE ON public.student_skill_events
+  FOR EACH ROW EXECUTE FUNCTION public.reject_mutation();
 ```
 
-Append-mostly. `recompute_student_skill_mastery` rolls these evidence rows up into a per-`(user_id, skill_id)` aggregate exposed by `vw_student_skill_profile`.
+### 3.4 Aggregate view — profile projection with decay (Edit #4)
 
-### 3.3 Aggregate view (read side)
+Confidence decays with time (half-life 24 months for demonstrated, 12 months for inferred). Decay is computed in the view — no batch job needed.
 
 ```sql
-CREATE VIEW public.vw_student_skill_profile AS
+CREATE OR REPLACE VIEW public.vw_student_skill_profile AS
+WITH decayed AS (
+  SELECT
+    e.user_id,
+    e.skill_id,
+    e.evidence_kind,
+    e.mastery_score,
+    -- exponential decay: confidence * 0.5^(months_elapsed / half_life)
+    e.confidence * power(
+      0.5,
+      EXTRACT(EPOCH FROM (now() - e.occurred_at)) / (60*60*24*30) /
+      CASE WHEN e.evidence_kind = 'demonstrated' THEN 24 ELSE 12 END
+    ) AS current_confidence,
+    e.confidence AS original_confidence,
+    e.occurred_at
+  FROM public.student_skill_events e
+)
 SELECT
-  m.user_id,
-  m.skill_id,
-  sc.name        AS skill_name,
+  d.user_id,
+  d.skill_id,
+  sc.name AS skill_name,
   sc.category,
   sc.faculty_id,
-  ROUND(SUM(m.mastery_score * m.confidence) / NULLIF(SUM(m.confidence),0), 1) AS weighted_mastery,
-  SUM(m.evidence_count) AS total_evidence,
-  MAX(m.last_evidence_at) AS last_evidence_at
-FROM student_skill_mastery m
-JOIN skills_catalog sc ON sc.id = m.skill_id
-GROUP BY m.user_id, m.skill_id, sc.name, sc.category, sc.faculty_id;
+  sc.skill_version,
+  d.evidence_kind,
+  ROUND(SUM(d.mastery_score * d.current_confidence) / NULLIF(SUM(d.current_confidence),0), 1) AS weighted_mastery,
+  ROUND(AVG(d.current_confidence)::numeric, 3) AS avg_current_confidence,
+  ROUND(AVG(d.original_confidence)::numeric, 3) AS avg_original_confidence,
+  COUNT(*) AS evidence_count,
+  MAX(d.occurred_at) AS last_evidence_at
+FROM decayed d
+JOIN public.skills_catalog sc ON sc.id = d.skill_id
+GROUP BY d.user_id, d.skill_id, sc.name, sc.category, sc.faculty_id, sc.skill_version, d.evidence_kind;
 ```
 
-### 3.4 GRANTs & RLS
-
-Standard pattern for every new table:
+### 3.5 GRANTs & RLS
 
 ```sql
 GRANT SELECT ON public.course_skills, public.module_skills, public.assessment_skills TO anon, authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.course_skills, public.module_skills, public.assessment_skills TO authenticated;
-GRANT ALL ON public.course_skills, public.module_skills, public.assessment_skills, public.student_skill_mastery TO service_role;
-
-GRANT SELECT, INSERT ON public.student_skill_mastery TO authenticated;
+GRANT SELECT, INSERT ON public.student_skill_events TO authenticated;
+GRANT ALL ON public.course_skills, public.module_skills, public.assessment_skills, public.student_skill_events TO service_role;
 ```
 
 Policies:
 
 - `*_skills` mapping tables → public SELECT; INSERT/UPDATE/DELETE gated to `has_role(auth.uid(),'faculty')` or `'admin'`.
-- `student_skill_mastery` → student can SELECT own rows; faculty/advisor SELECT via `advising_assignments`; only the security-definer RPCs INSERT.
+- `student_skill_events` → student SELECTs own rows; advisor via `advising_assignments`; faculty/admin via `has_role`. INSERT only through security-definer RPCs.
 
 ---
 
 ## 4. RPCs
 
-All `SECURITY DEFINER`, `SET search_path = public`, argument-validated, and audit-logged to `ops_log` (channel `skills`).
+All `SECURITY DEFINER`, `SET search_path = public`, argument-validated, audit-logged to `ops_log` (channel `skills`).
 
 | RPC | Purpose | Callers |
 |---|---|---|
-| `get_student_skill_profile(_student uuid)` | Returns rows from `vw_student_skill_profile` with catalog metadata. Enforces "self, or advisor, or faculty, or admin". | Student profile page, `SkillsAssessment.tsx`, advisor tools |
-| `recompute_student_skill_mastery(_student uuid)` | Idempotent recompute: walks `student_module_progress`, graded submissions, and `skill_endorsements`; upserts into `student_skill_mastery` with `source_type` + `source_id` + `confidence`. | Nightly cron; on-demand from student profile |
-| `get_course_skill_map(_course uuid)` | Returns skills for a course + rolled-up skills from its modules and assessments (union with weights). | Course detail, module detail, faculty analytics |
+| `get_student_skill_profile(_student uuid, _kind text default null)` | Rows from `vw_student_skill_profile`, optionally filtered by `evidence_kind`. Enforces self / advisor / faculty / admin. | Student profile, `SkillsAssessment.tsx`, advisor tools |
+| `record_skill_evidence(_student, _skill, _evidence_kind, _source_type, _source_id, _mastery, _confidence, _occurred_at)` | Single append into `student_skill_events`. Idempotent on `(user_id, skill_id, source_type, source_id)`. | Recompute job, endorsement trigger, **AI tutor interface (Edit #6)** |
+| `recompute_student_skill_mastery(_student uuid)` | Walks `student_module_progress`, graded submissions, `skill_endorsements`; appends any missing evidence rows. Never mutates existing ones. | Nightly cron; on-demand |
+| `get_course_skill_map(_course uuid)` | Skills for a course + rolled-up module + assessment skills. | Course/module detail, faculty analytics |
 
-**Confidence weights** (initial):
-- `module_progress` (completed, mastery ≥ 70): 0.6
-- `assessment` (graded, ≥ passing threshold): 0.8
-- `endorsement` (faculty): 0.7 · (endorser role weight)
-- `manual` (student self-claim): 0.2
+**Confidence weights** (initial constants inside `recompute_student_skill_mastery`):
 
-Weights are constants inside the RPC — tunable in a follow-up sprint without a schema change.
+| Source | Kind | Confidence |
+|---|---|---|
+| `module_progress` (mastery ≥ 70) | demonstrated | 0.6 |
+| `assessment` (≥ passing) | demonstrated | 0.8 |
+| `endorsement` (faculty) | demonstrated | 0.7 · endorser weight |
+| `ai_tutor` (session-emitted) | inferred | 0.3 |
+| `manual` (student self-claim) | inferred | 0.2 |
+
+### 4.1 AI tutor emitter interface (Edit #6 — interface only)
+
+No implementation this sprint. Define the contract so avatars can later plug in:
+
+```ts
+// src/lib/skillEvidence.ts (stub)
+export interface SkillEvidencePayload {
+  studentId: string;
+  skillId: string;
+  evidenceKind: 'demonstrated' | 'inferred';
+  sourceType: 'ai_tutor';
+  sourceId: string;           // tutor session id
+  masteryScore: number;       // 0-100
+  confidence: number;         // 0-1
+  occurredAt?: string;
+}
+export async function emitSkillEvidence(p: SkillEvidencePayload): Promise<void> {
+  // wraps supabase.rpc('record_skill_evidence', ...)
+}
+```
 
 ---
 
 ## 5. Backfill
 
-One-shot migration seeder (no destructive writes):
+One-shot migration seeder (append-only, no destructive writes):
 
-1. **Course → skill** heuristic: match on `courses.title` + `courses.faculty` against `skills_catalog.name` (case-insensitive, token overlap ≥ 2). Insert with `source = 'backfill'`, `weight = 0.5`.
-2. **Module → skill** heuristic: match on `course_modules.title`; fall back to parent `course_skills`.
-3. **CLO-derived** (optional): if a CLO statement contains a skill name, insert `course_skills` row with `source = 'clo_derived'`, `weight = 0.7`.
-4. Every backfill insert is logged to `ops_log` with the matching rule for auditability.
+1. **Course → skill** — token overlap ≥ 2 between `courses.title/faculty` and `skills_catalog.name`. `source='backfill'`, `weight=0.5`.
+2. **Module → skill** — token overlap on `course_modules.title`; fall back to parent `course_skills`.
+3. **CLO-derived** — if a CLO statement contains a skill name, insert `course_skills` with `source='clo_derived'`, `weight=0.7`.
+4. Each backfill insert logs to `ops_log` with the matching rule.
 
-Faculty can later override via the (future) admin UI; this sprint ships **read-only exposure** only.
+Explicitly **not** using AI extraction from lecture transcripts (per approval note — noisy signal, faculty-reviewed mappings are higher quality).
 
 ---
 
@@ -177,13 +250,20 @@ Faculty can later override via the (future) admin UI; this sprint ships **read-o
 
 | Location | Change |
 |---|---|
-| `src/pages/SkillsAssessment.tsx` | Add a **"Skills"** tab beside the existing "Faculty" aggregation, powered by `get_student_skill_profile`. Reuse existing radar/bar chart components. |
-| `src/pages/student/StudentProfilePage.tsx` | New **"Skill profile"** card: top 5 skills by `weighted_mastery`, with evidence counts. |
-| Course detail page | Small **"Skills you'll build"** section calling `get_course_skill_map`. |
+| `src/pages/SkillsAssessment.tsx` | Add **"Skills"** tab beside "Faculty" aggregation; split panels for **Demonstrated** vs **Inferred** (Edit #3). |
+| `src/pages/student/StudentProfilePage.tsx` | **"Skill profile"** card — top 5 demonstrated skills by `weighted_mastery`, with evidence counts and freshness. |
+| `src/pages/student/StudentTranscriptPage.tsx` | Add a second panel **"Skill Transcript"** alongside the academic transcript (Edit #8). Read-only, no PDF issuance yet. |
+| Course detail page | **"Skills you'll build"** section via `get_course_skill_map`. |
 | Module detail page | Inline chip list of module skills. |
-| Faculty analytics (`FacultyGradebook` sidebar, if low-risk) | Roster-level skill coverage summary — read-only, feature-flagged. |
+| Faculty analytics (feature-flagged) | Roster-level skill coverage summary. |
 
 No changes to grading, standing, degree audit, graduation, enrollment, ScrollGold logic, or badge issuance.
+
+### 6.1 Reserved for later (schema hooks only)
+
+- **Skill gap engine (Edit #7)** — schema already supports it: `program_learning_outcomes` × `vw_student_skill_profile` diff → recommended modules via `module_skills`. Build in D6.
+- **Employer mapping (Edit #5)** — `skills_catalog.external_ids` jsonb column already reserved.
+- **Skill Transcript PDF issuance** — after D4.
 
 ---
 
@@ -191,38 +271,46 @@ No changes to grading, standing, degree audit, graduation, enrollment, ScrollGol
 
 New SQL regression tests under `supabase/tests/`:
 
-- `skill_taxonomy_grants.test.sql` — confirms GRANT + RLS for all four new tables.
-- `skill_mastery_recompute.test.sql` — seeds a synthetic student with module progress + one endorsement, calls `recompute_student_skill_mastery`, asserts `weighted_mastery` and `evidence_count` are deterministic.
-- `skill_profile_scope.test.sql` — asserts a student cannot read another student's `student_skill_mastery`, but their advisor can.
-- `course_skill_map.test.sql` — asserts union rollup of course + module + assessment skills without duplicates.
+- `skill_taxonomy_grants.test.sql` — GRANT + RLS for all four new tables.
+- `skill_taxonomy_versioning.test.sql` — retiring a skill preserves historical evidence.
+- `skill_events_immutable.test.sql` — asserts UPDATE and DELETE on `student_skill_events` raise.
+- `skill_mastery_recompute.test.sql` — synthetic student, module progress + endorsement → deterministic `weighted_mastery`, `evidence_count`, and decay-adjusted confidence.
+- `skill_events_kind_split.test.sql` — demonstrated vs inferred aggregate separately.
+- `skill_profile_scope.test.sql` — a student cannot read another student's events; advisor can.
+- `course_skill_map.test.sql` — union rollup without duplicates.
 
-Wired into `.github/workflows/backend-sql-tests.yml` (already runs on PR).
+Wired into `.github/workflows/backend-sql-tests.yml`.
 
 ---
 
 ## 8. Out of scope (explicit)
 
-- ❌ LinkedIn "share to profile" — deferred (post-D6).
+- ❌ AI extraction from lecture transcripts (rejected — noisy).
+- ❌ LinkedIn "share to profile" — post-D6.
 - ❌ Learning Paths entity — D6.
 - ❌ Mastery-gated module unlock — D4 will consume this taxonomy; not built here.
 - ❌ Replacing CLO/PLO mastery — skills are complementary.
 - ❌ Editing GPA, standing, graduation, enrollment, grade logic.
-- ❌ ScrollGold rewards on skill mastery (already have `skills_catalog.scrollgold_value` but no ledger writes this sprint).
-- ❌ Admin UI for editing mappings (faculty can propose via future sprint; backfill + manual SQL only for D3.6).
+- ❌ ScrollGold rewards on skill mastery.
+- ❌ Admin UI for editing mappings.
+- ❌ Skill gap engine implementation (schema-ready; built in D6).
+- ❌ AI tutor evidence emission (interface only this sprint).
 
 ---
 
 ## 9. Deliverables
 
-- [ ] Migration: `course_skills`, `module_skills`, `assessment_skills`, `student_skill_mastery`, `vw_student_skill_profile`, GRANTs, RLS.
+- [ ] Migration: `skills_catalog` versioning columns, `course_skills`, `module_skills`, `assessment_skills`, `student_skill_events` (with append-only trigger), `vw_student_skill_profile` (with decay), GRANTs, RLS.
 - [ ] Backfill migration with `ops_log` entries per rule.
-- [ ] RPCs: `get_student_skill_profile`, `recompute_student_skill_mastery`, `get_course_skill_map`.
-- [ ] `SkillsAssessment.tsx` "Skills" tab.
+- [ ] RPCs: `get_student_skill_profile`, `record_skill_evidence`, `recompute_student_skill_mastery`, `get_course_skill_map`.
+- [ ] `src/lib/skillEvidence.ts` — AI tutor emitter interface stub.
+- [ ] `SkillsAssessment.tsx` "Skills" tab with demonstrated/inferred split.
 - [ ] Student profile skill card.
+- [ ] Student Transcript page "Skill Transcript" panel.
 - [ ] Course/module detail skill chips.
-- [ ] 4 new SQL regression tests, green in CI.
+- [ ] 7 SQL regression tests, green in CI.
 - [ ] Sprint log entry with readiness delta.
-- [ ] ADR update **only if** the confidence-weighting rule is considered architectural (likely not — treat as tunable constant).
+- [ ] ADR update — versioning + append-only ledger + decay model are architectural.
 
 ---
 
@@ -230,23 +318,24 @@ Wired into `.github/workflows/backend-sql-tests.yml` (already runs on PR).
 
 | Area | Before | After |
 |---|---|---|
-| Faculty operations | 7.5/10 | 7.5/10 (unchanged — no faculty logic touched) |
-| Pilot readiness | 8/10 | 8.5/10 (skill-attested transcripts unlock in D4) |
-| Registrar prep (D4) | — | **Ready** — skill taxonomy available for mastery gating |
+| Faculty operations | 7.5/10 | 7.5/10 (unchanged) |
+| Pilot readiness | 8/10 | 8.5/10 |
+| Registrar prep (D4) | — | **Ready** — versioned skill taxonomy + evidence ledger available for mastery gating and skill-attested transcripts |
+| Employer signal | 2/10 | 6/10 — skill transcript with evidence, decay, and demonstrated/inferred split |
 
 ---
 
-## 11. Verdict gate
+## 11. Revision log
 
-Approve if the spec includes:
-
-- ✅ Central skill taxonomy (reuses `skills_catalog`).
-- ✅ Mapping tables: `course_skills`, `module_skills`, `assessment_skills`, `student_skill_mastery`.
-- ✅ Auditable evidence (`source_type`, `source_id`, `confidence`, `last_evidence_at`).
-- ✅ RPCs: profile / recompute / course-map.
-- ✅ Backfill from titles + CLOs.
-- ✅ UI exposure in Skills Assessment, student profile, course/module detail.
-- ✅ SQL regression tests + CI.
-- ✅ Explicit non-goals protecting the academic engine.
+**2026-07-04 — Approved with edits (9.7/10):**
+1. ✅ Skill versioning (`skill_version`, `effective_from/to`, `is_current`).
+2. ✅ Immutable evidence — renamed to `student_skill_events`, append-only trigger, projection view.
+3. ✅ Demonstrated vs inferred split (`evidence_kind` column, UI panels).
+4. ✅ Skill decay (exponential, half-life in view).
+5. ✅ Employer mapping reserved (`external_ids` jsonb).
+6. ✅ AI tutor `emitSkillEvidence` interface stub.
+7. ✅ Skill gap engine — schema-ready, built in D6.
+8. ✅ Skill Transcript panel alongside academic transcript.
+9. ❌ AI extraction from lecture transcripts — rejected.
 
 *"The Lord gives wisdom; from His mouth come knowledge and understanding." — Proverbs 2:6*
