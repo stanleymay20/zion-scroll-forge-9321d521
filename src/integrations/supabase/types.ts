@@ -1559,6 +1559,47 @@ export type Database = {
           },
         ]
       }
+      assessment_skills: {
+        Row: {
+          assessment_id: string
+          assessment_type: string
+          created_at: string
+          created_by: string | null
+          id: string
+          skill_id: string
+          source: string
+          weight: number
+        }
+        Insert: {
+          assessment_id: string
+          assessment_type: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          skill_id: string
+          source?: string
+          weight?: number
+        }
+        Update: {
+          assessment_id?: string
+          assessment_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          skill_id?: string
+          source?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignments: {
         Row: {
           course_id: string | null
@@ -3327,6 +3368,58 @@ export type Database = {
             columns: ["term_id"]
             isOneToOne: false
             referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_skills: {
+        Row: {
+          course_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          skill_id: string
+          source: string
+          weight: number
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          skill_id: string
+          source?: string
+          weight?: number
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          skill_id?: string
+          source?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_skills_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_skills_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "v_course_gradebook"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "course_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills_catalog"
             referencedColumns: ["id"]
           },
         ]
@@ -9553,6 +9646,51 @@ export type Database = {
         }
         Relationships: []
       }
+      module_skills: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          module_id: string
+          skill_id: string
+          source: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          module_id: string
+          skill_id: string
+          source?: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          module_id?: string
+          skill_id?: string
+          source?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_skills_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       named_faculty: {
         Row: {
           bio: string
@@ -13975,12 +14113,17 @@ export type Database = {
           created_at: string | null
           description: string | null
           difficulty_level: number | null
+          effective_from: string
+          effective_to: string | null
+          external_ids: Json
           faculty_id: string | null
           id: string
+          is_current: boolean
           name: string
           parent_skill_id: string | null
           prerequisites: Json | null
           scrollgold_value: number | null
+          skill_version: string
           updated_at: string | null
           xp_value: number | null
         }
@@ -13989,12 +14132,17 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           difficulty_level?: number | null
+          effective_from?: string
+          effective_to?: string | null
+          external_ids?: Json
           faculty_id?: string | null
           id?: string
+          is_current?: boolean
           name: string
           parent_skill_id?: string | null
           prerequisites?: Json | null
           scrollgold_value?: number | null
+          skill_version?: string
           updated_at?: string | null
           xp_value?: number | null
         }
@@ -14003,12 +14151,17 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           difficulty_level?: number | null
+          effective_from?: string
+          effective_to?: string | null
+          external_ids?: Json
           faculty_id?: string | null
           id?: string
+          is_current?: boolean
           name?: string
           parent_skill_id?: string | null
           prerequisites?: Json | null
           scrollgold_value?: number | null
+          skill_version?: string
           updated_at?: string | null
           xp_value?: number | null
         }
@@ -15112,6 +15265,53 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "program_public_render_state"
             referencedColumns: ["program_id"]
+          },
+        ]
+      }
+      student_skill_events: {
+        Row: {
+          confidence: number
+          evidence_kind: string
+          id: string
+          mastery_score: number
+          occurred_at: string
+          recorded_at: string
+          skill_id: string
+          source_id: string | null
+          source_type: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number
+          evidence_kind: string
+          id?: string
+          mastery_score: number
+          occurred_at?: string
+          recorded_at?: string
+          skill_id: string
+          source_id?: string | null
+          source_type: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number
+          evidence_kind?: string
+          id?: string
+          mastery_score?: number
+          occurred_at?: string
+          recorded_at?: string
+          skill_id?: string
+          source_id?: string | null
+          source_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_skill_events_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills_catalog"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -17749,6 +17949,45 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_student_skill_profile: {
+        Row: {
+          avg_current_confidence: number | null
+          avg_original_confidence: number | null
+          category: string | null
+          evidence_count: number | null
+          evidence_kind: string | null
+          faculty_id: string | null
+          last_evidence_at: string | null
+          skill_id: string | null
+          skill_name: string | null
+          skill_version: string | null
+          user_id: string | null
+          weighted_mastery: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skills_catalog_faculty_id_fkey"
+            columns: ["faculty_id"]
+            isOneToOne: false
+            referencedRelation: "faculties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skills_catalog_faculty_id_fkey"
+            columns: ["faculty_id"]
+            isOneToOne: false
+            referencedRelation: "v_faculty_analytics"
+            referencedColumns: ["faculty_id"]
+          },
+          {
+            foreignKeyName: "student_skill_events_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _csim_stage: {
@@ -18115,11 +18354,44 @@ export type Database = {
           sequence_order: number
         }[]
       }
+      get_course_skill_map: {
+        Args: { _course: string }
+        Returns: {
+          category: string
+          skill_id: string
+          skill_name: string
+          source_layer: string
+          weight: number
+        }[]
+      }
       get_institutional_kpis: {
         Args: { p_scope_id: string; p_scope_type: string }
         Returns: Json
       }
       get_quiz_answer: { Args: { _question_id: string }; Returns: string }
+      get_student_skill_profile: {
+        Args: { _kind?: string; _student: string }
+        Returns: {
+          avg_current_confidence: number | null
+          avg_original_confidence: number | null
+          category: string | null
+          evidence_count: number | null
+          evidence_kind: string | null
+          faculty_id: string | null
+          last_evidence_at: string | null
+          skill_id: string | null
+          skill_name: string | null
+          skill_version: string | null
+          user_id: string | null
+          weighted_mastery: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "vw_student_skill_profile"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_system_health: { Args: never; Returns: Json }
       has_executive_scope: {
         Args: { _scope_id: string; _scope_type: string; _user_id: string }
@@ -18283,12 +18555,29 @@ export type Database = {
         Args: { _program_id?: string; _student_id: string }
         Returns: number
       }
+      recompute_student_skill_mastery: {
+        Args: { _student: string }
+        Returns: number
+      }
       record_faculty_review: {
         Args: { p_comments?: string; p_course_id: string; p_state: string }
         Returns: Json
       }
       record_graduation_override: {
         Args: { _program_id: string; _reason: string; _student_id: string }
+        Returns: string
+      }
+      record_skill_evidence: {
+        Args: {
+          _confidence?: number
+          _evidence_kind: string
+          _mastery: number
+          _occurred_at?: string
+          _skill: string
+          _source_id: string
+          _source_type: string
+          _student: string
+        }
         Returns: string
       }
       registrar_assign_program: {
