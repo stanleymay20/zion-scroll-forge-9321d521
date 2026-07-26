@@ -89,7 +89,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_actor uuid := auth.uid();
+  v_actor uuid;
   v_corr  uuid := gen_random_uuid();
   v_row   jsonb;
   v_grade_id uuid;
@@ -98,6 +98,13 @@ DECLARE
   v_finalize boolean;
   v_results jsonb := '[]'::jsonb;
 BEGIN
+  -- Defensive: auth.uid() may raise if request.jwt.claims is set to an
+  -- unparseable value (empty string in some environments). Treat any
+  -- resolution failure as "no authenticated actor".
+  BEGIN
+    v_actor := auth.uid();
+  EXCEPTION WHEN OTHERS THEN v_actor := NULL;
+  END;
   IF v_actor IS NULL THEN RAISE EXCEPTION 'auth_required'; END IF;
   IF _section_id IS NULL THEN RAISE EXCEPTION 'section_required'; END IF;
   IF _rows IS NULL OR jsonb_typeof(_rows) <> 'array' THEN
