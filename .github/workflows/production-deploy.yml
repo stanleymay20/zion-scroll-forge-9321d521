@@ -139,6 +139,12 @@ jobs:
       - name: Run faculty gradebook suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_gradebook.test.sql
 
+      - name: Run faculty workload planner suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_workload_planner.test.sql
+
+      - name: Run skill taxonomy suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/skill_taxonomy.test.sql
+
       - name: Run governance suite (advisory)
         continue-on-error: true
         run: |

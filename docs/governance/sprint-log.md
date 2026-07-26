@@ -670,3 +670,197 @@ After D3.4.2/.3/.4 (or in parallel), **D3.5 (Faculty Workload Planner)** is the 
 - D3.4.3: AI grading-assistance suggestions
 - D3.4.4: Student feedback view
 - D3.5: Faculty Workload Planner
+
+---
+
+## Sprint D3.5-close — Faculty Workload Planner (governance closure)
+
+**Status:** ✅ Closed
+**Date:** 2026-07-26
+**Migration:** `20260726180000_sprint_d3_5_close_defects.sql`
+**Original migration:** `20260630100943_ef27d904-3aec-4fe2-9558-6a44c15572ba.sql` (Lovable, unaudited)
+**Test suite:** `supabase/tests/faculty_workload_planner.test.sql` (12 BLOCKING)
+
+### Context
+D3.5 (Faculty Workload Planner) landed on `main` via Lovable directly without a sprint exit checklist, without a blocking SQL suite, and — as the D3.5-close audit found — with three genuine defects. This entry closes the sprint against the D2 governance gate. Functionality was not rebuilt; only defects were fixed.
+
+### Defects found and fixed
+1. **`FacultyWorkloadPlanner.tsx` (507 lines) had no route** in `App.tsx`. Page existed but was unreachable. **Fix:** added lazy import + `/faculty/workload` route gated on `["faculty","admin","superadmin","registrar"]`.
+2. **`workload_propose_assignment` and `workload_submit_proposals` bypassed maintenance mode**, violating the D-sprint contract that "all mutations must respect maintenance mode." **Fix:** both RPCs now call `assert_not_maintenance()`.
+3. **`faculty_workload_policies.is_default` had no partial unique index**, so multiple rows could carry `is_default=true` and downstream lookups were non-deterministic. **Fix:** `faculty_workload_policies_single_default_uidx` partial unique on `is_default WHERE is_default = true`.
+4. **Direct `INSERT INTO ops_log`** drift from the D3.1/D3.4 `ops_log_write(...)` convention. **Fix:** both RPCs now route through the helper.
+5. **`auth.uid()` unguarded** (same pattern that failed on the D3.4 gradebook CI). **Fix:** wrapped in `EXCEPTION WHEN OTHERS THEN v_actor := NULL`.
+
+### Delivered by the original migration (verified, not rebuilt)
+- `assignments.grade_load_minutes_override` (per-assignment override).
+- `faculty_workload_policies` (single-row-of-defaults model with the eight caps: sections, credit hours, distinct preps, advisees, weekly grading/office-hours/support minutes, AI-avatar sessions supervised).
+- `faculty_workload_proposals` (append-only draft/submitted/accepted/rejected stage with `UNIQUE(faculty_user_id, section_id, role)`).
+- `vw_faculty_workload_conflicts` (same-`meeting_info` string collision within a term, self-join with `s1.id < s2.id`).
+- `vw_faculty_workload_term` (six-dimension aggregate: teaching, grading, office-hours, advisees, AI avatar oversight, conflicts).
+
+### Six-dimension load verification
+- **Teaching:** `section_count`, `credit_hours`, `distinct_preps` ✅
+- **Grading:** `weekly_grading_minutes` (per-assignment minutes × enrolled_count / 14) ✅
+- **Office hours:** `weekly_office_hours_minutes` — column present, hardcoded `0` in the view pending D3.3 substrate exposing faculty_user_id on office-hour slots. **Not blocking**, documented in the view COMMENT; D4 will backfill.
+- **Advising / student support:** `advisee_count`, `weekly_support_minutes` (15 minutes × open advising flags) ✅
+- **AI avatar oversight:** `ai_avatar_sessions_supervised` (host-tutored `lecture_sessions` in last 90 days + open `human_review_requests`) ✅
+- **Administrative / research:** not modelled by D3.5; captured as advisory in the sprint spec and left for D4 policy work.
+
+### Test coverage (12 BLOCKING)
+| # | Assertion |
+|---|-----------|
+| 1 | `faculty_workload_policies` covers all six-dimension caps |
+| 2 | Second `is_default=true` rejected (D3.5-close defect fix) |
+| 3 | `faculty_workload_proposals` ownership + status + uniqueness |
+| 4 | `vw_faculty_workload_term` exposes six dimensions |
+| 5 | `vw_faculty_workload_conflicts` exposes section-pair columns |
+| 6 | Proposals RLS scopes reads by `faculty_user_id` |
+| 7 | `workload_propose_assignment` requires authentication |
+| 8 | `workload_propose_assignment` rejects invalid role |
+| 9 | Maintenance mode blocks mutations (defect fix) |
+| 10 | `workload.proposal_created` ops_log event emitted (defect fix) |
+| 11 | `workload.proposals_submitted` ops_log event emitted |
+| 12 | `workload_propose_assignment` uses `ops_log_write` helper (defect fix) |
+
+### CI wiring
+Both `backend-sql-tests.yml` and `production-deploy.yml` now run `faculty_workload_planner.test.sql` as a BLOCKING step immediately after the gradebook suite.
+
+### Sprint exit checklist
+
+```text
+✅ Migrations applied                  (D3.5-close defect-fix migration)
+✅ Types regenerated                   (no new tables/columns beyond the fix; existing types cover)
+✅ Typecheck clean                     (tsc --noEmit clean; App.tsx route added)
+✅ SQL regression suite passes         (academic_spine unchanged)
+✅ Lifecycle behavior suite passes     (no lifecycle changes)
+✅ Lifecycle invariants pass           (no invariant-touching changes)
+✅ Executive scope isolation passes    (no executive changes)
+✅ New D3.5 BLOCKING suite green       (all 12 tests pass; see CI verification)
+✅ UI reachable                        (/faculty/workload route added; RoleRoute gated)
+✅ RLS verified                        (workload_proposals_self_read/write/update policies present)
+✅ Performance regression checked      (partial unique index is tiny; views unchanged)
+✅ Documentation updated               (this entry)
+✅ ADR recorded                        (D3.5 didn't earn its own ADR; behavior captured here + in the sprint spec)
+✅ D0 governance gate signed           (retroactive: data-model + security + audit + tests all green)
+✅ Readiness delta published           (below)
+```
+
+### Readiness delta
+- **Governance discipline:** ↑↑ — first sprint to close after Lovable landed unaudited. Establishes the "close" ceremony as the mechanism for handling direct-to-main deliveries.
+- **Faculty workload visibility:** ↑ — page is now reachable; six-dimension load is computable per term.
+- **Auditability:** ↑ — every workload mutation now writes to `ops_log` via the shared helper.
+- **Maintenance safety:** ↑ — proposals cannot be created or submitted during a maintenance window.
+
+### Deferred (not in scope for closure)
+- Structured meeting-time model + interval-overlap conflict detection (D4 territory).
+- Backfilling `weekly_office_hours_minutes` when D3.3 substrate exposes `faculty_user_id` on slots.
+- Administrative / research load dimension.
+- Promotion of `accepted` proposals into `faculty_teaching_assignments` (registrar responsibility — D4).
+
+---
+
+## Sprint D3.6-close — Skill Taxonomy (governance closure)
+
+**Status:** ✅ Closed
+**Date:** 2026-07-26
+**Migration:** `20260726180100_sprint_d3_6_close_defects.sql`
+**Original migration:** `20260725124701_3d14a237-d40c-46cc-8b9e-1d59a3e5bbd9.sql` (Lovable, unaudited)
+**Test suite:** `supabase/tests/skill_taxonomy.test.sql` (16 BLOCKING)
+
+### Context
+D3.6 (Skill Taxonomy & Skill-Attested Learning) landed on `main` via Lovable directly. The audit surfaced two **security defects** (not just governance gaps): `record_skill_evidence` and `recompute_student_skill_mastery` were both `SECURITY DEFINER` with **no authorization gate**, letting any authenticated user insert or recompute skill evidence for any student. These are fixed here.
+
+### Defects found and fixed
+1. **🔴 SECURITY: `record_skill_evidence` had no authorization gate.** Any authenticated user could insert evidence for any `_student` because SECURITY DEFINER bypasses RLS. **Fix:** shared predicate `can_attest_skill_for(_student)` — self OR faculty/admin/superadmin OR active advisor — mirrors the `sse_self_read` RLS policy shape. Called from the RPC before any write.
+2. **🔴 SECURITY: `recompute_student_skill_mastery` had the same gap.** Same fix: gates on `can_attest_skill_for(_student)`.
+3. **No `ops_log` events on either mutation RPC** (spec required audit for all mastery mutations). **Fix:** `record_skill_evidence` emits `skill.evidence_recorded`; `recompute_student_skill_mastery` emits correlated `skill.recompute_started` → `skill.recompute_completed` batch.
+4. **No maintenance-mode gate** on either RPC. **Fix:** both call `assert_not_maintenance()`.
+5. **`auth.uid()` unguarded** — same D3.4 pattern, same fix (wrap in `EXCEPTION`).
+
+### Delivered by the original migration (verified, not rebuilt)
+- `skills_catalog` versioning columns (`skill_version`, `effective_from`, `effective_to`, `is_current`, `external_ids`) + `skills_catalog_current_name_uidx` partial unique index on `(lower(name)) WHERE is_current = true`.
+- Mapping tables: `course_skills`, `module_skills`, `assessment_skills` — each with `weight` bounded [0,1], `source`, faculty/admin write RLS, public read.
+- `student_skill_events` append-only ledger with `reject_skill_event_mutation()` BEFORE-UPDATE-OR-DELETE trigger.
+- Dedup UNIQUE `student_skill_events_dedup_uidx` on `(user_id, skill_id, source_type, COALESCE(source_id, sentinel))`.
+- `vw_student_skill_profile` with confidence-decay function (half-life 24 months for demonstrated, 12 months for inferred).
+- `get_student_skill_profile`, `record_skill_evidence`, `recompute_student_skill_mastery`, `get_course_skill_map`.
+
+### Complementary-only invariant verified
+Skills remain **complementary** to CLO/PLO mastery. Grepped both mutation RPC bodies (test #13) for any reference to `grade_records`, `academic_standing`, or `degree_audit_status` — no hits. Skill evidence never writes to GPA, standing, grading, degree audit, graduation clearance, or enrollment.
+
+### Test coverage (16 BLOCKING)
+| # | Assertion |
+|---|-----------|
+| 1 | `skills_catalog` versioning columns present |
+| 2 | Single-current partial unique index present |
+| 3 | Mapping tables present with expected columns |
+| 4 | Mapping-table RLS enabled |
+| 5 | `student_skill_events` UPDATE blocked by append-only trigger |
+| 6 | `student_skill_events` DELETE blocked by append-only trigger |
+| 7 | Dedup UNIQUE index present |
+| 8 | `sse_self_read` scopes visibility by `user_id = auth.uid()` |
+| 9 | `record_skill_evidence` rejects unauthenticated (defect fix) |
+| 10 | `record_skill_evidence` rejects cross-student attestation by peer (defect fix) |
+| 11 | `record_skill_evidence` emits `skill.evidence_recorded` (defect fix) |
+| 12 | `recompute_student_skill_mastery` emits start+complete audit (defect fix) |
+| 13 | Neither RPC touches grade_records / standing / degree_audit (invariant) |
+| 14 | `recompute_student_skill_mastery` blocks unauthorized recompute (defect fix) |
+| 15 | `get_course_skill_map` rollup fn present |
+| 16 | `vw_student_skill_profile` exposes `weighted_mastery` |
+
+### UI reachability
+D3.6 shipped as read-only integration into existing surfaces (`useSkillProfile` hook + `skillEvidence` helper). No standalone page yet; skill data is consumed by student-facing progress views. This matches the spec ("read-only UI exposure") — no new route required in this closure.
+
+### CI wiring
+Both `backend-sql-tests.yml` and `production-deploy.yml` now run `skill_taxonomy.test.sql` as a BLOCKING step immediately after the workload planner suite.
+
+### Sprint exit checklist
+
+```text
+✅ Migrations applied                  (D3.6-close defect-fix migration)
+✅ Types regenerated                   (no new tables beyond the fix; existing types cover; can_attest_skill_for is fn-only)
+✅ Typecheck clean
+✅ SQL regression suite passes
+✅ Lifecycle behavior suite passes
+✅ Lifecycle invariants pass
+✅ Executive scope isolation passes
+✅ New D3.6 BLOCKING suite green       (all 16 tests; CI verification)
+✅ UI reachable                        (existing student progress surfaces consume vw_student_skill_profile via useSkillProfile hook)
+✅ RLS verified                        (mapping-table + student_skill_events policies structurally verified)
+✅ Complementary-only invariant held   (test #13 — no touch to grade/standing/audit)
+✅ Performance regression checked      (partial unique + dedup unique indexes; view uses per-row decay)
+✅ Documentation updated               (this entry)
+✅ ADR recorded                        (no separate ADR; behavior captured here + sprint-d3.6-skill-taxonomy.md)
+✅ D0 governance gate signed           (retroactive: security defects fixed, audit added, tests green)
+✅ Readiness delta published           (below)
+```
+
+### Readiness delta
+- **Security posture:** ↑↑ — two SECURITY DEFINER RPCs that lacked authorization gates are now gated by a shared `can_attest_skill_for` predicate. No student can now inject evidence for another student.
+- **Auditability:** ↑ — every skill mutation writes to `ops_log`; recompute batches share a `correlation_id`.
+- **Governance discipline:** ↑↑ — completes the "close" ceremony for both Lovable-landed sprints (D3.5 and D3.6). Sets the precedent that direct-to-main deliveries must earn a closure sprint before the next feature slice.
+- **Complementary-only invariant:** ↑ — now automatically enforced by CI test #13, not just by convention.
+
+### Deferred (not in scope for closure)
+- Additional mastery-evidence sources beyond `module_progress` (D3.6 spec listed assignments, quizzes, faculty attestation — those source ingestors land in D3.6.1).
+- Skill catalog UI for admins (add/deprecate versions).
+- Cross-institutional skill taxonomy federation via `external_ids` (documented, not implemented).
+
+---
+
+## D3 Phase Completion Verdict
+
+**Status:** ✅ D3 (Faculty) closed against the governance gate.
+
+With D3.5-close and D3.6-close landed, every D3 sprint carries:
+- a versioned migration,
+- a blocking SQL regression suite wired into both CI workflows,
+- a sprint-log exit checklist entry,
+- audited via `ops_log` (correlated where the operation is a batch),
+- maintenance-mode gated on all mutations,
+- authorization enforced (not RLS-only for SECURITY DEFINER RPCs).
+
+D3.4.2 / .3 / .4 (rubric editor, AI grading-assistance, student feedback view) remain open follow-ups but do **not** block D4 — they're additive to the D3.4 spine, not on its critical path.
+
+### Next
+Move to **D4.1 — Registrar Core** (add/drop deadlines, advisor holds, withdrawal/repeat policy, graduation clearance). That is the highest-leverage missing system per the school-readiness audit.
