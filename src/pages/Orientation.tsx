@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { getUserFriendlyError } from "@/lib/errors";
+import { onboardingRoutes } from "@/lib/onboardingRoutes";
 
 const STEPS = [
   { key: "welcome",       title: "Welcome to ScrollUniversity",        icon: PlayCircle,   body: "A short founder welcome. ScrollUniversity is a true digital institution — not a course store. Take a breath. You're stepping into a community." },
@@ -69,7 +70,7 @@ export default function Orientation() {
 
       if (isLast) {
         toast.success("Orientation complete. Welcome aboard.");
-        navigate("/matriculation");
+        navigate(onboardingRoutes.matriculation);
       } else {
         setCurrent(current + 1);
       }
@@ -83,7 +84,7 @@ export default function Orientation() {
   return (
     <PageTemplate title="Orientation" description="Become a ScrollUniversity student">
       <div className="max-w-2xl mx-auto space-y-5">
-        <BackButton fallbackTo="/dashboard" />
+        <BackButton fallbackTo={onboardingRoutes.studentDashboard} />
         <div>
           <div className="flex justify-between text-xs text-muted-foreground mb-1">
             <span>Step {current + 1} of {STEPS.length}</span>

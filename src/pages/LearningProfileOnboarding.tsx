@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Brain, Clock, Sun, Moon, Sunrise, Sunset } from 'lucide-react';
+import { onboardingRoutes } from '@/lib/onboardingRoutes';
 
 export default function LearningProfileOnboarding() {
   const { user } = useAuth();
@@ -36,7 +37,7 @@ export default function LearningProfileOnboarding() {
       goals: [],
     });
 
-    navigate('/dashboard');
+    navigate(onboardingRoutes.studentDashboard);
   };
 
   return (
@@ -227,7 +228,7 @@ export default function LearningProfileOnboarding() {
         <div className="flex justify-end gap-4">
           <Button
             variant="outline"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(onboardingRoutes.studentDashboard)}
           >
             Skip for Now
           </Button>

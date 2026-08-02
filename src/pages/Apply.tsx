@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Upload, Check, Lock, BookOpen, FileCheck, AlertCircle, ExternalLink, GraduationCap, ListChecks, Sparkles } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
+import { onboardingRoutes } from '@/lib/onboardingRoutes';
 
 type ProgramRequirement = {
   id: string;
@@ -187,7 +188,7 @@ export default function Apply() {
         }
       }
       toast.success('Application submitted — review in progress');
-      navigate('/dashboard');
+      navigate(onboardingRoutes.studentDashboard);
     } catch {
       toast.error('Failed to submit application');
     }
@@ -215,7 +216,7 @@ export default function Apply() {
                 )}
               </div>
             )}
-            <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
+            <Button onClick={() => navigate(onboardingRoutes.orientation)}>Begin Orientation</Button>
           </CardContent>
         </Card>
       </PageTemplate>

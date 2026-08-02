@@ -12,13 +12,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Logo } from "@/components/brand/Logo";
 import { getUserFriendlyError } from "@/lib/errors";
+import { onboardingRoutes } from "@/lib/onboardingRoutes";
 
 
 // Whitelist internal redirects only — prevents open-redirect via ?redirect=https://evil.com
 const safeRedirect = (raw: string | null): string => {
-  if (!raw) return '/dashboard';
+  if (!raw) return onboardingRoutes.studentDashboard;
   if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
-  return '/dashboard';
+  return onboardingRoutes.studentDashboard;
 };
 
 export default function Auth() {

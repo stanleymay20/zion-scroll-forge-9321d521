@@ -16,6 +16,7 @@ import { CertificateView } from "@/components/certificates/CertificateView";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { getUserFriendlyError } from "@/lib/errors";
+import { onboardingRoutes } from "@/lib/onboardingRoutes";
 
 const OATH = `I commit to learning with integrity, serving with wisdom, and pursuing truth responsibly through ScrollUniversity.`;
 
@@ -123,7 +124,7 @@ export default function Matriculation() {
   return (
     <PageTemplate title="Matriculation" description="Become an official ScrollUniversity scholar">
       <div className="max-w-3xl mx-auto space-y-6">
-        <BackButton fallbackTo="/dashboard" />
+        <BackButton fallbackTo={onboardingRoutes.studentDashboard} />
 
         <Card>
           <CardHeader>
@@ -155,9 +156,9 @@ export default function Matriculation() {
                 <p>You signed the ScrollUniversity oath on <strong>{new Date(existing.oath_signed_at).toLocaleDateString()}</strong>.</p>
                 <p>Certificate number: <span className="font-mono">{existing.cert_number}</span></p>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <Button onClick={() => navigate("/student-identity")} variant="default">View Student Identity</Button>
-                  <Button onClick={() => navigate("/catalog")} variant="outline">Enroll in your first course</Button>
-                  <Button onClick={() => navigate("/dashboard")} variant="ghost">Continue to Dashboard</Button>
+                  <Button onClick={() => navigate(onboardingRoutes.studentIdentity)} variant="default">View Student Identity</Button>
+                  <Button onClick={() => navigate(onboardingRoutes.catalog)} variant="outline">Enroll in your first course</Button>
+                  <Button onClick={() => navigate(onboardingRoutes.studentDashboard)} variant="ghost">Continue to Student Portal</Button>
                 </div>
               </CardContent>
             </Card>

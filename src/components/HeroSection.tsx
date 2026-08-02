@@ -5,6 +5,7 @@ import { BookOpen, ArrowRight, GraduationCap, Sparkles, LogIn } from "lucide-rea
 import { useAuth } from "@/contexts/AuthContext";
 import scrollLogo from "@/assets/scroll-university-logo-optimized.png";
 import heroBackground from "@/assets/hero-background.jpg";
+import { onboardingRoutes } from "@/lib/onboardingRoutes";
 
 export const HeroSection = () => {
   const { user } = useAuth();
@@ -85,7 +86,7 @@ export const HeroSection = () => {
         </div>
 
         <div className="animate-fade-up animate-fade-up-delay-4 flex justify-center mb-5 sm:mb-8">
-          <Link to={user ? "/dashboard" : "/auth"} className="w-full sm:w-auto max-w-sm">
+          <Link to={user ? onboardingRoutes.studentDashboard : onboardingRoutes.signIn} className="w-full sm:w-auto max-w-sm">
             <Button
               variant="outline"
               size="lg"
@@ -106,7 +107,7 @@ export const HeroSection = () => {
 
         {/* CTAs */}
         <div className="animate-fade-up animate-fade-up-delay-4 flex flex-col sm:flex-row gap-3 justify-center mb-10 sm:mb-14">
-          <Link to="/auth?tab=signup&redirect=/apply">
+          <Link to={onboardingRoutes.signUpToApply}>
             <Button
               size="lg"
               className="text-sm sm:text-base px-8 py-6 font-sans w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/20 hover:shadow-xl hover:shadow-accent/30 transition-all group"
@@ -116,7 +117,7 @@ export const HeroSection = () => {
               <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
             </Button>
           </Link>
-          <AuthAwareLink to="/courses">
+          <AuthAwareLink to={onboardingRoutes.catalog}>
             <Button
               variant="outline"
               size="lg"

@@ -5,6 +5,7 @@ import { Menu, X, BookOpen, GraduationCap, Heart, Shield, LayoutDashboard } from
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Logo } from "@/components/brand/Logo";
+import { onboardingRoutes } from "@/lib/onboardingRoutes";
 
 export const Header = () => {
   const { user } = useAuth();
@@ -63,7 +64,7 @@ export const Header = () => {
         {/* Desktop Auth */}
         <div className="hidden sm:flex items-center gap-3">
           {user ? (
-            <Link to="/dashboard">
+            <Link to={onboardingRoutes.studentDashboard}>
               <Button size="sm" className="font-sans text-sm bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
                 <LayoutDashboard className="h-4 w-4 mr-2" />
                 Go to Dashboard
@@ -71,12 +72,12 @@ export const Header = () => {
             </Link>
           ) : (
             <>
-              <Link to="/auth">
+              <Link to={onboardingRoutes.signIn}>
                 <Button variant="ghost" size="sm" className="font-sans text-sm">
                   Sign In
                 </Button>
               </Link>
-              <Link to="/auth?tab=signup&redirect=/apply">
+              <Link to={onboardingRoutes.signUpToApply}>
                 <Button size="sm" className="font-sans text-sm bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
                   Get Started
                 </Button>
@@ -104,24 +105,37 @@ export const Header = () => {
         <div className="bg-background/98 backdrop-blur-lg border-t border-border/50">
           <nav className="container mx-auto px-4 py-4 space-y-1">
             {navLinks.map((link) => {
-              const El = link.isRoute ? AuthAwareLink : "a";
-              const props = link.isRoute
-                ? { to: link.href, onClick: () => setMobileMenuOpen(false) }
-                : { href: link.href, onClick: () => setMobileMenuOpen(false) };
-              return (
-                <El
-                  key={link.label}
-                  {...(props as any)}
-                  className="flex items-center gap-3 text-sm font-medium text-muted-foreground hover:text-primary py-3 px-3 rounded-lg hover:bg-primary/5 transition-colors touch-target"
-                >
+              const className = "flex items-center gap-3 text-sm font-medium text-muted-foreground hover:text-primary py-3 px-3 rounded-lg hover:bg-primary/5 transition-colors touch-target";
+              const content = (
+                <>
                   <link.icon className="h-4 w-4" />
                   {link.label}
-                </El>
+                </>
+              );
+
+              return link.isRoute ? (
+                <AuthAwareLink
+                  key={link.label}
+                  to={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={className}
+                >
+                  {content}
+                </AuthAwareLink>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={className}
+                >
+                  {content}
+                </a>
               );
             })}
             <div className="flex gap-2 pt-3 mt-2 border-t border-border/50">
               {user ? (
-                <Link to="/dashboard" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                <Link to={onboardingRoutes.studentDashboard} className="flex-1" onClick={() => setMobileMenuOpen(false)}>
                   <Button size="sm" className="w-full font-sans">
                     <LayoutDashboard className="h-4 w-4 mr-2" />
                     Dashboard
@@ -129,12 +143,12 @@ export const Header = () => {
                 </Link>
               ) : (
                 <>
-                  <Link to="/auth" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                  <Link to={onboardingRoutes.signIn} className="flex-1" onClick={() => setMobileMenuOpen(false)}>
                     <Button variant="outline" size="sm" className="w-full font-sans">
                       Sign In
                     </Button>
                   </Link>
-                  <Link to="/auth?tab=signup&redirect=/apply" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                  <Link to={onboardingRoutes.signUpToApply} className="flex-1" onClick={() => setMobileMenuOpen(false)}>
                     <Button size="sm" className="w-full font-sans">
                       Get Started
                     </Button>
