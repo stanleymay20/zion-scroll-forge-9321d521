@@ -72,33 +72,6 @@ export function useLiveClassContext(moduleId?: string) {
       if (courseErr) return { ...empty, blockedReason: `Course lookup failed: ${courseErr.message}` };
       if (!course) return { ...empty, blockedReason: `Invalid course mapping: course ${mod.course_id} not found.` };
 
-      // Student → program.
-      const { data: student, error: studentErr } = await supabase
-        .from('students')
-        .select('full_name,degree_program_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      dbg('student', { userId: user.id, found: !!student, hasProgram: !!student?.degree_program_id, err: studentErr?.message });
-      if (studentErr) return { ...empty, userId: user.id, blockedReason: `Student profile lookup failed: ${studentErr.message}` };
-      if (!student) return { ...empty, userId: user.id, blockedReason: `Auth mismatch: no student profile linked to auth user ${user.id}.` };
-
-      if (!student.degree_program_id) {
-        return {
-          ...empty,
-          userId: user.id,
-          studentName: user.email ?? null,
-          courseId: course.id,
-          courseTitle: course.title,
-          moduleId: mod.id,
-          moduleTitle: mod.title,
-          moduleContent: mod.content_md ?? null,
-          blockedReason: 'No accepted degree program is assigned to your student record.',
-        };
-      }
-
-      // Hard enrollment guard. NOTE: `enrollments` has no `status` column —
-      // previously selecting it caused PostgREST 42703 and silently produced
-      // "Not enrolled" for every user. Select only existing columns.
       const { data: enrollment, error: enrollmentErr } = await supabase
         .from('enrollments')
         .select('id,course_id,user_id')
@@ -111,8 +84,6 @@ export function useLiveClassContext(moduleId?: string) {
         return {
           ...empty,
           userId: user.id,
-          studentName: student.full_name ?? user.email ?? null,
-          programId: student.degree_program_id,
           courseId: course.id,
           courseTitle: course.title,
           moduleId: mod.id,
@@ -126,8 +97,6 @@ export function useLiveClassContext(moduleId?: string) {
         return {
           ...empty,
           userId: user.id,
-          studentName: student.full_name ?? user.email ?? null,
-          programId: student.degree_program_id,
           courseId: course.id,
           courseTitle: course.title,
           moduleId: mod.id,
@@ -137,15 +106,24 @@ export function useLiveClassContext(moduleId?: string) {
         };
       }
 
+      // Student → program.
+      const { data: student, error: studentErr } = await supabase
+        .from('students')
+        .select('full_name,degree_program_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      dbg('student', { userId: user.id, found: !!student, hasProgram: !!student?.degree_program_id, err: studentErr?.message });
       let programTitle: string | null = null;
       let programFacultyName: string | null = null;
-      const { data: prog } = await supabase
-        .from('degree_programs')
-        .select('title,faculty')
-        .eq('id', student.degree_program_id)
-        .maybeSingle();
-      programTitle = prog?.title ?? null;
-      programFacultyName = prog?.faculty ?? null;
+      if (!studentErr && student?.degree_program_id) {
+        const { data: prog } = await supabase
+          .from('degree_programs')
+          .select('title,faculty')
+          .eq('id', student.degree_program_id)
+          .maybeSingle();
+        programTitle = prog?.title ?? null;
+        programFacultyName = prog?.faculty ?? null;
+      }
 
       // Match an AI tutor by canonical faculty assignment only. No global tutor and
       // no loose specialty substring fallback are allowed for live lectures.
@@ -186,9 +164,9 @@ export function useLiveClassContext(moduleId?: string) {
           ready: false,
           blocked: true,
           userId: user.id,
-          studentName: student.full_name ?? user.email ?? null,
+          studentName: student?.full_name ?? user.email ?? null,
           programTitle,
-          programId: student.degree_program_id,
+          programId: student?.degree_program_id ?? null,
           facultyName: course.faculty ?? programFacultyName ?? null,
           facultyId: course.faculty_id ?? null,
           courseId: course.id,
@@ -209,9 +187,9 @@ export function useLiveClassContext(moduleId?: string) {
         ready: true,
         blocked: false,
         userId: user.id,
-        studentName: student.full_name ?? user.email ?? null,
+        studentName: student?.full_name ?? user.email ?? null,
         programTitle,
-        programId: student.degree_program_id,
+        programId: student?.degree_program_id ?? null,
         facultyName: course.faculty ?? programFacultyName ?? null,
         facultyId: course.faculty_id ?? null,
         courseId: course.id,

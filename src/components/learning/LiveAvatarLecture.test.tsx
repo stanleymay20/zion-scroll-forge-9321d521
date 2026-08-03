@@ -49,6 +49,7 @@ vi.mock('sonner', () => ({
 describe('LiveAvatarLecture workflow', () => {
   beforeEach(() => {
     invokeMock.mockReset();
+    window.localStorage.setItem('scrolluni.ai_avatar_consent.v1', '1');
 
     class AudioMock {
       muted = false;

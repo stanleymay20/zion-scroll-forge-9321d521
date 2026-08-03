@@ -36,7 +36,7 @@ export default function CourseLearningPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'learn' | 'curriculum' | 'tutor' | 'avatar'>('learn');
+  const [activeTab, setActiveTab] = useState<'avatar' | 'learn' | 'curriculum' | 'tutor'>('avatar');
   const [currentModuleId, setCurrentModuleId] = useState<string | null>(null);
   const [certificateAwarded, setCertificateAwarded] = useState(false);
 
@@ -371,17 +371,17 @@ export default function CourseLearningPage() {
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-4">
+            <TabsTrigger value="avatar" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <Video className="h-4 w-4" />
+              <span className="hidden sm:inline">Live Lecture</span>
+            </TabsTrigger>
             <TabsTrigger value="learn" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <BookOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Learn</span>
+              <span className="hidden sm:inline">Study Material</span>
             </TabsTrigger>
             <TabsTrigger value="curriculum" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <List className="h-4 w-4" />
               <span className="hidden sm:inline">Modules</span>
-            </TabsTrigger>
-            <TabsTrigger value="avatar" className="flex items-center gap-1.5 text-xs sm:text-sm">
-              <Video className="h-4 w-4" />
-              <span className="hidden sm:inline">Live Avatar</span>
             </TabsTrigger>
             <TabsTrigger value="tutor" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <MessageSquare className="h-4 w-4" />
@@ -389,9 +389,62 @@ export default function CourseLearningPage() {
             </TabsTrigger>
           </TabsList>
 
+          <TabsContent value="avatar">
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-card p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="font-serif text-xl">Live AI Avatar Lecture</h2>
+                    <p className="text-sm text-muted-foreground">
+                      The primary lecture experience is a real-time AI avatar. Start the lecture, enable sound, and ask questions by voice, direct chat, or the live queue.
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="w-fit">
+                    Live questions enabled
+                  </Badge>
+                </div>
+              </div>
+
+              {aiTutor ? (
+                <LiveAvatarLecture
+                  userId={liveCtx?.userId || user?.id}
+                  tutorName={aiTutor.name}
+                  tutorSpecialty={aiTutor.specialty}
+                  tutorAvatar={aiTutor.avatar_image_url}
+                  tutorId={aiTutor.id}
+                  moduleId={currentModuleId || undefined}
+                  moduleContent={currentModule?.content_md}
+                  moduleTitle={currentModule?.title}
+                  courseId={liveCtx?.courseId || courseData?.id}
+                  courseTitle={liveCtx?.courseTitle || courseData?.title}
+                  facultyName={liveCtx?.facultyName || courseData?.faculty}
+                  programTitle={liveCtx?.programTitle || undefined}
+                  studentName={liveCtx?.studentName || undefined}
+                  learningObjectives={liveCtx?.learningObjectives || []}
+                />
+              ) : (
+                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                  {liveCtx?.blockedReason || 'No AI faculty has been assigned to this course yet. Live lecture is unavailable until a tutor is provisioned for this faculty.'}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
           <TabsContent value="learn">
             {currentModule ? (
               <div className="space-y-4">
+                <Card>
+                  <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium">This module is taught live by an AI avatar.</p>
+                      <p className="text-sm text-muted-foreground">Use the study material below as your reading packet, then return to the live lecture for questions.</p>
+                    </div>
+                    <Button onClick={() => setActiveTab('avatar')} className="gap-2">
+                      <Video className="h-4 w-4" />
+                      Join Live Lecture
+                    </Button>
+                  </CardContent>
+                </Card>
                 <ModuleLearningContent
                   module={currentModule}
                   courseTitle={courseData.title}
@@ -430,31 +483,6 @@ export default function CourseLearningPage() {
               overallProgress={overallProgress}
               onModuleSelect={handleModuleSelect}
             />
-          </TabsContent>
-
-          <TabsContent value="avatar">
-            {aiTutor ? (
-              <LiveAvatarLecture
-                userId={liveCtx?.userId || user?.id}
-                tutorName={aiTutor.name}
-                tutorSpecialty={aiTutor.specialty}
-                tutorAvatar={aiTutor.avatar_image_url}
-                tutorId={aiTutor.id}
-                moduleId={currentModuleId || undefined}
-                moduleContent={currentModule?.content_md}
-                moduleTitle={currentModule?.title}
-                courseId={liveCtx?.courseId || courseData?.id}
-                courseTitle={liveCtx?.courseTitle || courseData?.title}
-                facultyName={liveCtx?.facultyName || courseData?.faculty}
-                programTitle={liveCtx?.programTitle || undefined}
-                studentName={liveCtx?.studentName || undefined}
-                learningObjectives={liveCtx?.learningObjectives || []}
-              />
-            ) : (
-              <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                {liveCtx?.blockedReason || 'No AI faculty has been assigned to this course yet. Live lecture is unavailable until a tutor is provisioned for this faculty.'}
-              </div>
-            )}
           </TabsContent>
 
           <TabsContent value="tutor">
