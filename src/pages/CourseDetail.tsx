@@ -59,7 +59,7 @@ export default function CourseDetail() {
           credit_hours,
           estimated_duration_hours,
           learning_outcomes,
-          course_modules(id, title, description, order_index, duration_minutes, learning_objectives)
+          course_modules(id, title, content_md, order_index, duration_minutes, learning_objectives)
         `)
         .eq('id', courseId!)
         .single();
