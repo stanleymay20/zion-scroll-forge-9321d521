@@ -189,7 +189,12 @@ describe('LiveAvatarLecture workflow', () => {
   });
 
   it('shows truthful text fallback when avatar stream creation fails', async () => {
-    invokeMock.mockImplementationOnce(() => Promise.resolve({ data: null, error: new Error('provider unavailable') }));
+    invokeMock.mockImplementation((name: string, { body }: { body: any }) => {
+      if (name === 'ai-avatar-stream' && body.action === 'create_stream') {
+        return Promise.resolve({ data: null, error: new Error('provider unavailable') });
+      }
+      return Promise.resolve({ data: {}, error: null });
+    });
 
     render(
       <LiveAvatarLecture

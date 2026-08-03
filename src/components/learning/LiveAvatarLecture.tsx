@@ -28,6 +28,13 @@ import { AIAvatarConsentDialog, hasGivenAvatarConsent } from '@/components/ai/AI
 
 type SpeakerRole = 'user' | 'host' | 'cohost' | 'system';
 
+type AvatarProviderHealth = {
+  kind: string;
+  healthy: boolean;
+  reason?: string;
+  capabilities?: { realtimeVideo?: boolean };
+};
+
 interface Message {
   role: SpeakerRole;
   speakerName?: string;
@@ -116,6 +123,8 @@ export function LiveAvatarLecture({
   const [lastMicError, setLastMicError] = useState<string | null>(null);
   const [isVoiceLoopEnabled, setIsVoiceLoopEnabled] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
+  const [avatarProviderIssue, setAvatarProviderIssue] = useState<string | null>(null);
+  const [avatarProviderHealth, setAvatarProviderHealth] = useState<AvatarProviderHealth[] | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -174,6 +183,49 @@ export function LiveAvatarLecture({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const describeProviderIssue = useCallback((reason?: string | null) => {
+    if (!reason) return 'Live video provider did not return a video stream.';
+    if (reason.includes('AVATAR_PROVIDER_UNCONFIGURED')) {
+      return 'Live video avatar provider is not configured. Add a valid DID_API_KEY Supabase secret, then redeploy the ai-avatar-stream function.';
+    }
+    if (reason.includes('AVATAR_PROVIDER_AUTH_FAILED')) {
+      return 'Live video avatar provider authentication failed. Check the DID_API_KEY secret format.';
+    }
+    if (reason.includes('AVATAR_PROVIDER_FORBIDDEN')) {
+      return 'Live video avatar provider rejected the account. Check D-ID plan status, trial status, or API key permissions.';
+    }
+    if (reason.includes('AVATAR_PROVIDER_CREDITS_EXHAUSTED')) {
+      return 'Live video avatar provider credits are exhausted.';
+    }
+    if (reason.includes('AVATAR_PROVIDER_NOT_IMPLEMENTED')) {
+      return 'A configured avatar provider is not implemented in this build yet.';
+    }
+    if (reason.includes('MOBILE_INCOMPATIBLE')) {
+      return 'The selected avatar provider is not available on this device.';
+    }
+    return reason;
+  }, []);
+
+  const refreshAvatarProviderHealth = useCallback(async () => {
+    const { data, error } = await supabase.functions.invoke('ai-avatar-stream', {
+      body: { action: 'provider_health' },
+    });
+    if (error) {
+      setAvatarProviderIssue(`Avatar provider health check failed: ${error.message}`);
+      return;
+    }
+
+    const providers = Array.isArray(data?.providers) ? data.providers as AvatarProviderHealth[] : [];
+    setAvatarProviderHealth(providers);
+    const liveVideoProvider = providers.find((provider) => provider.capabilities?.realtimeVideo && provider.healthy);
+    const primaryVideoProvider = providers.find((provider) => provider.kind === 'did') ?? providers.find((provider) => provider.capabilities?.realtimeVideo);
+    setAvatarProviderIssue(liveVideoProvider ? null : describeProviderIssue(primaryVideoProvider?.reason ?? data?.reason));
+  }, [describeProviderIssue]);
+
+  useEffect(() => {
+    void refreshAvatarProviderHealth();
+  }, [refreshAvatarProviderHealth]);
 
   useEffect(() => {
     return () => { disconnectStream(); };
@@ -394,12 +446,18 @@ export function LiveAvatarLecture({
         // Truthful fallback path — provider returned no realtime channel.
         avatarFallback = true;
         fallbackReason = data?.reason || 'AVATAR_PROVIDER_UNAVAILABLE';
+        const attemptReason = Array.isArray(data?.attempts)
+          ? data.attempts.find((attempt: any) => attempt?.kind === 'did')?.reason
+          : null;
+        const explainedReason = describeProviderIssue(attemptReason || fallbackReason);
+        setAvatarProviderIssue(explainedReason);
         setDeliveryMode(data?.mode === 'audio' ? 'audio' : 'text');
         setIsConnected(true);
         toast.message('Live video avatar unavailable', {
-          description: 'Continuing in voice/text mode.',
+          description: explainedReason,
         });
       } else {
+        setAvatarProviderIssue(null);
         streamIdRef.current = data.stream_id;
         sessionStreamRef.current = data.session_id;
 
@@ -1339,6 +1397,9 @@ export function LiveAvatarLecture({
           <Badge variant={hasAvatarStream || deliveryMode === 'audio' ? 'secondary' : deliveryMode === 'text' ? 'outline' : 'destructive'}>
             Delivery: {hasAvatarStream ? 'live avatar' : deliveryMode === 'avatar' ? 'negotiating video' : deliveryMode === 'audio' ? 'audio tutor' : deliveryMode === 'text' ? 'text tutor only' : 'offline'}
           </Badge>
+          <Badge variant={hasAvatarStream ? 'secondary' : avatarProviderIssue ? 'destructive' : 'outline'}>
+            Video provider: {hasAvatarStream ? 'active' : avatarProviderIssue ? 'needs setup' : avatarProviderHealth ? 'ready' : 'checking'}
+          </Badge>
           {programTitle && <Badge variant="outline">Program: {programTitle}</Badge>}
           {facultyName && <Badge variant="outline">Faculty: {facultyName}</Badge>}
           <Badge variant={audioUnlocked && !isMuted ? 'secondary' : 'outline'}>
@@ -1407,6 +1468,11 @@ export function LiveAvatarLecture({
                           {tutorName.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
+                      {avatarProviderIssue && (
+                        <p className="max-w-md text-center text-xs text-destructive">
+                          {avatarProviderIssue}
+                        </p>
+                      )}
                       <p className="text-xs text-center opacity-80">
                         Live video avatar unavailable — continuing in {deliveryMode === 'audio' ? 'voice' : 'text'} mode.
                       </p>
