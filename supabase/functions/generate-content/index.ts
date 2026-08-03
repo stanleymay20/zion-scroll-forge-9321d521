@@ -43,6 +43,71 @@ const WEEK_THEMES = [
   { week: 8, theme: "Capstone & Assessment", focus: "Final project, comprehensive review, future directions" }
 ];
 
+function defaultCourseOutcomes(courseTitle: string, faculty: string): string[] {
+  return [
+    `Explain the core vocabulary, sources, and methods that shape ${courseTitle}.`,
+    `Analyze cases and evidence using ${faculty} standards and biblical-theological reasoning.`,
+    `Apply course concepts to supervised ministry, professional, or research practice.`,
+    `Produce a final synthesis artifact that demonstrates transferable mastery.`,
+  ];
+}
+
+function buildLearningProgression(courseTitle: string) {
+  return {
+    syllabus_standard: [
+      "Course purpose and measurable outcomes",
+      "Weekly lecture, reading, practice, and reflection rhythm",
+      "Formative checkpoints before final synthesis",
+      "Academic integrity, citation, and remediation policy",
+    ],
+    assessment_model: [
+      "Weekly formative checks",
+      "Applied assignment portfolio",
+      "Faculty or AI-supported feedback cycle",
+      "Final synthesis project",
+    ],
+    support_model: [
+      "AI tutor available for guided practice",
+      "Advising and progress checkpoints",
+      "Peer discussion and cohort accountability",
+      "Remediation path before high-stakes completion",
+    ],
+    capstone: `Final synthesis portfolio for ${courseTitle}`,
+  };
+}
+
+function buildModuleStandards(course: any, week: number, weekTheme: any) {
+  const courseTitle = course.title || "Course";
+  const faculty = course.faculty || "General Studies";
+  const focus = weekTheme.focus.split(",")[0].toLowerCase();
+
+  return {
+    learning_objectives: [
+      `Define the core concepts and vocabulary for ${weekTheme.theme}.`,
+      `Analyze ${focus} through ${faculty} scholarship and biblical wisdom.`,
+      `Apply this week's concepts to a realistic ministry, research, or professional case.`,
+      `Create evidence of mastery that connects ${courseTitle} to your calling and context.`,
+    ],
+    reflective_prompt: `In 120-180 words, explain how ${weekTheme.theme.toLowerCase()} changes your understanding of ${courseTitle}. Cite one course idea or Scripture, name one unresolved question, and describe one concrete action you will take before the next module.`,
+    formative_checkpoints: [
+      {
+        id: `week-${week}-concept-check`,
+        prompt: `What is the most important principle from ${weekTheme.theme}, and why does it matter?`,
+        mastery_hint: "A strong answer defines the principle, grounds it in course material, and explains its consequence.",
+      },
+      {
+        id: `week-${week}-application-check`,
+        prompt: `Apply ${weekTheme.theme} to a realistic ${faculty} case or ministry decision.`,
+        mastery_hint: "A strong answer names the context, evaluates options, and defends a wise next step.",
+      },
+    ],
+    module_references: [
+      { label: "Primary Scripture", value: "Proverbs 1:7" },
+      { label: "Academic method", value: "Evidence-based reasoning with responsible citation" },
+    ],
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -268,6 +333,10 @@ Generate a rigorous academic course suitable for university-level study. Return 
       faculty_id: faculty.id,
       level: courseData.level || 'Intermediate',
       duration: '8 weeks',
+      credit_hours: 3,
+      estimated_duration_hours: 72,
+      learning_outcomes: courseData.learning_outcomes || defaultCourseOutcomes(courseData.title, faculty.name),
+      learning_progression: buildLearningProgression(courseData.title),
       tags: courseData.tags || courseData.learning_outcomes?.slice(0, 4) || [],
       xr_enabled: false,
       scroll_coin_cost: 0,
@@ -393,6 +462,7 @@ IMPORTANT:
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
     const moduleData = JSON.parse(content);
+    const standards = buildModuleStandards(course, week, weekTheme);
 
     const { data: module, error } = await supabase.from('course_modules').insert({
       institution_id: institutionId,
@@ -401,6 +471,19 @@ IMPORTANT:
       content_md: moduleData.content_md,
       order_index: week,
       duration_minutes: moduleData.duration_minutes || 60,
+      learning_objectives: Array.isArray(moduleData.learning_objectives) ? moduleData.learning_objectives : standards.learning_objectives,
+      reflective_prompt: moduleData.reflective_prompt || standards.reflective_prompt,
+      formative_checkpoints: Array.isArray(moduleData.formative_checkpoints) ? moduleData.formative_checkpoints : standards.formative_checkpoints,
+      module_references: standards.module_references,
+      content: {
+        learning_objectives: Array.isArray(moduleData.learning_objectives) ? moduleData.learning_objectives : standards.learning_objectives,
+        summary: `Week ${week} develops ${weekTheme.focus} with accountable practice and reflection.`,
+        syllabus_unit: {
+          week,
+          theme: weekTheme.theme,
+          assessment: "Reflection, formative checkpoints, and applied assignment evidence",
+        },
+      },
       rewards_amount: 50
     }).select().single();
 

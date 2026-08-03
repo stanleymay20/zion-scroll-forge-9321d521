@@ -7,10 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { 
-  ArrowLeft, Play, Clock, Users, Star, BookOpen, 
+import {
+  ArrowLeft, Play, Clock, Star, BookOpen,
   CheckCircle, Lock, Trophy, Loader2, AlertCircle,
-  FileText, MessageSquare, Award, Heart, ChevronDown
+  FileText, MessageSquare, Award, Heart
 } from "lucide-react";
 import { useEnrollInCourse, useUserEnrollments } from "@/hooks/useCourses";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,7 @@ import { InstructorProfileCard } from "@/components/course/InstructorProfileCard
 import { CourseEnrollmentFlow } from "@/components/course/CourseEnrollmentFlow";
 import { toast } from "sonner";
 import { BackButton } from "@/components/layout/BackButton";
+import { getAcademicCourseProfile } from "@/lib/academicRigor";
 
 export default function CourseDetail() {
   const { courseId } = useParams();
@@ -42,9 +43,29 @@ export default function CourseDetail() {
       
       if (courseError) throw courseError;
       
-      return { 
-        course, 
-        modules: course.course_modules || [] 
+      const { data: assignments } = await supabase
+        .from('teaching_assignments')
+        .select('faculty_user_id, role')
+        .eq('course_id', courseId!);
+
+      const facultyUserIds = Array.from(new Set((assignments || [])
+        .map((assignment: any) => assignment.faculty_user_id)
+        .filter(Boolean)));
+
+      let facultyProfiles: any[] = [];
+      if (facultyUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('faculty_profiles')
+          .select('user_id, full_name, title, bio')
+          .in('user_id', facultyUserIds);
+        facultyProfiles = profiles || [];
+      }
+
+      return {
+        course,
+        modules: course.course_modules || [],
+        assignments: assignments || [],
+        facultyProfiles,
       };
     },
     enabled: !!courseId
@@ -79,27 +100,6 @@ export default function CourseDetail() {
     navigate(`/courses/${courseId}/learn`);
   };
 
-  // Mock instructor data (would come from API in production)
-  const instructorData = {
-    id: '1',
-    name: 'Dr. Samuel Scroll',
-    title: `Dean of ${courseData?.course?.faculty || 'Faculty'}`,
-    bio: 'Dr. Samuel Scroll is a renowned prophetic teacher with over 20 years of experience in training believers in prophetic ministry. He has trained thousands of students globally and has documented accuracy rates of 95%+ in prophetic ministry.',
-    faculty: courseData?.course?.faculty,
-    yearsExperience: 20,
-    studentsTaught: 10000,
-    coursesCreated: 15,
-    rating: 4.9,
-    specializations: ['Prophetic Intelligence', 'Spiritual Discernment', 'Kingdom Leadership'],
-    credentials: [
-      'Ph.D. in Prophetic Studies',
-      'Master of Divinity',
-      'Certified Prophetic Minister',
-      'Published Author of 5 Books'
-    ],
-    email: 'samuel.scroll@scrolluniversity.edu'
-  };
-
   if (isLoading) {
     return (
       <PageTemplate title="Loading..." description="">
@@ -128,7 +128,40 @@ export default function CourseDetail() {
     );
   }
 
-  const { course, modules } = courseData;
+  const { course, modules, assignments, facultyProfiles } = courseData;
+  const academicProfile = getAcademicCourseProfile(course, modules.length);
+  const compactList = (...items: Array<string | null | undefined>) =>
+    items.filter((item): item is string => Boolean(item));
+  const primaryAssignment = assignments.find((assignment: any) => assignment.role === 'instructor') || assignments[0];
+  const primaryFacultyProfile = primaryAssignment
+    ? facultyProfiles.find((profile: any) => profile.user_id === primaryAssignment.faculty_user_id)
+    : facultyProfiles[0];
+  const instructorData = primaryFacultyProfile
+    ? {
+        id: primaryFacultyProfile.user_id || primaryFacultyProfile.id || course.id,
+        name: primaryFacultyProfile.full_name || "Faculty Member",
+        title: primaryFacultyProfile.title || `${primaryAssignment?.role || "Instructor"} - ${course.faculty || "ScrollUniversity"}`,
+        bio: primaryFacultyProfile.bio || "This faculty profile is published from ScrollUniversity records. A full biography will be added by Academic Affairs.",
+        faculty: course.faculty,
+        specializations: compactList(course.faculty, course.level, "Course mentorship"),
+        credentials: [
+          "Verified faculty appointment",
+          "Course-level teaching assignment",
+          "Academic Affairs profile on record",
+        ],
+      }
+    : {
+        id: course.id,
+        name: "Faculty Appointment Pending",
+        title: `${course.faculty || "ScrollUniversity"} Instructional Team`,
+        bio: "The faculty profile for this course is being verified by Academic Affairs. Learners may preview the curriculum now; confirmed instructor credentials should be published before production enrollment scale.",
+        faculty: course.faculty,
+        specializations: compactList(course.faculty, course.level, "Guided academic support"),
+        credentials: [
+          "Instructor record pending publication",
+          "Course support available through advising and AI tutor channels",
+        ],
+      };
 
   console.info('✝️ ScrollUniversity: Course materials loaded — Christ is Lord over every scroll');
 
@@ -472,26 +505,28 @@ export default function CourseDetail() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">
-                <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
-                  <span>Receive and interpret prophetic insights</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
-                  <span>Develop spiritual discernment skills</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
-                  <span>Apply prophetic ministry practically</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
-                  <span>Validate prophetic accuracy</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
-                  <span>Minister with love and accountability</span>
-                </li>
+                {academicProfile.outcomes.map((outcome: string) => (
+                  <li key={outcome} className="flex items-start space-x-2">
+                    <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
+                    <span>{outcome}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Syllabus Standard</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                {academicProfile.syllabusStandard.map((standard: string) => (
+                  <li key={standard} className="flex items-start space-x-2">
+                    <CheckCircle className="h-4 w-4 text-primary mt-0.5" />
+                    <span>{standard}</span>
+                  </li>
+                ))}
               </ul>
             </CardContent>
           </Card>

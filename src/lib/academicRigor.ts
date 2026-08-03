@@ -36,6 +36,13 @@ const QUALITY_STANDARDS = [
   "Transparent credential record",
 ];
 
+const SYLLABUS_STANDARD = [
+  "Course purpose and measurable outcomes",
+  "Weekly lecture, reading, practice, and reflection rhythm",
+  "Formative checkpoints before final synthesis",
+  "Academic integrity, citation, and remediation policy",
+];
+
 function parseWeeks(duration?: string | null): number | null {
   if (!duration) return null;
   const match = duration.match(/(\d+(?:\.\d+)?)\s*(week|wk|month|mo)/i);
@@ -71,6 +78,7 @@ export function getAcademicCourseProfile(course: CourseLike, moduleCount = 0) {
     assessmentModel: ASSESSMENT_MODEL,
     supportModel: SUPPORT_MODEL,
     qualityStandards: QUALITY_STANDARDS,
+    syllabusStandard: SYLLABUS_STANDARD,
     weeklyCadence: [
       "Read or watch the core lecture material",
       "Complete guided practice and checkpoint prompts",
@@ -79,4 +87,3 @@ export function getAcademicCourseProfile(course: CourseLike, moduleCount = 0) {
     ],
   };
 }
-

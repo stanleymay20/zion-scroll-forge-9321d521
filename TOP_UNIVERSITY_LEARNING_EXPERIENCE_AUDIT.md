@@ -29,10 +29,14 @@ Every course should communicate:
 5. Support: AI tutor, advising, peer discussion, and remediation.
 6. Mastery: completion depends on reflection, checkpoint attempts, and outcome evidence.
 
-## Remaining Recommendations
+## Recommendations Closed
 
-1. Backfill `learning_outcomes`, `reflective_prompt`, and `formative_checkpoints` for every published module.
-2. Add faculty-owned syllabi with readings, assessments, grading policy, and academic integrity expectations.
-3. Add regression tests for catalog contract cards, preview learning contract, and learning-room standard panels.
-4. Replace generic instructor mock data in `CourseDetail.tsx` with real faculty records before production admissions scale.
+1. Backfilled missing `learning_outcomes`, `reflective_prompt`, and `formative_checkpoints` through `supabase/migrations/20260803090000_backfill_top_university_learning_standards.sql`.
+2. Added syllabus-grade standards to course metadata via `learning_progression` and to the learner-facing course detail standard.
+3. Added regression coverage for the reusable academic rigor profile in `src/lib/academicRigor.test.ts`.
+4. Replaced the generic instructor mock in `CourseDetail.tsx` with verified `teaching_assignments` + `faculty_profiles` data and an explicit pending-publication fallback.
 
+## Remaining Operational Work
+
+1. Apply the new Supabase migration in the production project.
+2. Publish verified faculty profiles for courses that currently have no `teaching_assignments` record.
