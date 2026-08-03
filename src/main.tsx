@@ -35,8 +35,16 @@ performanceMonitor.mark('app-init-start');
 
 const PREVIEW_CACHE_RESET_KEY = '__lovable_preview_cache_reset__';
 
+// Always purge any previously registered service worker + caches unless the app
+// is genuinely running as an installed standalone PWA. A stale SW is the most
+// common cause of a blank/frozen preview iframe.
 void (async () => {
-  if (!isPreviewPWAContext()) {
+  const isStandalonePWA =
+    typeof window !== 'undefined' &&
+    (window.matchMedia?.('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true);
+
+  if (isStandalonePWA && !isPreviewPWAContext()) {
     sessionStorage.removeItem(PREVIEW_CACHE_RESET_KEY);
     return;
   }
@@ -61,6 +69,7 @@ void (async () => {
 
   sessionStorage.removeItem(PREVIEW_CACHE_RESET_KEY);
 })();
+
 
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>

@@ -59,7 +59,7 @@ export default function CourseDetail() {
           credit_hours,
           estimated_duration_hours,
           learning_outcomes,
-          course_modules(id, title, description, order_index, duration_minutes, learning_objectives)
+          course_modules(id, title, content_md, order_index, duration_minutes, learning_objectives)
         `)
         .eq('id', courseId!)
         .single();
@@ -274,7 +274,7 @@ export default function CourseDetail() {
                     </div>
                   ) : (
                     <Accordion type="single" collapsible className="w-full">
-                      {modules.map((module, index) => (
+                      {modules.map((module: any, index: number) => (
                       <AccordionItem key={module.id} value={`module-${index}`}>
                         <AccordionTrigger className="hover:no-underline">
                           <div className="flex items-center space-x-3 flex-1 text-left">
