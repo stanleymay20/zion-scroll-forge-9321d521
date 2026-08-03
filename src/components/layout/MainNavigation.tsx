@@ -28,7 +28,7 @@ const getNavigationSections = (userRoles: string[]): NavSection[] => {
       icon: Home,
       items: [
         { label: "Dashboard", href: "/dashboard", icon: Home },
-        { label: "My Courses", href: "/courses", icon: BookOpen },
+        { label: "My Courses", href: "/my-courses", icon: BookOpen },
         { label: "Calendar", href: "/events", icon: Calendar },
       ]
     },
@@ -36,7 +36,7 @@ const getNavigationSections = (userRoles: string[]): NavSection[] => {
       title: "Learning",
       icon: GraduationCap,
       items: [
-        { label: "Course Catalog", href: "/courses", icon: BookOpen },
+        { label: "Course Catalog", href: "/catalog", icon: BookOpen },
         { label: "ScrollLibrary", href: "/scroll-library", icon: Library },
         { label: "ScrollLibrary.org", href: "https://scrolllibrary.org", icon: Library, external: true },
         { label: "AtlasResearch", href: "https://atlasresearch.info", icon: FileText, external: true },

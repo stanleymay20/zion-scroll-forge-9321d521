@@ -15,7 +15,7 @@ import { useState } from "react";
 
 const bottomNavItems = [
   { label: "Home", href: "/dashboard", icon: Home },
-  { label: "Courses", href: "/courses", icon: BookOpen },
+  { label: "Courses", href: "/my-courses", icon: BookOpen },
   { label: "AI Tutor", href: "/ai-tutors", icon: Bot },
   { label: "Community", href: "/community-feed", icon: Users },
   { label: "More", href: "#", icon: Menu, isMenu: true },
@@ -24,7 +24,7 @@ const bottomNavItems = [
 const getFullMenuItems = (roles: string[]) => {
   const items = [
     { label: "Dashboard", href: "/dashboard", icon: Home },
-    { label: "My Courses", href: "/courses", icon: BookOpen },
+    { label: "My Courses", href: "/my-courses", icon: BookOpen },
     { label: "AI Tutors", href: "/ai-tutors", icon: Bot },
     { label: "Study Groups", href: "/study-groups", icon: Users },
     { label: "Spiritual Formation", href: "/spiritual-formation", icon: Heart },

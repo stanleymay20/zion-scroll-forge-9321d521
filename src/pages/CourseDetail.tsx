@@ -23,6 +23,7 @@ import { CourseEnrollmentFlow } from "@/components/course/CourseEnrollmentFlow";
 import { toast } from "sonner";
 import { BackButton } from "@/components/layout/BackButton";
 import { getAcademicCourseProfile } from "@/lib/academicRigor";
+import { useCourseAccess } from "@/hooks/useCourseAccess";
 
 export default function CourseDetail() {
   const { courseId } = useParams();
@@ -30,6 +31,7 @@ export default function CourseDetail() {
   const navigate = useNavigate();
   const enrollMutation = useEnrollInCourse();
   const { data: enrollments } = useUserEnrollments();
+  const { access } = useCourseAccess(courseId);
   const [showEnrollmentFlow, setShowEnrollmentFlow] = useState(false);
 
   const { data: courseData, isLoading, error } = useQuery({
@@ -37,7 +39,28 @@ export default function CourseDetail() {
     queryFn: async () => {
       const { data: course, error: courseError } = await supabase
         .from('courses')
-        .select('*, course_modules(*, learning_materials(*))')
+        .select(`
+          id,
+          title,
+          description,
+          faculty,
+          faculty_id,
+          level,
+          rating,
+          xr_enabled,
+          thumbnail_url,
+          preview_video_url,
+          price,
+          price_cents,
+          scroll_coin_cost,
+          scholarship_eligible,
+          duration,
+          students,
+          credit_hours,
+          estimated_duration_hours,
+          learning_outcomes,
+          course_modules(id, title, description, order_index, duration_minutes, learning_objectives)
+        `)
         .eq('id', courseId!)
         .single();
       
@@ -75,21 +98,16 @@ export default function CourseDetail() {
     enrollments?.find((e: any) => e.course_id === courseId),
     [enrollments, courseId]
   );
+  const isEnrolled =
+    !!enrollment ||
+    access?.access_level === "enrolled" ||
+    access?.access_level === "credit" ||
+    access?.access_level === "faculty" ||
+    access?.access_level === "admin";
 
   const previewVideoUrl = useMemo(() => {
     const course: any = courseData?.course;
-    const modules: any[] = courseData?.modules || [];
-    if (!course) return undefined;
-    // 1) Course-specific uploaded preview
-    if (course.preview_video_url) return course.preview_video_url;
-    // 2) Fallback: first video of THIS course's first module (course-related, never random)
-    const firstModule = [...modules].sort(
-      (a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0)
-    )[0];
-    const firstVideo = (firstModule?.learning_materials || []).find(
-      (mat: any) => (mat.kind || '').toLowerCase() === 'video' && mat.url
-    );
-    return firstVideo?.url as string | undefined;
+    return course?.preview_video_url || undefined;
   }, [courseData]);
 
   const handleEnroll = () => {
@@ -244,26 +262,37 @@ export default function CourseDetail() {
                 <CardHeader>
                   <CardTitle>Course Modules</CardTitle>
                   <CardDescription>
-                    {modules.length} comprehensive modules with lectures, assessments, and practical applications
+                    {isEnrolled
+                      ? `${modules.length} comprehensive modules with lectures, assessments, and practical applications`
+                      : "Detailed modules, lectures, assessments, and materials unlock after enrollment"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Accordion type="single" collapsible className="w-full">
-                    {modules.map((module, index) => (
+                  {!isEnrolled && modules.length === 0 ? (
+                    <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
+                      This is a course catalog preview. Enrolled students enter the live AI avatar lecture room and receive the full curriculum, study materials, assignments, quizzes, and academic progress tracking.
+                    </div>
+                  ) : (
+                    <Accordion type="single" collapsible className="w-full">
+                      {modules.map((module, index) => (
                       <AccordionItem key={module.id} value={`module-${index}`}>
                         <AccordionTrigger className="hover:no-underline">
                           <div className="flex items-center space-x-3 flex-1 text-left">
                             <div className="p-2 bg-primary/10 rounded-full">
-                              <BookOpen className="h-4 w-4 text-primary" />
+                              {isEnrolled ? (
+                                <BookOpen className="h-4 w-4 text-primary" />
+                              ) : (
+                                <Lock className="h-4 w-4 text-muted-foreground" />
+                              )}
                             </div>
                             <div className="flex-1">
                               <p className="font-medium">Module {index + 1}: {module.title}</p>
                               <div className="flex items-center space-x-4 mt-1">
                                 <span className="text-xs text-muted-foreground">
                                   <Clock className="h-3 w-3 inline mr-1" />
-                                  {(module.content as any)?.duration_minutes || 45} minutes
+                                  {module.duration_minutes || 45} minutes
                                 </span>
-                                {module.learning_materials && (
+                                {isEnrolled && module.learning_materials && (
                                   <span className="text-xs text-muted-foreground">
                                     {module.learning_materials.length} materials
                                   </span>
@@ -273,8 +302,14 @@ export default function CourseDetail() {
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="space-y-4 pt-4">
+                          {!isEnrolled && (
+                            <div className="rounded-lg border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">
+                              Course-room content is available only after enrollment. Enrolled students get the live AI avatar lecture, full study materials, assignments, quizzes, and academic record tracking.
+                            </div>
+                          )}
+
                           {/* Module Summary */}
-                          {(module.content as any)?.summary && (
+                          {isEnrolled && (module.content as any)?.summary && (
                             <p className="text-sm text-muted-foreground">
                               {(module.content as any).summary}
                             </p>
@@ -284,7 +319,7 @@ export default function CourseDetail() {
                           {(() => {
                             const objectives: string[] = Array.isArray((module as any).learning_objectives) && (module as any).learning_objectives.length > 0
                               ? (module as any).learning_objectives
-                              : Array.isArray((module.content as any)?.learning_objectives)
+                              : isEnrolled && Array.isArray((module.content as any)?.learning_objectives)
                                 ? (module.content as any).learning_objectives
                                 : [];
                             if (objectives.length === 0) return null;
@@ -304,7 +339,7 @@ export default function CourseDetail() {
                           })()}
 
                           {/* Learning Materials */}
-                          {module.learning_materials && module.learning_materials.length > 0 && (
+                          {isEnrolled && module.learning_materials && module.learning_materials.length > 0 && (
                             <div className="space-y-2">
                               <h4 className="font-medium text-sm">Course Materials:</h4>
                               <div className="space-y-2">
@@ -338,10 +373,10 @@ export default function CourseDetail() {
 
                           {/* Action Buttons */}
                           <div className="flex gap-2 pt-2">
-                            {enrollment ? (
-                              <Button className="flex-1" size="sm" variant="default" onClick={() => toast.info("This action is launching with the next release.")}>
+                            {isEnrolled ? (
+                              <Button className="flex-1" size="sm" variant="default" onClick={handleStartLearning}>
                                 <Play className="h-4 w-4 mr-2" />
-                                Start Module
+                                Enter Course Room
                               </Button>
                             ) : (
                               <Button className="flex-1" size="sm" variant="outline" disabled>
@@ -352,6 +387,7 @@ export default function CourseDetail() {
                             <Button
                               variant="outline"
                               size="sm"
+                              disabled={!isEnrolled}
                               onClick={() => navigate(`/ai-tutors/${course.faculty}?context=${encodeURIComponent(module.title)}`)}
                             >
                               <MessageSquare className="h-4 w-4 mr-2" />
@@ -360,8 +396,9 @@ export default function CourseDetail() {
                           </div>
                         </AccordionContent>
                       </AccordionItem>
-                    ))}
-                  </Accordion>
+                      ))}
+                    </Accordion>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -481,10 +518,10 @@ export default function CourseDetail() {
                   <span className="font-medium">{modules.length}</span>
                 </div>
 
-                {enrollment ? (
+                {isEnrolled ? (
                   <Button className="w-full" onClick={handleStartLearning}>
                     <Play className="h-4 w-4 mr-2" />
-                    Continue Learning
+                    Enter Live Lecture
                   </Button>
                 ) : (
                   <Button 
