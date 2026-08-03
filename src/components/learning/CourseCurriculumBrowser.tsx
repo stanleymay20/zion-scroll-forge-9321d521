@@ -32,6 +32,8 @@ interface CourseModule {
   duration_minutes?: number;
   content_md?: string;
   rewards_amount?: number;
+  reflective_prompt?: string | null;
+  formative_checkpoints?: unknown;
 }
 
 interface CourseCurriculumBrowserProps {
@@ -65,6 +67,10 @@ export const CourseCurriculumBrowser = ({
   const totalDuration = sortedModules.reduce((acc, m) => acc + (m.duration_minutes || 30), 0);
   const totalXP = sortedModules.reduce((acc, m) => acc + (m.rewards_amount || 10), 0);
   const completedCount = completedModuleIds.length;
+  const modulesWithPedagogy = sortedModules.filter((m) => {
+    const checkpoints = Array.isArray(m.formative_checkpoints) ? m.formative_checkpoints.length : 0;
+    return !!m.reflective_prompt || checkpoints > 0;
+  }).length;
 
   const getModuleStatus = (moduleId: string, index: number) => {
     if (completedModuleIds.includes(moduleId)) return 'completed';
@@ -121,6 +127,21 @@ export const CourseCurriculumBrowser = ({
             <div className="text-center p-3 bg-muted/50 rounded-lg">
               <div className="text-2xl font-bold text-primary">{completedCount}</div>
               <div className="text-xs text-muted-foreground">Completed</div>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-3 mb-6 text-sm">
+            <div className="rounded-md border p-3">
+              <div className="font-medium">Mastery gates</div>
+              <div className="text-xs text-muted-foreground">{modulesWithPedagogy}/{modules.length} modules include reflection or checkpoints</div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="font-medium">Assessment evidence</div>
+              <div className="text-xs text-muted-foreground">Module work, outcome checks, and completion record</div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="font-medium">Academic standard</div>
+              <div className="text-xs text-muted-foreground">Original work, citation discipline, and final synthesis</div>
             </div>
           </div>
 

@@ -11,9 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Logo } from "@/components/brand/Logo";
-import { Lock, ArrowRight, BookOpen, Clock, GraduationCap } from "lucide-react";
+import { Lock, ArrowRight, BookOpen, Clock, GraduationCap, ClipboardCheck, Target, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCourseAccess } from "@/hooks/useCourseAccess";
+import { getAcademicCourseProfile } from "@/lib/academicRigor";
 
 interface CourseRow {
   id: string;
@@ -89,6 +90,7 @@ export default function CoursePreview() {
   const outcomes: string[] = Array.isArray(course.learning_outcomes)
     ? course.learning_outcomes
     : [];
+  const profile = getAcademicCourseProfile(course, firstModule ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-ivory to-background">
@@ -155,18 +157,57 @@ export default function CoursePreview() {
           </Card>
         )}
 
-        {outcomes.length > 0 && (
-          <Card>
-            <CardHeader><CardTitle className="font-serif">What you'll learn</CardTitle></CardHeader>
-            <CardContent>
-              <ul className="grid md:grid-cols-2 gap-2 text-sm">
-                {outcomes.map((o, i) => (
-                  <li key={i} className="flex gap-2"><ArrowRight className="h-4 w-4 text-primary mt-0.5" /> {o}</li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-serif flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-primary" />
+              University Learning Contract
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid sm:grid-cols-2 gap-4 text-sm">
+            <div className="rounded-md border p-3">
+              <div className="text-xs uppercase text-muted-foreground mb-1">Workload</div>
+              <div className="font-medium">{profile.workload} over {profile.duration}</div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="text-xs uppercase text-muted-foreground mb-1">Credit</div>
+              <div className="font-medium">{profile.credits}</div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="text-xs uppercase text-muted-foreground mb-1">Assessment</div>
+              <div className="font-medium">{profile.assessmentModel.join(", ")}</div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="text-xs uppercase text-muted-foreground mb-1">Support</div>
+              <div className="font-medium">{profile.supportModel.slice(0, 2).join(", ")}</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="font-serif flex items-center gap-2"><Target className="h-5 w-5 text-primary" /> What you'll learn</CardTitle></CardHeader>
+          <CardContent>
+            <ul className="grid md:grid-cols-2 gap-2 text-sm">
+              {(outcomes.length > 0 ? outcomes : profile.outcomes).map((o, i) => (
+                <li key={i} className="flex gap-2"><ArrowRight className="h-4 w-4 text-primary mt-0.5" /> {o}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="font-serif flex items-center gap-2"><Users className="h-5 w-5 text-primary" /> Weekly Scholarly Rhythm</CardTitle></CardHeader>
+          <CardContent>
+            <ol className="grid sm:grid-cols-2 gap-2 text-sm">
+              {profile.weeklyCadence.map((item, i) => (
+                <li key={item} className="flex gap-2">
+                  <Badge variant="outline" className="h-5 w-5 justify-center rounded-full p-0 text-[10px]">{i + 1}</Badge>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
 
         {firstModule && (
           <Card>

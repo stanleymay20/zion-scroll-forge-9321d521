@@ -16,7 +16,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, BookOpen, List, Loader2, AlertCircle,
-  MessageSquare, GraduationCap, Award, Trophy, Video
+  MessageSquare, GraduationCap, Award, Trophy, Video, ClipboardCheck, Target, CalendarDays
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ModuleLearningContent } from '@/components/learning/ModuleLearningContent';
@@ -29,6 +29,7 @@ import { earnScrollGold } from '@/services/scrollgold';
 import { usePrerequisiteCheck } from '@/hooks/usePrerequisiteCheck';
 import { PrerequisiteBlock } from '@/components/courses/PrerequisiteBlock';
 import confetti from 'canvas-confetti';
+import { getAcademicCourseProfile } from '@/lib/academicRigor';
 
 export default function CourseLearningPage() {
   const { courseId } = useParams();
@@ -267,6 +268,9 @@ export default function CourseLearningPage() {
         sortedModules.some((m: any) => m.id === id)
       ).length / sortedModules.length) * 100)
     : 0;
+  const academicProfile = courseData
+    ? getAcademicCourseProfile(courseData, sortedModules.length)
+    : null;
 
   if (isLoading) {
     return (
@@ -336,6 +340,35 @@ export default function CourseLearningPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 pt-4">
+        {academicProfile && (
+          <div className="grid md:grid-cols-4 gap-3 mb-4">
+            <Card>
+              <CardContent className="p-3 text-sm">
+                <div className="flex items-center gap-2 font-medium"><CalendarDays className="h-4 w-4 text-primary" /> Weekly Load</div>
+                <p className="text-xs text-muted-foreground mt-1">{academicProfile.workload} · {academicProfile.duration}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 text-sm">
+                <div className="flex items-center gap-2 font-medium"><Target className="h-4 w-4 text-primary" /> Mastery Standard</div>
+                <p className="text-xs text-muted-foreground mt-1">Reflect, practice, pass outcomes, then complete.</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 text-sm">
+                <div className="flex items-center gap-2 font-medium"><ClipboardCheck className="h-4 w-4 text-primary" /> Evidence</div>
+                <p className="text-xs text-muted-foreground mt-1">{academicProfile.assessmentModel[1]} and final synthesis.</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 text-sm">
+                <div className="flex items-center gap-2 font-medium"><MessageSquare className="h-4 w-4 text-primary" /> Support</div>
+                <p className="text-xs text-muted-foreground mt-1">AI tutor, advising, checkpoints, and remediation.</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="learn" className="flex items-center gap-1.5 text-xs sm:text-sm">

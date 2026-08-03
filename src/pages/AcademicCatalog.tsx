@@ -32,8 +32,10 @@ import {
   GraduationCap,
   Lock,
   Search,
+  Target,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAcademicCourseProfile } from "@/lib/academicRigor";
 
 type AccessState = "preview" | "enrolled" | "locked";
 
@@ -54,6 +56,10 @@ interface Course {
 }
 
 const LEVEL_ORDER = ["foundation", "intermediate", "advanced", "capstone"];
+const levelRank = (level: string) => {
+  const index = LEVEL_ORDER.indexOf(level);
+  return index === -1 ? LEVEL_ORDER.length : index;
+};
 
 function computeAccessState(
   course: Course,
@@ -98,6 +104,7 @@ function CourseCard({
   state: AccessState;
   programName?: string;
 }) {
+  const profile = getAcademicCourseProfile(c);
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -144,6 +151,18 @@ function CourseCard({
             </span>
           )}
           {c.credit_hours ? <span>{c.credit_hours} cr</span> : null}
+        </div>
+        <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-2">
+          <div className="font-medium text-foreground flex items-center gap-1">
+            <Target className="h-3.5 w-3.5 text-primary" />
+            Course contract
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-muted-foreground">
+            <span>{profile.credits}</span>
+            <span>{profile.workload}</span>
+            <span>{profile.duration}</span>
+            <span>{profile.assessmentModel[3]}</span>
+          </div>
         </div>
         <div className="flex gap-2 pt-1">
           <Button asChild size="sm" variant="outline" className="flex-1">
@@ -334,7 +353,7 @@ export default function AcademicCatalog() {
       map.get(k)!.push(c);
     });
     return Array.from(map.entries()).sort(
-      ([a], [b]) => LEVEL_ORDER.indexOf(a) + 99 - (LEVEL_ORDER.indexOf(b) + 99)
+      ([a], [b]) => levelRank(a) - levelRank(b)
     );
   }, [filtered]);
 
@@ -386,9 +405,19 @@ export default function AcademicCatalog() {
         <div className="space-y-2">
           <h1 className="font-serif text-4xl">Academic Catalog</h1>
           <p className="text-muted-foreground">
-            Browse courses across the 12 Supreme Scroll Faculties. Preview any
-            course; enroll to unlock the full curriculum.
+            Browse courses across the 12 Supreme Scroll Faculties. Each course is framed as a university learning contract with outcomes, workload, assessment evidence, and a path to credentialed mastery.
           </p>
+        </div>
+
+        <div className="grid md:grid-cols-4 gap-3">
+          {["Outcomes first", "Assessment evidence", "Guided weekly cadence", "Credential record"].map((standard) => (
+            <Card key={standard} className="bg-card/70">
+              <CardContent className="p-3 text-sm font-medium flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                {standard}
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         <div className="space-y-3">
