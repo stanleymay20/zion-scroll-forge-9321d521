@@ -16,7 +16,8 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, BookOpen, List, Loader2, AlertCircle,
-  MessageSquare, GraduationCap, Award, Trophy, Video, ClipboardCheck, Target, CalendarDays
+  MessageSquare, GraduationCap, Award, Video, ClipboardCheck, Target, CalendarDays,
+  PlayCircle, Headphones, ScrollText, UploadCloud
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ModuleLearningContent } from '@/components/learning/ModuleLearningContent';
@@ -46,7 +47,7 @@ export default function CourseLearningPage() {
     queryFn: async () => {
       const { data: course, error: courseError } = await supabase
         .from('courses')
-        .select('*, course_modules (*)')
+        .select('*, course_modules (*, learning_materials (*))')
         .eq('id', courseId!)
         .single();
       if (courseError) throw courseError;
@@ -244,7 +245,7 @@ export default function CourseLearningPage() {
   const handleNextModule = () => {
     if (currentModuleIndex < sortedModules.length - 1) {
       setCurrentModuleId(sortedModules[currentModuleIndex + 1].id);
-      setActiveTab('learn');
+      setActiveTab('avatar');
     } else {
       // All modules done — navigate to graduation
       navigate('/graduation');
@@ -254,13 +255,13 @@ export default function CourseLearningPage() {
   const handlePreviousModule = () => {
     if (currentModuleIndex > 0) {
       setCurrentModuleId(sortedModules[currentModuleIndex - 1].id);
-      setActiveTab('learn');
+      setActiveTab('avatar');
     }
   };
 
   const handleModuleSelect = (moduleId: string) => {
     setCurrentModuleId(moduleId);
-    setActiveTab('learn');
+    setActiveTab('avatar');
   };
 
   const overallProgress = sortedModules.length > 0 
@@ -373,11 +374,11 @@ export default function CourseLearningPage() {
           <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="avatar" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <Video className="h-4 w-4" />
-              <span className="hidden sm:inline">Live Lecture</span>
+              <span className="hidden sm:inline">Lecture Hall</span>
             </TabsTrigger>
             <TabsTrigger value="learn" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <BookOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Study Material</span>
+              <span className="hidden sm:inline">Study Packet</span>
             </TabsTrigger>
             <TabsTrigger value="curriculum" className="flex items-center gap-1.5 text-xs sm:text-sm">
               <List className="h-4 w-4" />
@@ -394,16 +395,23 @@ export default function CourseLearningPage() {
               <div className="rounded-lg border bg-card p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="font-serif text-xl">Live AI Avatar Lecture</h2>
+                    <h2 className="font-serif text-xl">AI Professor Lecture Hall</h2>
                     <p className="text-sm text-muted-foreground">
-                      The primary lecture experience is a real-time AI avatar. Start the lecture, enable sound, and ask questions by voice, direct chat, or the live queue.
+                      Watch the recorded AI professor lecture anytime, then use live AI Q&A for questions, tutoring, and seminar discussion.
                     </p>
                   </div>
                   <Badge variant="secondary" className="w-fit">
-                    Live questions enabled
+                    24/7 lecture + live questions
                   </Badge>
                 </div>
               </div>
+
+              {currentModule && (
+                <RecordedLecturePanel
+                  module={currentModule}
+                  onOpenStudyPacket={() => setActiveTab('learn')}
+                />
+              )}
 
               {aiTutor ? (
                 <LiveAvatarLecture
@@ -436,12 +444,12 @@ export default function CourseLearningPage() {
                 <Card>
                   <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="font-medium">This module is taught live by an AI avatar.</p>
-                      <p className="text-sm text-muted-foreground">Use the study material below as your reading packet, then return to the live lecture for questions.</p>
+                      <p className="font-medium">This module follows a university lecture sequence.</p>
+                      <p className="text-sm text-muted-foreground">Watch the recorded lecture first, complete the study packet, then use live AI Q&A for discussion.</p>
                     </div>
                     <Button onClick={() => setActiveTab('avatar')} className="gap-2">
                       <Video className="h-4 w-4" />
-                      Join Live Lecture
+                      Open Lecture Hall
                     </Button>
                   </CardContent>
                 </Card>
@@ -513,6 +521,126 @@ export default function CourseLearningPage() {
       </div>
     </div>
     </CourseLearningGuard>
+  );
+}
+
+type LearningMaterial = {
+  id: string;
+  title: string | null;
+  kind: string | null;
+  url: string | null;
+  meta?: any;
+};
+
+function RecordedLecturePanel({
+  module,
+  onOpenStudyPacket,
+}: {
+  module: {
+    title: string;
+    duration_minutes?: number | null;
+    learning_materials?: LearningMaterial[];
+    content?: any;
+  };
+  onOpenStudyPacket: () => void;
+}) {
+  const materials = Array.isArray(module.learning_materials) ? module.learning_materials : [];
+  const videoLecture = materials.find((material) => {
+    const type = typeof material.meta === 'object' && material.meta ? material.meta.type : undefined;
+    return material.url && (material.kind === 'video' || type === 'video_lecture');
+  });
+  const audioLecture = materials.find((material) => {
+    const type = typeof material.meta === 'object' && material.meta ? material.meta.type : undefined;
+    return material.url && (material.kind === 'audio' || type === 'audio_lecture');
+  });
+  const lectureScript = materials.find((material) => {
+    const type = typeof material.meta === 'object' && material.meta ? material.meta.type : undefined;
+    return material.url && (material.kind === 'video_script' || type === 'video_script');
+  });
+  const moduleVideoUrl = typeof module.content?.video_url === 'string' ? module.content.video_url : null;
+  const videoUrl = videoLecture?.url || moduleVideoUrl;
+  const videoTitle = videoLecture?.title || 'Recorded AI professor lecture';
+  const expectedDuration = module.duration_minutes && module.duration_minutes >= 30
+    ? `${module.duration_minutes} min`
+    : '45-60 min target';
+
+  return (
+    <section className="rounded-lg border bg-background">
+      <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="border-b lg:border-b-0 lg:border-r">
+          {videoUrl ? (
+            <video
+              src={videoUrl}
+              controls
+              preload="metadata"
+              className="aspect-video h-full w-full bg-black object-contain"
+              aria-label={videoTitle}
+            />
+          ) : (
+            <div className="flex aspect-video min-h-[260px] flex-col items-center justify-center gap-3 bg-muted/40 p-6 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                <UploadCloud className="h-7 w-7 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Recorded lecture not published yet</p>
+                <p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">
+                  Publish a generated MP4 as a video learning material for this module to make the full professor lecture available 24/7.
+                </p>
+              </div>
+              {lectureScript?.url && (
+                <Button asChild variant="outline" size="sm" className="gap-2">
+                  <a href={lectureScript.url} target="_blank" rel="noreferrer">
+                    <ScrollText className="h-4 w-4" />
+                    Open Lecture Script
+                  </a>
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col justify-between gap-4 p-4">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary" className="gap-1">
+                <PlayCircle className="h-3 w-3" />
+                Recorded Lecture
+              </Badge>
+              <Badge variant="outline">{expectedDuration}</Badge>
+            </div>
+            <div>
+              <h3 className="font-serif text-lg leading-tight">{module.title}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                This is the cost-controlled core lecture. Generate it once, store the MP4, and let every enrolled student watch it on demand.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {audioLecture?.url && (
+              <Button asChild variant="outline" className="w-full justify-start gap-2">
+                <a href={audioLecture.url} target="_blank" rel="noreferrer">
+                  <Headphones className="h-4 w-4" />
+                  Open Audio Lecture
+                </a>
+              </Button>
+            )}
+            {lectureScript?.url && (
+              <Button asChild variant="outline" className="w-full justify-start gap-2">
+                <a href={lectureScript.url} target="_blank" rel="noreferrer">
+                  <ScrollText className="h-4 w-4" />
+                  Review Lecture Script
+                </a>
+              </Button>
+            )}
+            <Button onClick={onOpenStudyPacket} className="w-full justify-start gap-2">
+              <BookOpen className="h-4 w-4" />
+              Continue to Study Packet
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

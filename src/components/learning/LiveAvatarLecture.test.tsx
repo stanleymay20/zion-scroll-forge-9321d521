@@ -164,7 +164,7 @@ describe('LiveAvatarLecture workflow', () => {
     fireEvent.click(screen.getByRole('button', { name: /test microphone/i }));
     await waitFor(() => expect(screen.getAllByText(hasText('mic: granted')).length).toBeGreaterThan(0));
 
-    fireEvent.click(screen.getByRole('button', { name: /start lecture/i }));
+    fireEvent.click(screen.getByRole('button', { name: /start live q&a/i }));
     // Truthful contract: we only claim "live avatar" once the remote video track fires.
     // Until then the badge must show "negotiating video" — never the stronger claim.
     await waitFor(() => expect(screen.getAllByText(hasText('delivery: negotiating video')).length).toBeGreaterThan(0));
@@ -203,7 +203,7 @@ describe('LiveAvatarLecture workflow', () => {
         courseTitle="AI Ethics & Responsible Systems"
       />
     );
-    fireEvent.click(screen.getByRole('button', { name: /start lecture/i }));
+    fireEvent.click(screen.getByRole('button', { name: /start live q&a/i }));
 
     await waitFor(() =>
       expect(

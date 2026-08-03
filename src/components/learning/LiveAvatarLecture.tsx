@@ -187,13 +187,13 @@ export function LiveAvatarLecture({
   const describeProviderIssue = useCallback((reason?: string | null) => {
     if (!reason) return 'Live video provider did not return a video stream.';
     if (reason.includes('AVATAR_PROVIDER_UNCONFIGURED')) {
-      return 'Live video avatar provider is not configured. Add a valid DID_API_KEY Supabase secret, then redeploy the ai-avatar-stream function.';
+      return 'Live video Q&A provider is not configured. Publish the recorded lecture for 24/7 viewing, then configure a realtime avatar provider for live questions.';
     }
     if (reason.includes('AVATAR_PROVIDER_AUTH_FAILED')) {
-      return 'Live video avatar provider authentication failed. Check the DID_API_KEY secret format.';
+      return 'Live video Q&A provider authentication failed. Check the configured provider API secret.';
     }
     if (reason.includes('AVATAR_PROVIDER_FORBIDDEN')) {
-      return 'Live video avatar provider rejected the account. Check D-ID plan status, trial status, or API key permissions.';
+      return 'Live video Q&A provider rejected the account. Check plan status, trial status, or API key permissions.';
     }
     if (reason.includes('AVATAR_PROVIDER_CREDITS_EXHAUSTED')) {
       return 'Live video avatar provider credits are exhausted.';
@@ -888,7 +888,7 @@ export function LiveAvatarLecture({
     try {
       const stream = (videoRef.current as any)?.captureStream?.();
       if (!stream) {
-        toast.error('Recording not available — start lecture video first');
+        toast.error('Recording not available — start live Q&A video first');
         return;
       }
       screenChunksRef.current = [];
@@ -1326,7 +1326,7 @@ export function LiveAvatarLecture({
                 className="gap-1.5"
               >
                 {isConnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
-                {isConnecting ? 'Connecting...' : 'Start Lecture'}
+                {isConnecting ? 'Connecting...' : 'Start Live Q&A'}
               </Button>
             ) : (
               <>
@@ -1495,7 +1495,7 @@ export function LiveAvatarLecture({
                     )}
                   </div>
                   <p className="text-sm font-medium">
-                    {isConnecting ? 'Connecting to live avatar...' : 'Press "Start Lecture" to begin'}
+                    {isConnecting ? 'Connecting to live avatar...' : 'Press "Start Live Q&A" to ask questions'}
                   </p>
                   {moduleTitle && (
                     <p className="text-xs opacity-70 text-center px-4">Today's lecture: {moduleTitle}</p>
@@ -1599,9 +1599,9 @@ export function LiveAvatarLecture({
             {messages.length === 0 && (
               <div className="text-center text-muted-foreground py-6">
                 {hasCohost ? <Users className="h-8 w-8 mx-auto mb-2 opacity-40" /> : <Video className="h-8 w-8 mx-auto mb-2 opacity-40" />}
-                <p className="text-sm font-medium">{hasCohost ? 'Live Panel Lecture' : 'Live AI Avatar Lecture'}</p>
+                <p className="text-sm font-medium">{hasCohost ? 'Live Faculty Q&A Panel' : 'Live AI Professor Q&A'}</p>
                 <p className="text-xs mt-1 opacity-70">
-                  Start the lecture to interact in real-time
+                  Start live Q&A to ask questions in real time
                 </p>
               </div>
             )}
@@ -1697,7 +1697,7 @@ export function LiveAvatarLecture({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder={isConnected ? 'Ask, or tap hand to queue...' : 'Start lecture first...'}
+            placeholder={isConnected ? 'Ask, or tap hand to queue...' : 'Start live Q&A first...'}
             disabled={!isConnected || isLoading}
             className="flex-1"
           />
