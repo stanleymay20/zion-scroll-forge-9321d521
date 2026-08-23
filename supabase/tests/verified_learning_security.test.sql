@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Verified Learning Security Regression Suite
--- Ensures learners cannot manufacture credential-bearing evidence.
+-- Ensures learners cannot manufacture credential-bearing evidence or rewards.
 -- ============================================================================
 \set ON_ERROR_STOP on
 BEGIN;
@@ -109,6 +109,80 @@ BEGIN
   PERFORM pg_temp.vls_record(8, 'self-claim is capped inferred evidence',
     v_kind='inferred' AND v_conf <= 0.20,
     'kind='||coalesce(v_kind,'null')||', confidence='||coalesce(v_conf::text,'null'));
+END $$;
+
+-- 9: generic mint function must never be callable from the browser role.
+DO $$ BEGIN
+  PERFORM pg_temp.vls_record(9, 'authenticated cannot call generic ScrollCoin mint API',
+    NOT has_function_privilege('authenticated','public.earn_scrollcoin(uuid,numeric,text)','EXECUTE'));
+END $$;
+
+-- 10: verified reward API is service-only.
+DO $$ BEGIN
+  PERFORM pg_temp.vls_record(10, 'authenticated cannot call verified reward issuer',
+    NOT has_function_privilege(
+      'authenticated',
+      'public.award_verified_learning_reward(uuid,text,uuid,numeric,jsonb)',
+      'EXECUTE'
+    ));
+END $$;
+
+-- 11: legacy completion projections are read-only for learners.
+DO $$ BEGIN
+  PERFORM pg_temp.vls_record(11, 'legacy completion projections are not learner-writable',
+    (to_regclass('public.module_progress') IS NULL OR (
+      NOT has_table_privilege('authenticated','public.module_progress','INSERT')
+      AND NOT has_table_privilege('authenticated','public.module_progress','UPDATE')
+      AND NOT has_table_privilege('authenticated','public.module_progress','DELETE')
+    ))
+    AND (to_regclass('public.learning_progress') IS NULL OR (
+      NOT has_table_privilege('authenticated','public.learning_progress','INSERT')
+      AND NOT has_table_privilege('authenticated','public.learning_progress','UPDATE')
+      AND NOT has_table_privilege('authenticated','public.learning_progress','DELETE')
+    )));
+END $$;
+
+-- 12: spending API cannot debit another user's wallet.
+DO $$
+DECLARE
+  v_actor uuid := gen_random_uuid();
+  v_victim uuid := gen_random_uuid();
+  v_rejected boolean := false;
+BEGIN
+  INSERT INTO auth.users(id,email) VALUES
+    (v_actor, 'vls-spender-'||v_actor::text||'@example.test'),
+    (v_victim, 'vls-victim-'||v_victim::text||'@example.test');
+  PERFORM set_config('request.jwt.claims', json_build_object('sub',v_actor::text,'role','authenticated')::text, true);
+
+  BEGIN
+    PERFORM public.spend_scrollcoin(v_victim, 1, 'forgery test');
+  EXCEPTION WHEN OTHERS THEN
+    v_rejected := SQLERRM LIKE '%forbidden%';
+  END;
+
+  PERFORM pg_temp.vls_record(12, 'spending is self-only', v_rejected,
+    CASE WHEN v_rejected THEN '' ELSE 'cross-user spend was not rejected as forbidden' END);
+END $$;
+
+-- 13: verified reward issuance is idempotent by learner + type + source.
+DO $$
+DECLARE
+  v_user uuid := gen_random_uuid();
+  v_source uuid := gen_random_uuid();
+  v_first boolean;
+  v_second boolean;
+  v_count int;
+BEGIN
+  INSERT INTO auth.users(id,email) VALUES (v_user, 'vls-reward-'||v_user::text||'@example.test');
+
+  v_first := public.award_verified_learning_reward(v_user,'test_verified_reward',v_source,5,'{}'::jsonb);
+  v_second := public.award_verified_learning_reward(v_user,'test_verified_reward',v_source,5,'{}'::jsonb);
+  SELECT count(*) INTO v_count FROM public.verified_learning_rewards
+    WHERE user_id=v_user AND reward_type='test_verified_reward' AND source_id=v_source;
+
+  PERFORM pg_temp.vls_record(13, 'verified reward is idempotent',
+    v_first IS TRUE AND v_second IS FALSE AND v_count=1,
+    format('first=%s second=%s ledger_rows=%s',v_first,v_second,v_count));
 END $$;
 
 \echo '================ VERIFIED LEARNING SECURITY ================'
