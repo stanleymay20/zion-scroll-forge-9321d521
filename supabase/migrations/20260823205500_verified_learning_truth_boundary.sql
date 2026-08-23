@@ -78,10 +78,17 @@ CREATE POLICY "Users can update own module activity"
 -- ---------------------------------------------------------------------
 -- 4) quiz_submissions.score drives reward issuance in the legacy reward
 --    trigger, therefore submission creation must be trusted-server only.
+--    This relation is legacy/optional in clean CI bootstraps, so absence is
+--    already a secure state and must not make the migration fail.
 -- ---------------------------------------------------------------------
-REVOKE INSERT, UPDATE, DELETE ON public.quiz_submissions FROM authenticated;
-GRANT SELECT ON public.quiz_submissions TO authenticated;
-DROP POLICY IF EXISTS "Users can insert own submissions" ON public.quiz_submissions;
+DO $$
+BEGIN
+  IF to_regclass('public.quiz_submissions') IS NOT NULL THEN
+    REVOKE INSERT, UPDATE, DELETE ON public.quiz_submissions FROM authenticated;
+    GRANT SELECT ON public.quiz_submissions TO authenticated;
+    DROP POLICY IF EXISTS "Users can insert own submissions" ON public.quiz_submissions;
+  END IF;
+END $$;
 
 -- ---------------------------------------------------------------------
 -- 5) Skill evidence ledger is append-only AND authority-bound.
