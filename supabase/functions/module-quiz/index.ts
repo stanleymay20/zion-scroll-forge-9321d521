@@ -60,6 +60,55 @@ async function isAuthorizedLearner(supabase: any, userId: string, courseId: stri
   return !!sectionEnrollment
 }
 
+async function syncVerifiedCompletion(
+  supabase: any,
+  userId: string,
+  courseId: string,
+  moduleId: string,
+  percentage: number,
+) {
+  // Compatibility projections. Learners cannot write these tables directly;
+  // this trusted boundary keeps older UI/reporting paths coherent.
+  await supabase.from('learning_progress').upsert({
+    user_id: userId,
+    module_id: moduleId,
+    completed: true,
+    quiz_score: percentage,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id,module_id' })
+
+  await supabase.from('module_progress').upsert({
+    user_id: userId,
+    course_id: courseId,
+    module_id: moduleId,
+    completed: true,
+    completed_at: new Date().toISOString(),
+  }, { onConflict: 'user_id,module_id' })
+
+  const { data: modules } = await supabase
+    .from('course_modules')
+    .select('id')
+    .eq('course_id', courseId)
+
+  const moduleIds = (modules ?? []).map((m: any) => m.id)
+  if (moduleIds.length === 0) return
+
+  const { data: completed } = await supabase
+    .from('student_module_progress')
+    .select('module_id')
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+    .in('module_id', moduleIds)
+
+  const progress = Math.min(100, Math.round(((completed?.length ?? 0) / moduleIds.length) * 10000) / 100)
+
+  await supabase
+    .from('enrollments')
+    .update({ progress, updated_at: new Date().toISOString() })
+    .eq('course_id', courseId)
+    .eq('user_id', userId)
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -89,6 +138,16 @@ serve(async (req) => {
       return json({ error: 'Forbidden' }, 403)
     }
 
+    // Bind the claimed module to the claimed course before reading/grading anything.
+    const { data: moduleRow, error: moduleError } = await supabase
+      .from('course_modules')
+      .select('id,course_id')
+      .eq('id', moduleId)
+      .eq('course_id', courseId)
+      .maybeSingle()
+    if (moduleError) throw new Error(`Failed to verify module: ${moduleError.message}`)
+    if (!moduleRow) return json({ error: 'Module not found in course' }, 404)
+
     const { data: rows, error: questionError } = await supabase
       .from('quiz_questions')
       .select('*')
@@ -116,6 +175,13 @@ serve(async (req) => {
     const answers = body?.answers
     if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
       return json({ error: 'Invalid answers' }, 400)
+    }
+    if (questions.length === 0) return json({ error: 'Assessment has no questions' }, 409)
+
+    // Reject answers for question IDs outside this server-selected assessment.
+    const allowedIds = new Set((questions as any[]).map((q) => q.id))
+    if (Object.keys(answers).some((id) => !allowedIds.has(id))) {
+      return json({ error: 'Answers contain unknown question IDs' }, 400)
     }
 
     let earned = 0
@@ -156,17 +222,21 @@ serve(async (req) => {
 
     const percentage = possible > 0 ? Math.round((earned / possible) * 100) : 0
     const passed = percentage >= 70
+    const now = new Date().toISOString()
 
-    // Transitional persistence for the existing module/CLO model. These writes are
-    // service-role owned, so the client never supplies authoritative score/mastery.
-    const { error: submissionError } = await supabase.from('quiz_submissions').insert({
-      user_id: user.id,
-      course_id: courseId,
-      module_id: moduleId,
-      score: percentage,
-      total: possible,
-      submitted_at: new Date().toISOString(),
-    })
+    // Authoritative result. No client-supplied score is accepted.
+    const { data: submission, error: submissionError } = await supabase
+      .from('quiz_submissions')
+      .insert({
+        user_id: user.id,
+        course_id: courseId,
+        module_id: moduleId,
+        score: percentage,
+        total: possible,
+        submitted_at: now,
+      })
+      .select('id')
+      .single()
     if (submissionError) throw new Error(`Failed to persist quiz submission: ${submissionError.message}`)
 
     for (const [learningObjectiveId, bucket] of outcomeBuckets.entries()) {
@@ -190,16 +260,39 @@ serve(async (req) => {
         module_id: moduleId,
         mastery_level: percentage,
         status: passed ? 'completed' : 'in_progress',
-        last_accessed: new Date().toISOString(),
-        ...(passed ? { completed_at: new Date().toISOString() } : {}),
+        last_accessed: now,
+        ...(passed ? { completed_at: now } : { completed_at: null }),
       }, { onConflict: 'user_id,module_id' })
     if (masteryError) throw new Error(`Failed to persist module mastery: ${masteryError.message}`)
+
+    let rewardAwarded = false
+    if (passed) {
+      await syncVerifiedCompletion(supabase, user.id, courseId, moduleId, percentage)
+
+      // One reward per learner+module, regardless of retries/replays. The amount is
+      // derived from the server score and cannot be supplied by the browser.
+      const { data: awarded, error: rewardError } = await supabase.rpc('award_verified_learning_reward', {
+        p_user_id: user.id,
+        p_reward_type: 'module_quiz_pass',
+        p_source_id: moduleId,
+        p_amount: Math.max(1, percentage),
+        p_metadata: {
+          course_id: courseId,
+          module_id: moduleId,
+          submission_id: submission.id,
+          score: percentage,
+        },
+      })
+      if (rewardError) throw new Error(`Failed to award verified learning reward: ${rewardError.message}`)
+      rewardAwarded = awarded === true
+    }
 
     return json({
       score: percentage,
       passed,
       earned,
       possible,
+      rewardAwarded,
       review,
       outcomes: Array.from(outcomeBuckets.entries()).map(([learning_objective_id, bucket]) => ({
         learning_objective_id,
