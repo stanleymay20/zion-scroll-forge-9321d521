@@ -89,6 +89,8 @@ project_id = "klbtvdqfsctrfdkilrmx"
     verify_jwt = true
   [functions.grade-quiz]
     verify_jwt = true
+  [functions.module-quiz]
+    verify_jwt = true
   [functions.notification-worker]
     verify_jwt = false
   [functions.prayer-voice-to-text]
