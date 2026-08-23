@@ -3,11 +3,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useParams, Link } from 'react-router-dom';
-import { useModule } from '@/hooks/useCourses';
-import { useCompleteModule } from '@/hooks/useCourses';
-import { Loader2, Download, CheckCircle2, FileText, Video, Presentation } from 'lucide-react';
+import { useSafeModule } from '@/hooks/useSafeModule';
+import { Loader2, Download, FileText, Video, Presentation, ShieldCheck } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { toast } from '@/hooks/use-toast';
 import { AITutorAvatar } from '@/components/AITutorAvatar';
 import { MultiAgentClassroom } from '@/components/learning/MultiAgentClassroom';
 import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
@@ -23,8 +21,7 @@ console.info('✝️ Module Detail — Christ is Lord over learning');
 
 export default function ModuleDetail() {
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>();
-  const { data: module, isLoading } = useModule(moduleId!);
-  const completeModule = useCompleteModule();
+  const { data: module, isLoading } = useSafeModule(moduleId);
   // Resolve real student → program → course → faculty → matched tutor (no global fallback).
   // Hook must run before early returns to preserve React hook ordering.
   const { data: liveCtx } = useLiveClassContext(moduleId);
@@ -52,20 +49,6 @@ export default function ModuleDetail() {
       </PageTemplate>
     );
   }
-
-  const handleComplete = () => {
-    completeModule.mutate(
-      { courseId: courseId!, moduleId: moduleId! },
-      {
-        onSuccess: () => {
-          toast({ 
-            title: '✅ Module Completed',
-            description: 'ScrollCoins have been added to your account!'
-          });
-        }
-      }
-    );
-  };
 
   const getFileIcon = (type: string) => {
     switch (type?.toLowerCase()) {
@@ -193,28 +176,18 @@ export default function ModuleDetail() {
           </Card>
         )}
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <Button
-            onClick={handleComplete}
-            disabled={completeModule.isPending}
-            className="flex items-center gap-2"
-          >
-            {completeModule.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Marking Complete...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4" />
-                Mark as Complete
-              </>
-            )}
-          </Button>
+        <Alert>
+          <ShieldCheck className="h-4 w-4" />
+          <AlertTitle>Verified completion</AlertTitle>
+          <AlertDescription>
+            Module completion is recorded automatically from verified assessment evidence. Reading the lesson alone does not self-certify mastery.
+          </AlertDescription>
+        </Alert>
 
+        <div className="flex items-center gap-3 flex-wrap">
           {module.quizzes && module.quizzes.length > 0 && (
             <Link to={`/quiz/${module.quizzes[0].id}`}>
-              <Button variant="secondary">Take Quiz</Button>
+              <Button variant="secondary">Take Verified Quiz</Button>
             </Link>
           )}
 
