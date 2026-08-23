@@ -75,7 +75,7 @@ serve(async (req) => {
       status: 'submitted',
       submitted_at: new Date().toISOString(),
     }
-    if (timeSpent != null) submissionPatch.time_taken = Math.round(timeSpent)
+    if (timeSpent != null) submissionPatch.time_taken_seconds = Math.round(timeSpent)
 
     const { error: submissionError } = await supabaseClient
       .from('quiz_attempts')
@@ -102,10 +102,10 @@ serve(async (req) => {
         attempt_number,
         status,
         score,
-        max_score,
+        max_possible_score,
         percentage,
         passed,
-        time_taken,
+        time_taken_seconds,
         submitted_at,
         graded_at,
         feedback,
