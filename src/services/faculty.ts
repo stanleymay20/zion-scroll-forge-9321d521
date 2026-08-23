@@ -1,6 +1,21 @@
 import { supabase } from '@/integrations/supabase/client';
 import { underChrist } from '@/lib/lordship';
 
+const SAFE_QUIZ_COLUMNS = [
+  'id',
+  'assignment_id',
+  'kind',
+  'prompt',
+  'options',
+  'points',
+  'order_index',
+  'module_id',
+  'course_id',
+  'learning_objective_id',
+  'bloom_level',
+  'difficulty_rating',
+].join(',');
+
 export const listTeachingCourses = underChrist(async () => {
   const { data: user } = await supabase.auth.getUser();
   const { data, error } = await supabase
@@ -35,7 +50,7 @@ export const addQuizQuestion = underChrist(async (payload: any) => {
   const { data, error } = await supabase
     .from('quiz_questions')
     .insert(payload)
-    .select()
+    .select(SAFE_QUIZ_COLUMNS)
     .single();
   
   if (error) throw error;
@@ -73,7 +88,7 @@ export const submitQuiz = underChrist(async ({
   
   if (error) throw error;
 
-  // Auto-grade quiz
+  // Legacy assignment quiz path. The grading boundary validates ownership server-side.
   await supabase.functions.invoke('grade-quiz', { 
     body: { submissionId: sub.id } 
   });
@@ -84,7 +99,7 @@ export const submitQuiz = underChrist(async ({
 export const getAssignments = underChrist(async (courseId: string) => {
   const { data, error } = await supabase
     .from('assignments')
-    .select('*, quiz_questions(*)')
+    .select(`*, quiz_questions(${SAFE_QUIZ_COLUMNS})`)
     .eq('course_id', courseId)
     .eq('published', true)
     .order('created_at', { ascending: false });
