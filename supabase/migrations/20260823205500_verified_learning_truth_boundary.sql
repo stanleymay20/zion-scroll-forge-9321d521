@@ -5,21 +5,26 @@
 
 -- ---------------------------------------------------------------------
 -- 1) Protect every historical quiz answer-key column from Data API reads.
+--    IMPORTANT: a column REVOKE is insufficient when table-level SELECT is
+--    still granted. Remove table SELECT, then grant only non-secret columns.
 -- ---------------------------------------------------------------------
 DO $$
+DECLARE
+  safe_columns text;
 BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema='public' AND table_name='quiz_questions' AND column_name='answer'
-  ) THEN
-    EXECUTE 'REVOKE SELECT (answer) ON public.quiz_questions FROM authenticated, anon';
-  END IF;
+  IF to_regclass('public.quiz_questions') IS NOT NULL THEN
+    REVOKE SELECT ON public.quiz_questions FROM authenticated, anon;
 
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema='public' AND table_name='quiz_questions' AND column_name='correct_answer'
-  ) THEN
-    EXECUTE 'REVOKE SELECT (correct_answer) ON public.quiz_questions FROM authenticated, anon';
+    SELECT string_agg(quote_ident(column_name), ', ' ORDER BY ordinal_position)
+      INTO safe_columns
+      FROM information_schema.columns
+     WHERE table_schema='public'
+       AND table_name='quiz_questions'
+       AND column_name NOT IN ('answer','correct_answer');
+
+    IF safe_columns IS NOT NULL THEN
+      EXECUTE format('GRANT SELECT (%s) ON public.quiz_questions TO authenticated', safe_columns);
+    END IF;
   END IF;
 END $$;
 
