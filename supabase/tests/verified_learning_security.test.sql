@@ -185,6 +185,26 @@ BEGIN
     format('first=%s second=%s ledger_rows=%s',v_first,v_second,v_count));
 END $$;
 
+-- 14: no accumulated permissive SELECT policy may reopen the question bank.
+DO $$
+DECLARE
+  v_total int;
+  v_expected int;
+BEGIN
+  SELECT count(*) INTO v_total
+  FROM pg_policies
+  WHERE schemaname='public' AND tablename='quiz_questions' AND cmd='SELECT';
+
+  SELECT count(*) INTO v_expected
+  FROM pg_policies
+  WHERE schemaname='public' AND tablename='quiz_questions' AND cmd='SELECT'
+    AND policyname='Academic staff read quiz question bank';
+
+  PERFORM pg_temp.vls_record(14, 'question bank has only academic-staff SELECT policy',
+    v_total=1 AND v_expected=1,
+    format('select_policies=%s expected_policy_count=%s',v_total,v_expected));
+END $$;
+
 \echo '================ VERIFIED LEARNING SECURITY ================'
 TABLE _vls_results;
 \echo '============================================================'
