@@ -58,20 +58,27 @@ export async function getBillingProducts(): Promise<BillingProduct[]> {
 export async function getBillingTransactions(): Promise<BillingTransaction[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
-  const { data, error } = await supabase.from('payments')
-    .select('id,user_id,amount,currency,status,description,created_at,stripe_payment_intent_id')
-    .eq('user_id', user.id).order('created_at', { ascending: false }).limit(50);
+
+  // student_account_ledger is the canonical immutable financial record. There is
+  // intentionally no browser-authoritative `payments` table in the launch model.
+  const { data, error } = await supabase
+    .from('student_account_ledger' as any)
+    .select('id,student_user_id,entry_type,amount,currency,memo,posted_at')
+    .eq('student_user_id', user.id)
+    .order('posted_at', { ascending: false })
+    .limit(50);
   if (error) throw error;
-  return (data ?? []).map((p: any) => ({
-    id: p.id,
-    user_id: p.user_id,
-    amount_cents: Number(p.amount ?? 0),
-    currency: String(p.currency ?? 'usd').toUpperCase(),
-    payment_method: p.stripe_payment_intent_id ? 'stripe' : 'institution',
-    transaction_type: 'payment',
-    status: p.status,
-    notes: p.description ?? undefined,
-    created_at: p.created_at,
+
+  return ((data ?? []) as any[]).map((entry) => ({
+    id: entry.id,
+    user_id: entry.student_user_id,
+    amount_cents: Math.round(Number(entry.amount ?? 0) * 100),
+    currency: String(entry.currency ?? 'USD').toUpperCase(),
+    payment_method: 'institution-ledger',
+    transaction_type: String(entry.entry_type ?? 'ledger_entry'),
+    status: 'posted',
+    notes: entry.memo ?? undefined,
+    created_at: entry.posted_at,
   }));
 }
 
