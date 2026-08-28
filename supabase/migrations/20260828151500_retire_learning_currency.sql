@@ -15,20 +15,25 @@ BEGIN
   IF to_regprocedure('public.award_verified_learning_reward(uuid,text,uuid,numeric,jsonb)') IS NOT NULL THEN
     REVOKE ALL ON FUNCTION public.award_verified_learning_reward(uuid,text,uuid,numeric,jsonb)
       FROM PUBLIC, anon, authenticated, service_role;
+    COMMENT ON FUNCTION public.award_verified_learning_reward(uuid,text,uuid,numeric,jsonb) IS
+      'RETIRED: verified academic evidence no longer issues economic rewards. EXECUTE is revoked.';
   END IF;
 
   IF to_regprocedure('public.earn_scrollcoin(uuid,numeric,text)') IS NOT NULL THEN
     REVOKE ALL ON FUNCTION public.earn_scrollcoin(uuid,numeric,text)
       FROM PUBLIC, anon, authenticated, service_role;
+    COMMENT ON FUNCTION public.earn_scrollcoin(uuid,numeric,text) IS
+      'RETIRED: Scroll University no longer uses a learning currency. EXECUTE is revoked.';
   END IF;
 
   IF to_regprocedure('public.spend_scrollcoin(uuid,numeric,text)') IS NOT NULL THEN
     REVOKE ALL ON FUNCTION public.spend_scrollcoin(uuid,numeric,text)
       FROM PUBLIC, anon, authenticated, service_role;
+    COMMENT ON FUNCTION public.spend_scrollcoin(uuid,numeric,text) IS
+      'RETIRED: Scroll University no longer uses a learning currency. EXECUTE is revoked.';
   END IF;
 END $$;
 
--- Reward-ledger rows are historical only after this migration.
 DO $$
 BEGIN
   IF to_regclass('public.verified_learning_rewards') IS NOT NULL THEN
@@ -47,7 +52,6 @@ BEGIN
   END IF;
 END $$;
 
--- Remove known legacy auto-award triggers if their source tables still exist.
 DO $$
 BEGIN
   IF to_regclass('public.quiz_submissions') IS NOT NULL THEN
@@ -57,10 +61,3 @@ BEGIN
     EXECUTE 'DROP TRIGGER IF EXISTS t_award_module_complete ON public.module_progress';
   END IF;
 END $$;
-
-COMMENT ON FUNCTION public.earn_scrollcoin(uuid,numeric,text) IS
-  'RETIRED: Scroll University no longer uses a learning currency. EXECUTE is revoked.';
-COMMENT ON FUNCTION public.spend_scrollcoin(uuid,numeric,text) IS
-  'RETIRED: Scroll University no longer uses a learning currency. EXECUTE is revoked.';
-COMMENT ON FUNCTION public.award_verified_learning_reward(uuid,text,uuid,numeric,jsonb) IS
-  'RETIRED: verified academic evidence no longer issues economic rewards. EXECUTE is revoked.';
