@@ -1,6 +1,7 @@
 -- ============================================================================
 -- Verified Learning Security Regression Suite
--- Ensures learners cannot manufacture credential-bearing evidence or rewards.
+-- Ensures learners cannot manufacture credential-bearing evidence.
+-- Learning currency is retired: no role may mint, spend, or issue rewards.
 -- Legacy/optional relations are tested by OID so an absent attack surface is safe.
 -- ============================================================================
 \set ON_ERROR_STOP on
@@ -15,10 +16,6 @@ BEGIN
   IF NOT p_ok THEN RAISE EXCEPTION 'VLS test % failed: % — %', p_no, p_name, p_detail; END IF;
 END $$;
 
--- Synthetic auth principals in this suite are FK/JWT fixtures, not signup tests.
--- Disable USER triggers only for the fixture INSERT so unrelated legacy signup
--- provisioning cannot mutate public schema or mask the security assertion under test.
--- Trigger state changes are transactional and the suite ends with ROLLBACK.
 CREATE OR REPLACE FUNCTION pg_temp.vls_seed_auth_user(p_user uuid, p_email text)
 RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -56,7 +53,7 @@ DO $$ BEGIN
     AND NOT has_table_privilege('authenticated','public.student_outcome_mastery','DELETE'));
 END $$;
 
--- 4: reward-triggering legacy quiz submissions are server-owned when present.
+-- 4: legacy quiz submissions are server-owned when present.
 DO $$
 DECLARE v_rel regclass := to_regclass('public.quiz_submissions');
 BEGIN
@@ -133,22 +130,28 @@ BEGIN
     'kind='||coalesce(v_kind,'null')||', confidence='||coalesce(v_conf::text,'null'));
 END $$;
 
--- 9: generic mint function, if legacy code created it, must never be callable by browser role.
+-- 9: retired mint API cannot be called by browser or backend roles.
 DO $$
 DECLARE v_fn regprocedure := to_regprocedure('public.earn_scrollcoin(uuid,numeric,text)');
 BEGIN
-  PERFORM pg_temp.vls_record(9, 'authenticated cannot call generic ScrollCoin mint API',
-    v_fn IS NULL OR COALESCE(NOT has_function_privilege('authenticated', v_fn, 'EXECUTE'), true),
+  PERFORM pg_temp.vls_record(9, 'learning currency mint API is retired',
+    v_fn IS NULL OR (
+      COALESCE(NOT has_function_privilege('authenticated', v_fn, 'EXECUTE'), true)
+      AND COALESCE(NOT has_function_privilege('service_role', v_fn, 'EXECUTE'), true)
+    ),
     CASE WHEN v_fn IS NULL THEN 'legacy mint function absent: no attack surface' ELSE '' END);
 END $$;
 
--- 10: verified reward API is service-only when present.
+-- 10: retired reward issuer cannot be called by browser or backend roles.
 DO $$
 DECLARE v_fn regprocedure := to_regprocedure('public.award_verified_learning_reward(uuid,text,uuid,numeric,jsonb)');
 BEGIN
-  PERFORM pg_temp.vls_record(10, 'authenticated cannot call verified reward issuer',
-    v_fn IS NULL OR COALESCE(NOT has_function_privilege('authenticated', v_fn, 'EXECUTE'), true),
-    CASE WHEN v_fn IS NULL THEN 'reward issuer absent: no browser attack surface' ELSE '' END);
+  PERFORM pg_temp.vls_record(10, 'learning reward issuer is retired',
+    v_fn IS NULL OR (
+      COALESCE(NOT has_function_privilege('authenticated', v_fn, 'EXECUTE'), true)
+      AND COALESCE(NOT has_function_privilege('service_role', v_fn, 'EXECUTE'), true)
+    ),
+    CASE WHEN v_fn IS NULL THEN 'reward issuer absent: no attack surface' ELSE '' END);
 END $$;
 
 -- 11: legacy completion projections are read-only for learners when present.
@@ -175,59 +178,56 @@ BEGIN
     format('module_progress=%s learning_progress=%s', COALESCE(v_module::text,'absent'), COALESCE(v_learning::text,'absent')));
 END $$;
 
--- 12: spending API cannot debit another user's wallet.
+-- 12: retired spending API cannot be called by browser or backend roles.
 DO $$
-DECLARE
-  v_actor uuid := gen_random_uuid();
-  v_victim uuid := gen_random_uuid();
-  v_rejected boolean := false;
-  v_fn regprocedure := to_regprocedure('public.spend_scrollcoin(uuid,numeric,text)');
+DECLARE v_fn regprocedure := to_regprocedure('public.spend_scrollcoin(uuid,numeric,text)');
 BEGIN
-  IF v_fn IS NULL THEN
-    PERFORM pg_temp.vls_record(12, 'spending is self-only', true, 'spend function absent: no attack surface');
-    RETURN;
-  END IF;
-
-  PERFORM pg_temp.vls_seed_auth_user(v_actor, 'vls-spender-'||v_actor::text||'@example.test');
-  PERFORM pg_temp.vls_seed_auth_user(v_victim, 'vls-victim-'||v_victim::text||'@example.test');
-  PERFORM set_config('request.jwt.claims', json_build_object('sub',v_actor::text,'role','authenticated')::text, true);
-
-  BEGIN
-    PERFORM public.spend_scrollcoin(v_victim, 1, 'forgery test');
-  EXCEPTION WHEN OTHERS THEN
-    v_rejected := SQLERRM LIKE '%forbidden%';
-  END;
-
-  PERFORM pg_temp.vls_record(12, 'spending is self-only', v_rejected,
-    CASE WHEN v_rejected THEN '' ELSE 'cross-user spend was not rejected as forbidden' END);
+  PERFORM pg_temp.vls_record(12, 'learning currency spending API is retired',
+    v_fn IS NULL OR (
+      COALESCE(NOT has_function_privilege('authenticated', v_fn, 'EXECUTE'), true)
+      AND COALESCE(NOT has_function_privilege('service_role', v_fn, 'EXECUTE'), true)
+    ),
+    CASE WHEN v_fn IS NULL THEN 'legacy spend function absent: no attack surface' ELSE '' END);
 END $$;
 
--- 13: verified reward issuance is idempotent by learner + type + source.
+-- 13: historical economy tables, if present, cannot be mutated by browser/backend roles.
 DO $$
 DECLARE
-  v_user uuid := gen_random_uuid();
-  v_source uuid := gen_random_uuid();
-  v_first boolean;
-  v_second boolean;
-  v_count int;
-  v_fn regprocedure := to_regprocedure('public.award_verified_learning_reward(uuid,text,uuid,numeric,jsonb)');
-  v_ledger regclass := to_regclass('public.verified_learning_rewards');
+  v_wallet regclass := to_regclass('public.wallets');
+  v_tx regclass := to_regclass('public.transactions');
+  v_rewards regclass := to_regclass('public.verified_learning_rewards');
+  v_safe boolean := true;
 BEGIN
-  IF v_fn IS NULL OR v_ledger IS NULL THEN
-    PERFORM pg_temp.vls_record(13, 'verified reward is idempotent', true, 'reward subsystem absent in bootstrap');
-    RETURN;
+  IF v_wallet IS NOT NULL THEN
+    v_safe := v_safe
+      AND NOT has_table_privilege('authenticated', v_wallet, 'INSERT')
+      AND NOT has_table_privilege('authenticated', v_wallet, 'UPDATE')
+      AND NOT has_table_privilege('authenticated', v_wallet, 'DELETE')
+      AND NOT has_table_privilege('service_role', v_wallet, 'INSERT')
+      AND NOT has_table_privilege('service_role', v_wallet, 'UPDATE')
+      AND NOT has_table_privilege('service_role', v_wallet, 'DELETE');
+  END IF;
+  IF v_tx IS NOT NULL THEN
+    v_safe := v_safe
+      AND NOT has_table_privilege('authenticated', v_tx, 'INSERT')
+      AND NOT has_table_privilege('authenticated', v_tx, 'UPDATE')
+      AND NOT has_table_privilege('authenticated', v_tx, 'DELETE')
+      AND NOT has_table_privilege('service_role', v_tx, 'INSERT')
+      AND NOT has_table_privilege('service_role', v_tx, 'UPDATE')
+      AND NOT has_table_privilege('service_role', v_tx, 'DELETE');
+  END IF;
+  IF v_rewards IS NOT NULL THEN
+    v_safe := v_safe
+      AND NOT has_table_privilege('authenticated', v_rewards, 'INSERT')
+      AND NOT has_table_privilege('authenticated', v_rewards, 'UPDATE')
+      AND NOT has_table_privilege('authenticated', v_rewards, 'DELETE')
+      AND NOT has_table_privilege('service_role', v_rewards, 'INSERT')
+      AND NOT has_table_privilege('service_role', v_rewards, 'UPDATE')
+      AND NOT has_table_privilege('service_role', v_rewards, 'DELETE');
   END IF;
 
-  PERFORM pg_temp.vls_seed_auth_user(v_user, 'vls-reward-'||v_user::text||'@example.test');
-
-  v_first := public.award_verified_learning_reward(v_user,'test_verified_reward',v_source,5,'{}'::jsonb);
-  v_second := public.award_verified_learning_reward(v_user,'test_verified_reward',v_source,5,'{}'::jsonb);
-  SELECT count(*) INTO v_count FROM public.verified_learning_rewards
-    WHERE user_id=v_user AND reward_type='test_verified_reward' AND source_id=v_source;
-
-  PERFORM pg_temp.vls_record(13, 'verified reward is idempotent',
-    v_first IS TRUE AND v_second IS FALSE AND v_count=1,
-    format('first=%s second=%s ledger_rows=%s',v_first,v_second,v_count));
+  PERFORM pg_temp.vls_record(13, 'historical learning-currency tables are immutable', v_safe,
+    format('wallets=%s transactions=%s rewards=%s', COALESCE(v_wallet::text,'absent'), COALESCE(v_tx::text,'absent'), COALESCE(v_rewards::text,'absent')));
 END $$;
 
 -- 14: no accumulated permissive SELECT policy may reopen the question bank.
