@@ -1,344 +1,85 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Award, Eye, GraduationCap, Loader2, ShieldCheck } from 'lucide-react';
 import { PageTemplate } from '@/components/layout/PageTemplate';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  GraduationCap, Award, Download, Star, Trophy, 
-  BookOpen, CheckCircle2, Calendar, Loader2, PartyPopper,
-  Eye, ExternalLink
-} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import confetti from 'canvas-confetti';
-import { getUserFriendlyError } from "@/lib/errors";
 
 export default function StudentGraduation() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
 
-  const { data: graduationData, isLoading } = useQuery({
-    queryKey: ['graduation-eligibility', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-
-      const [enrollRes, certRes, statsRes] = await Promise.all([
-        supabase.from('enrollments').select('*, courses (id, title, faculty, level)')
-          .eq('user_id', user.id).eq('progress', 100),
-        supabase.from('course_certificates').select('*, courses:course_id (title, faculty)')
-          .eq('user_id', user.id),
-        supabase.from('user_stats').select('*').eq('user_id', user.id).maybeSingle(),
-      ]);
-
-      const enrollments = enrollRes.data || [];
-      const certificates = certRes.data || [];
-      const stats = statsRes.data;
-      const completedCount = enrollments.length;
-      const totalXP = stats?.total_xp || 0;
-
-      const degreeRequirements = [
-        { level: 'ScrollCertificate', coursesRequired: 3, xpRequired: 500, label: 'Scroll Certificate', icon: '📜' },
-        { level: 'ScrollDiploma', coursesRequired: 6, xpRequired: 1500, label: 'Scroll Diploma', icon: '🎓' },
-        { level: 'ScrollBachelor', coursesRequired: 12, xpRequired: 5000, label: "Scroll Bachelor's", icon: '🏆' },
-        { level: 'ScrollMaster', coursesRequired: 18, xpRequired: 10000, label: "Scroll Master's", icon: '👑' },
-        { level: 'ScrollDoctorate', coursesRequired: 24, xpRequired: 20000, label: 'Scroll Doctorate', icon: '⭐' },
-        { level: 'ScrollExousia', coursesRequired: 36, xpRequired: 50000, label: 'Scroll Exousia', icon: '✨' },
-      ];
-
-      const eligibility = degreeRequirements.map(req => ({
-        ...req,
-        coursesCompleted: completedCount,
-        xpEarned: totalXP,
-        courseProgress: Math.min((completedCount / req.coursesRequired) * 100, 100),
-        xpProgress: Math.min((totalXP / req.xpRequired) * 100, 100),
-        eligible: completedCount >= req.coursesRequired && totalXP >= req.xpRequired,
-      }));
-
-      return { enrollments, certificates, stats: stats || { total_xp: 0 }, eligibility };
-    },
+  const { data, isLoading } = useQuery({
+    queryKey: ['graduation-center-truth', user?.id],
     enabled: !!user?.id,
-  });
-
-  const generateCertificate = useMutation({
-    mutationFn: async (degreeLevel: string) => {
-      // Issue a verifiable degree certificate (idempotent per user+degree)
-      const { data: issued, error: issueErr } = await supabase.rpc("issue_certificate", {
-        p_user_id: user!.id,
-        p_cert_type: "degree",
-        p_program_name: degreeLevel,
-        p_entity_id: null,
-        p_metadata: { degree_level: degreeLevel } as never,
-      });
-      if (issueErr) throw issueErr;
-
-      const { data, error } = await supabase.functions.invoke('generate-certificate', {
-        body: { userId: user?.id, degreeLevel, type: 'graduation', certNumber: (issued as any)?.cert_number },
-      });
-      if (error) throw error;
-      return { ...data, cert_number: (issued as any)?.cert_number as string };
+    queryFn: async () => {
+      const [{ data: certificates }, { data: student }] = await Promise.all([
+        supabase.from('course_certificates').select('id,course_id,completion_date,courses:course_id(title,faculty)').eq('user_id', user!.id),
+        supabase.from('students').select('id,student_id_code,current_year,current_term,degree_program:degree_programs!students_degree_program_id_fkey(id,title,level)').eq('user_id', user!.id).maybeSingle(),
+      ]);
+      return { certificates: certificates ?? [], student };
     },
-    onSuccess: (data) => {
-      confetti({ particleCount: 200, spread: 110, origin: { y: 0.6 } });
-      if (data?.html) {
-        const win = window.open();
-        if (win) win.document.write(data.html);
-      }
-      toast.success(`🎓 Degree conferred. Certificate ${data?.cert_number ?? ""} is verifiable.`);
-      queryClient.invalidateQueries({ queryKey: ['graduation-eligibility'] });
-    },
-    onError: (e: any) => toast.error("Failed to generate certificate", { description: getUserFriendlyError(e) }),
   });
 
   const viewCertificate = useMutation({
     mutationFn: async (courseId: string) => {
       const { data, error } = await supabase.functions.invoke('generate-certificate', {
-        body: { userId: user?.id, courseId, type: 'course' },
+        body: { userId: user!.id, courseId, type: 'course' },
       });
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
-      if (data?.html) {
+    onSuccess: (result) => {
+      if (result?.html) {
         const win = window.open();
-        if (win) win.document.write(data.html);
+        if (win) win.document.write(result.html);
       }
     },
+    onError: () => toast.error('Certificate cannot be regenerated until verified completion is confirmed.'),
   });
 
-  if (isLoading) {
-    return (
-      <PageTemplate title="Graduation Center" description="Your path to graduation">
-        <div className="space-y-4">
-          <Skeleton className="h-32 w-full rounded-xl" />
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-            {[1,2,3,4].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}
-          </div>
-        </div>
-      </PageTemplate>
-    );
-  }
-
-  const eligibleDegrees = graduationData?.eligibility.filter(d => d.eligible) || [];
-  const inProgressDegrees = graduationData?.eligibility.filter(d => !d.eligible) || [];
-  const certificates = graduationData?.certificates || [];
-
   return (
-    <PageTemplate
-      title="Graduation Center"
-      description="Celebrate your achievements and claim your credentials"
-    >
-      <div className="space-y-5">
-        {/* Hero Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-primary">{graduationData?.enrollments.length || 0}</p>
-              <p className="text-xs text-muted-foreground mt-1">Courses Done</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-accent/5 border-accent/20">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-accent">{graduationData?.stats.total_xp || 0}</p>
-              <p className="text-xs text-muted-foreground mt-1">Total XP</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-green-500/5 border-green-500/20">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-green-600">{certificates.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">Certificates</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-secondary/50 border-secondary">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{eligibleDegrees.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">Degrees Ready</p>
-            </CardContent>
-          </Card>
+    <PageTemplate title="Graduation & Credentials" description="Verified credentials and registrar-controlled graduation">
+      <div className="max-w-5xl mx-auto space-y-5">
+        <Card className="border-primary/20">
+          <CardHeader><CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /> Credential authority</CardTitle></CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Course certificates are available only after verified module mastery. Degree conferral is intentionally unavailable until the programme requirement graph and registrar-controlled degree audit can prove every applicable requirement. XP and course counts never confer degrees.
+          </CardContent>
+        </Card>
+
+        <div className="grid sm:grid-cols-3 gap-3">
+          <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Programme</CardTitle></CardHeader><CardContent><p className="font-semibold">{(data?.student as any)?.degree_program?.title ?? 'Not assigned'}</p><p className="text-xs text-muted-foreground">{(data?.student as any)?.degree_program?.level ?? '—'}</p></CardContent></Card>
+          <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Course certificates</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{data?.certificates.length ?? 0}</p><p className="text-xs text-muted-foreground">Verified completion records</p></CardContent></Card>
+          <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Degree conferral</CardTitle></CardHeader><CardContent><Badge variant="outline">Not yet authority-enabled</Badge></CardContent></Card>
         </div>
 
-        <Tabs defaultValue="eligible" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-auto">
-            <TabsTrigger value="eligible" className="flex items-center gap-1.5 py-2.5 text-xs sm:text-sm">
-              <Trophy className="h-4 w-4" />
-              <span>Graduate ({eligibleDegrees.length})</span>
-            </TabsTrigger>
-            <TabsTrigger value="progress" className="flex items-center gap-1.5 py-2.5 text-xs sm:text-sm">
-              <BookOpen className="h-4 w-4" />
-              <span>Progress ({inProgressDegrees.length})</span>
-            </TabsTrigger>
-            <TabsTrigger value="certificates" className="flex items-center gap-1.5 py-2.5 text-xs sm:text-sm">
-              <Award className="h-4 w-4" />
-              <span>Certs ({certificates.length})</span>
-            </TabsTrigger>
-          </TabsList>
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardHeader><CardTitle className="flex items-center gap-2"><GraduationCap className="h-5 w-5" /> Graduation readiness</CardTitle></CardHeader>
+          <CardContent className="text-sm">
+            No degree has been declared ready from engagement points, arbitrary course counts, or sample requirements. The official Degree Audit will become actionable only when programme-specific requirements are fully governed.
+          </CardContent>
+        </Card>
 
-          {/* Eligible Degrees Tab */}
-          <TabsContent value="eligible" className="mt-4">
-            {eligibleDegrees.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {eligibleDegrees.map((degree) => (
-                  <Card key={degree.level} className="border-green-500/30 bg-green-500/5 overflow-hidden">
-                    <div className="h-1 bg-gradient-to-r from-green-400 to-green-600" />
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="flex items-center gap-2 text-green-600 text-base">
-                          <span className="text-xl">{degree.icon}</span>
-                          {degree.label}
-                        </CardTitle>
-                        <Badge variant="default" className="bg-green-500 text-xs">
-                          <PartyPopper className="h-3 w-3 mr-1" /> Ready
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4 pt-0">
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="bg-background/50 rounded-lg p-2.5 text-center">
-                          <span className="text-muted-foreground text-xs block">Courses</span>
-                          <p className="font-bold text-green-600">
-                            {degree.coursesCompleted}/{degree.coursesRequired}
-                          </p>
-                        </div>
-                        <div className="bg-background/50 rounded-lg p-2.5 text-center">
-                          <span className="text-muted-foreground text-xs block">XP</span>
-                          <p className="font-bold text-green-600">
-                            {degree.xpEarned.toLocaleString()}/{degree.xpRequired.toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <Button 
-                        className="w-full h-11 touch-target"
-                        onClick={() => generateCertificate.mutate(degree.level)}
-                        disabled={generateCertificate.isPending}
-                      >
-                        {generateCertificate.isPending ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4 mr-2" />
-                        )}
-                        Claim Degree Certificate
-                      </Button>
-                    </CardContent>
-                  </Card>
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Award className="h-5 w-5" /> Course certificates</CardTitle></CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="py-8 text-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />Loading credentials…</div>
+            ) : data?.certificates.length ? (
+              <div className="grid sm:grid-cols-2 gap-3">
+                {data.certificates.map((cert: any) => (
+                  <div key={cert.id} className="rounded-lg border p-4 flex items-start justify-between gap-3">
+                    <div><p className="font-medium">{cert.courses?.title ?? 'Course Certificate'}</p><p className="text-xs text-muted-foreground">{cert.courses?.faculty ?? 'Scroll University'} · {cert.completion_date ? new Date(cert.completion_date).toLocaleDateString() : 'Date unavailable'}</p></div>
+                    <Button variant="outline" size="sm" onClick={() => viewCertificate.mutate(cert.course_id)} disabled={viewCertificate.isPending}><Eye className="h-4 w-4 mr-1" />View</Button>
+                  </div>
                 ))}
               </div>
-            ) : (
-              <Card>
-                <CardContent className="py-10 text-center">
-                  <GraduationCap className="h-14 w-14 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <h3 className="text-lg font-semibold mb-2">Keep Learning!</h3>
-                  <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-4">
-                    Complete more courses and earn XP to unlock your first degree.
-                  </p>
-                  <Button onClick={() => window.location.href = '/courses'}>
-                    <BookOpen className="h-4 w-4 mr-2" /> Browse Courses
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Progress Tab */}
-          <TabsContent value="progress" className="mt-4">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {inProgressDegrees.map((degree) => (
-                <Card key={degree.level}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <span>{degree.icon}</span>
-                      {degree.label}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">Courses</span>
-                        <span className="font-medium">{degree.coursesCompleted}/{degree.coursesRequired}</span>
-                      </div>
-                      <Progress value={degree.courseProgress} className="h-2" />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">XP</span>
-                        <span className="font-medium">{degree.xpEarned.toLocaleString()}/{degree.xpRequired.toLocaleString()}</span>
-                      </div>
-                      <Progress value={degree.xpProgress} className="h-2" />
-                    </div>
-                    <p className="text-xs text-muted-foreground pt-1 border-t">
-                      {Math.max(0, degree.coursesRequired - degree.coursesCompleted)} courses + {Math.max(0, degree.xpRequired - degree.xpEarned).toLocaleString()} XP remaining
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          {/* Certificates Tab */}
-          <TabsContent value="certificates" className="mt-4">
-            {certificates.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {certificates.map((cert: any) => (
-                  <Card key={cert.id} className="group hover:border-primary/30 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-primary/10 rounded-full shrink-0">
-                          <Award className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm text-foreground truncate">
-                            {cert.courses?.title || 'Course Certificate'}
-                          </h4>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {cert.courses?.faculty || 'Scroll University'}
-                          </p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="outline" className="text-xs">
-                              <Calendar className="h-2.5 w-2.5 mr-1" />
-                              {new Date(cert.completion_date).toLocaleDateString()}
-                            </Badge>
-                            {cert.scroll_badge_earned && (
-                              <Badge variant="secondary" className="text-xs bg-accent/10 text-accent">
-                                🏆 Badge
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mt-3 h-9"
-                        onClick={() => viewCertificate.mutate(cert.course_id)}
-                        disabled={viewCertificate.isPending}
-                      >
-                        {viewCertificate.isPending ? (
-                          <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-                        ) : (
-                          <Eye className="h-3 w-3 mr-1.5" />
-                        )}
-                        View Certificate
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-10 text-center">
-                  <Award className="h-14 w-14 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <h3 className="text-lg font-semibold mb-2">No Certificates Yet</h3>
-                  <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-                    Complete a course to earn your first certificate.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
+            ) : <p className="py-8 text-center text-sm text-muted-foreground">No verified course certificates have been issued yet.</p>}
+          </CardContent>
+        </Card>
       </div>
     </PageTemplate>
   );

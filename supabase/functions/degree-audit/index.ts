@@ -7,139 +7,83 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-console.info("✝️ Degree Audit — Christ governs completion");
-
 const requestSchema = z.object({
-  student_id: z.string().uuid(),
+  student_user_id: z.string().uuid().optional(),
+  student_id: z.string().uuid().optional(), // backwards-compatible: historically this was the auth user id
   degree_program_id: z.string().uuid().optional(),
+}).refine((v) => !!(v.student_user_id || v.student_id), {
+  message: 'student_user_id is required',
 });
 
+function response(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  if (req.method !== 'POST') return response({ error: 'Method not allowed' }, 405);
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return response({ error: 'Unauthorized' }, 401);
 
-    // Get auth user
-    const authHeader = req.headers.get("Authorization")!;
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
 
-    if (authError || !user) {
-      throw new Error("Unauthorized");
-    }
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.slice(7));
+    if (authError || !user) return response({ error: 'Unauthorized' }, 401);
 
-    const body = await req.json();
-    const { student_id, degree_program_id } = requestSchema.parse(body);
+    const parsed = requestSchema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) return response({ error: 'Invalid request', details: parsed.error.flatten() }, 400);
 
-    // Verify user can access this audit
-    if (user.id !== student_id) {
-      // Check if user is admin or faculty
-      const { data: profile } = await supabase
-        .from('profiles')
+    const targetUserId = parsed.data.student_user_id ?? parsed.data.student_id!;
+
+    if (targetUserId !== user.id) {
+      const { data: roles } = await supabase
+        .from('user_roles')
         .select('role')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile || !['admin', 'faculty'].includes(profile.role)) {
-        throw new Error("Forbidden");
+        .eq('user_id', user.id);
+      const allowed = new Set(['admin', 'superadmin', 'registrar', 'faculty']);
+      if (!(roles ?? []).some((r: any) => allowed.has(r.role))) {
+        return response({ error: 'Forbidden' }, 403);
       }
     }
 
-    // Get student's completed courses
-    const { data: transcripts, error: transcriptError } = await supabase
-      .from('transcripts')
-      .select(`
-        *,
-        courses(
-          id,
-          title,
-          faculty,
-          level
-        )
-      `)
-      .eq('student_id', student_id);
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id,user_id,degree_program_id,current_year,current_term,student_id_code,degree_program:degree_programs!students_degree_program_id_fkey(id,title,level)')
+      .eq('user_id', targetUserId)
+      .maybeSingle();
 
-    if (transcriptError) throw transcriptError;
+    if (studentError) throw studentError;
 
-    // Calculate total credits and GPA
-    const totalCredits = transcripts?.length * 3 || 0; // Assuming 3 credits per course
-    
-    const gradePoints: Record<string, number> = {
-      'A': 4.0,
-      'A-': 3.7,
-      'B+': 3.3,
-      'B': 3.0,
-      'B-': 2.7,
-      'C+': 2.3,
-      'C': 2.0,
-      'C-': 1.7,
-      'D': 1.0,
-      'F': 0.0,
-    };
-
-    const gpaSum = transcripts?.reduce((sum, t) => {
-      return sum + (gradePoints[t.grade || 'C'] || 2.0);
-    }, 0) || 0;
-
-    const gpa = transcripts?.length ? (gpaSum / transcripts.length).toFixed(2) : "0.00";
-
-    // Get degree requirements (mock for now)
-    const requirements = {
-      core_theology: { required: 36, completed: 0 },
-      biblical_languages: { required: 12, completed: 0 },
-      ministry_practicum: { required: 12, completed: 0 },
-      general_education: { required: 30, completed: 0 },
-      electives: { required: 30, completed: 0 },
-    };
-
-    // Categorize completed courses
-    transcripts?.forEach((t) => {
-      const faculty = t.courses?.faculty?.toLowerCase() || '';
-      if (faculty.includes('theology') || faculty.includes('biblical')) {
-        requirements.core_theology.completed += 3;
-      } else if (faculty.includes('language')) {
-        requirements.biblical_languages.completed += 3;
-      } else if (faculty.includes('ministry') || faculty.includes('practical')) {
-        requirements.ministry_practicum.completed += 3;
-      } else {
-        requirements.general_education.completed += 3;
-      }
+    // Launch truth floor: the repository does not yet contain a canonical, generic
+    // programme-requirements graph capable of proving credits, substitutions,
+    // placements, capstone/dissertation, holds, and competency thresholds for every
+    // programme. Never manufacture a Bachelor of Theology audit or infer eligibility.
+    return response({
+      student_user_id: targetUserId,
+      student_record: student ?? null,
+      degree_program: (student as any)?.degree_program ?? null,
+      requested_degree_program_id: parsed.data.degree_program_id ?? null,
+      authority_status: 'requirements_not_authoritatively_configured',
+      is_eligible_for_graduation: false,
+      credential_issuance_allowed: false,
+      requirements: null,
+      total_credits_required: null,
+      total_credits_earned: null,
+      gpa: null,
+      percent_complete: null,
+      policy_version: 'degree-audit.truth-floor.v1',
+      message: 'Official degree eligibility is withheld until the programme requirement graph and registrar-controlled audit are authoritative.',
     });
-
-    const totalRequired = Object.values(requirements).reduce((sum, r) => sum + r.required, 0);
-    const totalCompleted = Object.values(requirements).reduce((sum, r) => sum + r.completed, 0);
-    const percentComplete = (totalCompleted / totalRequired) * 100;
-
-    // Check graduation eligibility
-    const isEligible = totalCompleted >= totalRequired && parseFloat(gpa) >= 2.0;
-
-    return new Response(
-      JSON.stringify({
-        student_id,
-        degree_program: "Bachelor of Theology",
-        total_credits_required: totalRequired,
-        total_credits_earned: totalCompleted,
-        percent_complete: percentComplete.toFixed(1),
-        gpa,
-        requirements,
-        is_eligible_for_graduation: isEligible,
-        completed_courses: transcripts?.length || 0,
-        estimated_graduation: isEligible ? "Ready" : "In Progress",
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
-  } catch (error: any) {
-    console.error("Degree audit error:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: error.message === "Unauthorized" || error.message === "Forbidden" ? 403 : 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+  } catch (error) {
+    console.error('degree-audit error', error);
+    return response({ error: 'Degree audit unavailable' }, 500);
   }
 });
