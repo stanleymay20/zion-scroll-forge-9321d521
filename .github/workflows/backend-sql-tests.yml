@@ -106,6 +106,9 @@ jobs:
       - name: Enforce launch role authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828201500_launch_role_authority_boundary.sql
 
+      - name: Enforce launch maintenance authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828203000_launch_maintenance_authority_boundary.sql
+
       - name: Run governance suite (advisory)
         continue-on-error: true
         run: |
