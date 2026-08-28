@@ -127,9 +127,14 @@ jobs:
       - name: Enforce launch financial authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828163000_launch_financial_authority_boundary.sql
       - name: Enforce signup provisioning authority migration (BLOCKING)
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828184000_signup_provisioning_without_wallet.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828170500_signup_provisioning_without_learning_currency.sql
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
+      - name: Seed representative cohort fixtures
+        run: |
+          if [ -f supabase/tests/fixtures/seed_cohort.sql ]; then
+            psql -f supabase/tests/fixtures/seed_cohort.sql || echo "::warning::cohort fixtures partially skipped (expected in bootstrap)"
+          fi
       - name: Run lifecycle behavior suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_behavior.test.sql
       - name: Run lifecycle invariants suite (BLOCKING)
@@ -161,7 +166,7 @@ jobs:
           DECLARE v_def text;
           BEGIN
             SELECT pg_get_functiondef('public.handle_new_user()'::regprocedure) INTO v_def;
-            IF v_def ~* 'wallets|scrollcoin' THEN
+            IF v_def ~* 'wallets|scrollcoin|scrollgold' THEN
               RAISE EXCEPTION 'signup_provisioning_still_references_learning_currency';
             END IF;
           END $$;
