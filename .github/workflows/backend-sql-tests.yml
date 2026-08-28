@@ -100,6 +100,9 @@ jobs:
       - name: Enforce signup provisioning authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828170500_signup_provisioning_without_learning_currency.sql
 
+      - name: Enforce live skill-evidence authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828193000_live_skill_evidence_authority_boundary.sql
+
       - name: Run governance suite (advisory)
         continue-on-error: true
         run: |
