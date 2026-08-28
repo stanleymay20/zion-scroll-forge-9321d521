@@ -2,11 +2,11 @@ name: Production Deployment
 
 # Per-push production quality gate. Lovable may publish from main, so this
 # workflow must fail closed on security, academic-authority, financial-authority,
-# signup-provisioning, skill-evidence authority, role authority, maintenance
-# authority, operational invariants, type-check, and build regressions before a
-# SHA is treated as release-ready. Historical Supabase migrations still contain
-# bootstrap drift; those are logged advisory while current launch boundaries are
-# replayed blocking.
+# signup-provisioning, skill-evidence authority, role authority, maintenance,
+# storage authority, operational invariants, type-check, and build regressions
+# before a SHA is treated as release-ready. Historical Supabase migrations still
+# contain bootstrap drift; those are logged advisory while current launch
+# boundaries are replayed blocking.
 
 on:
   push:
@@ -103,7 +103,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install psql
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Provision roles + extensions + auth stub
+      - name: Provision roles + extensions + auth + storage stubs
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
             CREATE ROLE anon NOLOGIN;
@@ -114,6 +114,7 @@ jobs:
             CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
             CREATE SCHEMA IF NOT EXISTS auth;
             CREATE SCHEMA IF NOT EXISTS extensions;
+            CREATE SCHEMA IF NOT EXISTS storage;
             CREATE TABLE IF NOT EXISTS auth.users (
               id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
               email text,
@@ -124,6 +125,27 @@ jobs:
             $$;
             CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$
               SELECT coalesce(current_setting('request.jwt.claims', true)::json->>'role','anon')
+            $$;
+            CREATE TABLE IF NOT EXISTS storage.buckets (
+              id text PRIMARY KEY,
+              name text NOT NULL,
+              public boolean NOT NULL DEFAULT false,
+              file_size_limit bigint,
+              allowed_mime_types text[]
+            );
+            CREATE TABLE IF NOT EXISTS storage.objects (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              bucket_id text NOT NULL,
+              name text NOT NULL,
+              owner_id text
+            );
+            ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+            CREATE OR REPLACE FUNCTION storage.foldername(path text) RETURNS text[]
+            LANGUAGE sql IMMUTABLE AS $$
+              SELECT CASE
+                WHEN position('/' in path) = 0 THEN ARRAY[]::text[]
+                ELSE string_to_array(regexp_replace(path, '/[^/]*$', ''), '/')
+              END
             $$;
           SQL
 
@@ -158,9 +180,13 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828203000_launch_maintenance_authority_boundary.sql
       - name: Enforce launch operational invariants (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828204500_launch_operational_invariants.sql
+      - name: Enforce launch storage authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828210000_launch_storage_authority_boundary.sql
 
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
+      - name: Run storage authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/storage_authority.test.sql
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
       - name: Seed representative cohort fixtures
