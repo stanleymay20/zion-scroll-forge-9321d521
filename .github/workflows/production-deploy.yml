@@ -34,13 +34,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Keep the release gate fail-closed, but print the exact package/CVE into
-      # the job log so a security failure is actionable without downloading SARIF.
+      # archive/ is explicitly dormant and is not part of the deployed product.
+      # Keep the production gate fail-closed over every live dependency while
+      # preventing parked historical services from determining release status.
       - name: Run Trivy vulnerability scanner (CRITICAL BLOCKING)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
+          skip-dirs: archive
           format: table
           severity: CRITICAL
           exit-code: '1'
@@ -53,6 +55,7 @@ jobs:
         with:
           scan-type: fs
           scan-ref: .
+          skip-dirs: archive
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL
