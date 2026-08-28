@@ -1,6 +1,6 @@
 -- Launch P0: make authorization assignments backend-controlled.
 -- Historical migrations created a platform-owner "GodMode" bypass and at one
--- point allowed users/admins to mutate role rows from browser sessions.  At
+-- point allowed users/admins to mutate role rows from browser sessions. At
 -- launch, authorization must come only from explicit user_roles rows written
 -- by trusted backend/service workflows.
 
@@ -31,9 +31,11 @@ BEGIN
   END IF;
 END $$;
 
--- Canonical authorization predicate: only explicit user_roles assignments
--- count.  No "most recently active profile", platform-owner, email, or profile
--- field can confer a role.
+-- Canonical authorization predicate: only explicit, active, unexpired
+-- user_roles assignments count. user_roles.role exists as text in the original
+-- canonical table and as app_role-aware callers in later migrations, so compare
+-- their textual values explicitly rather than relying on an implicit cast.
+-- No platform-owner, email, profile field, or recency heuristic can confer a role.
 CREATE OR REPLACE FUNCTION public.has_role(
   _user_id uuid,
   _role public.app_role
@@ -48,7 +50,9 @@ AS $$
     SELECT 1
     FROM public.user_roles ur
     WHERE ur.user_id = _user_id
-      AND ur.role = _role
+      AND ur.role::text = _role::text
+      AND COALESCE(ur.is_active, true)
+      AND (ur.expires_at IS NULL OR ur.expires_at > now())
   );
 $$;
 
@@ -56,4 +60,4 @@ REVOKE ALL ON FUNCTION public.has_role(uuid, public.app_role) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO authenticated, service_role;
 
 COMMENT ON FUNCTION public.has_role(uuid, public.app_role)
-IS 'Launch authority predicate: roles come only from explicit backend-controlled public.user_roles assignments; legacy platform-owner GodMode is not an authorization source.';
+IS 'Launch authority predicate: roles come only from explicit active backend-controlled public.user_roles assignments; legacy platform-owner GodMode is not an authorization source.';
