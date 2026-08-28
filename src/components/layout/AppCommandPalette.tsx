@@ -25,14 +25,14 @@ import {
   CommandList,
   CommandShortcut,
 } from "@/components/ui/command";
-import { useUserRoles } from "@/hooks/useUserRoles";
+import { useUserRoles, type AppRole } from "@/hooks/useUserRoles";
 
 interface CommandDestination {
   label: string;
   href: string;
   icon: LucideIcon;
   group: "Campus" | "Learning" | "Academic" | "Faculty" | "Administration";
-  roles?: string[];
+  roles?: AppRole[];
   keywords?: string;
 }
 
