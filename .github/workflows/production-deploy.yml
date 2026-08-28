@@ -33,7 +33,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # Keep the release gate fail-closed, but print the exact package/CVE into
+      # the job log so a security failure is actionable without downloading SARIF.
       - name: Run Trivy vulnerability scanner (CRITICAL BLOCKING)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          scanners: vuln,secret
+
+      - name: Generate Trivy SARIF for GitHub Security
+        if: always()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
@@ -41,14 +56,17 @@ jobs:
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL
-          exit-code: '1'
+          exit-code: '0'
           ignore-unfixed: true
+          scanners: vuln,secret
+
       - name: Upload Trivy results to GitHub Security
         if: always() && hashFiles('trivy-results.sarif') != ''
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif
+
       - name: Run Snyk security scan advisory
         continue-on-error: true
         env:
@@ -106,6 +124,7 @@ jobs:
               SELECT coalesce(current_setting('request.jwt.claims', true)::json->>'role','anon')
             $$;
           SQL
+
       - name: Apply historical Supabase migrations (bootstrap advisory)
         run: |
           set -e
@@ -120,6 +139,7 @@ jobs:
             fi
           done
           echo "Migration bootstrap attempted; historical failures: $fail_count"
+
       - name: Enforce learning-currency retirement migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828151500_retire_learning_currency.sql
       - name: Enforce launch academic authority migration (BLOCKING)
@@ -128,6 +148,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828163000_launch_financial_authority_boundary.sql
       - name: Enforce signup provisioning authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828170500_signup_provisioning_without_learning_currency.sql
+
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
       - name: Seed representative cohort fixtures
@@ -159,6 +180,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_academic_authority.test.sql
       - name: Run launch financial authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_financial_authority.test.sql
+
       - name: Verify signup no longer provisions learning currency (BLOCKING)
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
@@ -171,6 +193,7 @@ jobs:
             END IF;
           END $$;
           SQL
+
       - name: Run governance suite (advisory)
         continue-on-error: true
         run: |
