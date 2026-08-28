@@ -1,11 +1,10 @@
 name: Production Deployment
 
-# Lovable handles the actual frontend deployment from main. This workflow
-# is the per-push quality gate: security scan, SQL regression suite, and
-# frontend build verification. The Docker-image build and Kubernetes
-# deploy jobs that used to live here were removed alongside Phase 4A —
-# the Express backend they targeted now lives under archive/, and the
-# k8s deploy was workflow_dispatch-only and never used.
+# Per-push production quality gate. The frontend hosting platform may publish
+# from main, so this workflow must fail closed on academic/security regressions.
+# Historical Supabase migrations still contain bootstrap drift; those are logged
+# advisory, while current production truth-boundary migrations and regression
+# suites are explicitly blocking below.
 
 on:
   push:
@@ -23,6 +22,10 @@ permissions:
   security-events: write
   actions: read
 
+concurrency:
+  group: production-gate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   security-scan:
     name: Security Scan
@@ -35,14 +38,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner (CRITICAL BLOCKING)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
           format: sarif
           output: trivy-results.sarif
-          exit-code: '0'
+          severity: CRITICAL
+          exit-code: '1'
           ignore-unfixed: true
 
       - name: Upload Trivy results to GitHub Security
@@ -116,16 +120,37 @@ jobs:
             $$;
           SQL
 
-      - name: Apply Supabase migrations (advisory)
+      - name: Apply historical Supabase migrations (bootstrap advisory)
         run: |
           set -e
+          mkdir -p /tmp/mig-logs
+          fail_count=0
           for f in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
-            psql -v ON_ERROR_STOP=1 -f "$f" >/dev/null 2>&1 || \
-              echo "::warning::Migration $f skipped (Supabase-only objects)"
+            log="/tmp/mig-logs/$(basename "$f").log"
+            if psql -v ON_ERROR_STOP=1 -f "$f" >"$log" 2>&1; then
+              echo "✓ $f"
+            else
+              fail_count=$((fail_count+1))
+              echo "::warning file=$f::Historical migration did not apply in vanilla Postgres bootstrap"
+              tail -n 12 "$log" || true
+            fi
           done
+          echo "Migration bootstrap attempted; historical failures: $fail_count"
+
+      - name: Enforce learning-currency retirement migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828151500_retire_learning_currency.sql
 
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
+
+      - name: Run lifecycle behavior suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_behavior.test.sql
+
+      - name: Run lifecycle invariants suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_invariants.test.sql
+
+      - name: Run executive scope isolation suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/executive_scope_isolation.test.sql
 
       - name: Run term rollover suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/term_rollover.test.sql
@@ -144,6 +169,9 @@ jobs:
 
       - name: Run skill taxonomy suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/skill_taxonomy.test.sql
+
+      - name: Run verified learning security suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/verified_learning_security.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true
