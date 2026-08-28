@@ -1,8 +1,8 @@
 name: Backend SQL Test Suite
 
 # Runs the pure-SQL governance + academic spine suites against an ephemeral
-# Postgres instance with all Supabase migrations applied. Required to pass
-# before merging to main.
+# Postgres instance. Historical migrations are still bootstrapped tolerantly,
+# but current truth-boundary migrations and security regressions fail closed.
 
 on:
   push:
@@ -53,7 +53,6 @@ jobs:
           psql -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
           psql -v ON_ERROR_STOP=1 -c "CREATE SCHEMA IF NOT EXISTS auth;"
           psql -v ON_ERROR_STOP=1 -c "CREATE SCHEMA IF NOT EXISTS extensions;"
-          # Minimal auth.users stub for FK targets
           psql -v ON_ERROR_STOP=1 <<'SQL'
             CREATE TABLE IF NOT EXISTS auth.users (
               id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -68,7 +67,7 @@ jobs:
             $$;
           SQL
 
-      - name: Apply migrations
+      - name: Apply historical migrations (bootstrap advisory)
         run: |
           set -e
           mkdir -p /tmp/mig-logs
@@ -79,13 +78,16 @@ jobs:
               echo "✓ $f"
             else
               fail_count=$((fail_count+1))
-              echo "::warning file=$f::Migration failed (continuing — academic spine repair migration is the safety net)"
+              echo "::warning file=$f::Historical migration did not apply in vanilla Postgres bootstrap"
               echo "----- last 20 lines of $f -----"
               tail -n 20 "$log" || true
               echo "-------------------------------"
             fi
           done
-          echo "Migrations applied. Failures: $fail_count"
+          echo "Migration bootstrap attempted; historical failures: $fail_count"
+
+      - name: Enforce learning-currency retirement migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828151500_retire_learning_currency.sql
 
       - name: Run governance suite
         run: |
