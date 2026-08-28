@@ -43,7 +43,11 @@ BEGIN
     v_claims := NULL;
   END;
   v_claim_role := NULLIF(v_claims ->> 'role', '');
-  v_is_service := (v_claim_role = 'service_role');
+
+  -- SQL comparisons with NULL produce NULL rather than false. Keep this an
+  -- explicit two-valued security decision so a missing/malformed role can
+  -- never bypass `NOT v_is_service` guards through three-valued logic.
+  v_is_service := COALESCE(v_claim_role = 'service_role', false);
 
   IF v_actor IS NULL AND NOT v_is_service THEN
     RAISE EXCEPTION 'auth_required';
@@ -150,4 +154,4 @@ GRANT EXECUTE ON FUNCTION public.record_skill_evidence(
 
 COMMENT ON FUNCTION public.record_skill_evidence(
   uuid, uuid, text, text, uuid, numeric, numeric, timestamptz
-) IS 'Launch P0: learners may self-attest only inferred self_claim/manual evidence capped at confidence 0.20; demonstrated evidence requires faculty/admin/advisor or trusted service authority. Service authority is derived only from the canonical JWT claims object.';
+) IS 'Launch P0: learners may self-attest only inferred self_claim/manual evidence capped at confidence 0.20; demonstrated evidence requires faculty/admin/advisor or trusted service authority. Missing or malformed JWT role claims fail closed.';
