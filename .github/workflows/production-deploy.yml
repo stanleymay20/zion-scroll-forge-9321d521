@@ -2,10 +2,10 @@ name: Production Deployment
 
 # Per-push production quality gate. Lovable may publish from main, so this
 # workflow must fail closed on security, academic-authority, financial-authority,
-# signup-provisioning, skill-evidence authority, type-check, and build regressions
-# before a SHA is treated as release-ready. Historical Supabase migrations still
-# contain bootstrap drift; those are logged advisory while current launch
-# boundaries are replayed blocking.
+# signup-provisioning, skill-evidence authority, role authority, type-check, and
+# build regressions before a SHA is treated as release-ready. Historical Supabase
+# migrations still contain bootstrap drift; those are logged advisory while
+# current launch boundaries are replayed blocking.
 
 on:
   push:
@@ -154,6 +154,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828170500_signup_provisioning_without_learning_currency.sql
       - name: Enforce live skill-evidence authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828193000_live_skill_evidence_authority_boundary.sql
+      - name: Enforce launch role authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828201500_launch_role_authority_boundary.sql
 
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
@@ -186,6 +188,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_academic_authority.test.sql
       - name: Run launch financial authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_financial_authority.test.sql
+      - name: Run launch role authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_role_authority.test.sql
 
       - name: Verify signup no longer provisions learning currency (BLOCKING)
         run: |
