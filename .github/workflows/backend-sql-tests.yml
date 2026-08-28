@@ -47,7 +47,7 @@ jobs:
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      - name: Provision roles + extensions + auth stub
+      - name: Provision roles + extensions + auth + storage stubs
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
             CREATE ROLE anon NOLOGIN;
@@ -58,6 +58,7 @@ jobs:
             CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
             CREATE SCHEMA IF NOT EXISTS auth;
             CREATE SCHEMA IF NOT EXISTS extensions;
+            CREATE SCHEMA IF NOT EXISTS storage;
             CREATE TABLE IF NOT EXISTS auth.users (
               id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
               email text,
@@ -68,6 +69,27 @@ jobs:
             $$;
             CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$
               SELECT coalesce(current_setting('request.jwt.claims', true)::json->>'role','anon')
+            $$;
+            CREATE TABLE IF NOT EXISTS storage.buckets (
+              id text PRIMARY KEY,
+              name text NOT NULL,
+              public boolean NOT NULL DEFAULT false,
+              file_size_limit bigint,
+              allowed_mime_types text[]
+            );
+            CREATE TABLE IF NOT EXISTS storage.objects (
+              id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+              bucket_id text NOT NULL,
+              name text NOT NULL,
+              owner_id text
+            );
+            ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+            CREATE OR REPLACE FUNCTION storage.foldername(path text) RETURNS text[]
+            LANGUAGE sql IMMUTABLE AS $$
+              SELECT CASE
+                WHEN position('/' in path) = 0 THEN ARRAY[]::text[]
+                ELSE string_to_array(regexp_replace(path, '/[^/]*$', ''), '/')
+              END
             $$;
           SQL
 
@@ -112,8 +134,14 @@ jobs:
       - name: Enforce launch operational invariants (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828204500_launch_operational_invariants.sql
 
+      - name: Enforce launch storage authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828210000_launch_storage_authority_boundary.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
+
+      - name: Run storage authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/storage_authority.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true
