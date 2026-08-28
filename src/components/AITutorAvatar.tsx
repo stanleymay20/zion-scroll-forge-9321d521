@@ -104,12 +104,10 @@ export const AITutorAvatar = ({
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Play audio with lip-sync animation
       if (data.audioContent && !isMuted && isVideoMode) {
         playAudioWithLipSync(data.audioContent);
       }
 
-      // Show satisfaction rating after response
       setShowSatisfaction(true);
       setTimeout(() => setShowSatisfaction(false), 10000);
 
@@ -196,28 +194,39 @@ export const AITutorAvatar = ({
 
   const uploadRecording = async (blob: Blob) => {
     try {
-      const fileName = `${tutorId}-${Date.now()}.webm`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const userId = await getCurrentUserId();
+      if (!userId) {
+        throw new Error('You must be signed in to save a recording.');
+      }
+
+      const fileName = `${tutorId ?? 'tutor'}-${Date.now()}.webm`;
+      const objectPath = `${userId}/${fileName}`;
+      const { error: uploadError } = await supabase.storage
         .from('ai-tutor-videos')
-        .upload(fileName, blob);
+        .upload(objectPath, blob, {
+          contentType: 'video/webm',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('ai-tutor-videos')
-        .getPublicUrl(fileName);
-
-      await supabase.from('ai_tutor_videos' as any).insert({
+      const { error: metadataError } = await supabase.from('ai_tutor_videos' as any).insert({
+        user_id: userId,
         tutor_id: tutorId,
         module_id: moduleId,
         title: `Explanation - ${new Date().toLocaleString()}`,
         description: 'AI Tutor personalized explanation',
-        video_url: publicUrl
+        video_url: objectPath
       });
+
+      if (metadataError) {
+        await supabase.storage.from('ai-tutor-videos').remove([objectPath]);
+        throw metadataError;
+      }
 
       toast({
         title: 'Recording Saved',
-        description: 'Your explanation video has been saved successfully'
+        description: 'Your private explanation video has been saved successfully'
       });
     } catch (error) {
       console.error('Upload error:', error);
@@ -324,7 +333,6 @@ export const AITutorAvatar = ({
           </TabsList>
 
           <TabsContent value="avatar" className="mt-4">
-            {/* 3D Avatar Video Preview with Lip-Sync */}
             {isVideoMode && (
               <div className="relative aspect-video bg-gradient-to-br from-primary/10 via-primary/5 to-background rounded-lg overflow-hidden border-2 border-primary/20">
                 <ReadyPlayerMeAvatar
@@ -369,7 +377,6 @@ export const AITutorAvatar = ({
           </TabsContent>
         </Tabs>
 
-        {/* Satisfaction Rating */}
         {showSatisfaction && (
           <div className="flex items-center justify-center gap-2 p-3 bg-muted rounded-lg animate-fade-in">
             <span className="text-sm font-medium">Rate this response:</span>
@@ -387,7 +394,6 @@ export const AITutorAvatar = ({
           </div>
         )}
 
-        {/* Chat Messages */}
         <ScrollArea className="h-[300px]" ref={scrollRef}>
           <div className="space-y-4 pr-4">
             {messages.length === 0 && (
