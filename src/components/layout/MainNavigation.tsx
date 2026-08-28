@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Home, FileText, Bot, Settings, Activity,
   ChevronDown, ChevronRight, BarChart3, Monitor, Users,
-  BookOpen, GraduationCap, Heart, Coins, MessageSquare, Trophy,
+  BookOpen, GraduationCap, Heart, MessageSquare, Trophy,
   Calendar, Video, Shield, Library, type LucideIcon
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -69,22 +69,13 @@ const getNavigationSections = (userRoles: string[]): NavSection[] => {
       ]
     },
     {
-      title: "ScrollGold",
-      icon: Coins,
-      items: [
-        { label: "My Wallet", href: "/scrollgold-wallet", icon: Coins },
-        { label: "Redemption Store", href: "/redemption-store", icon: Trophy },
-        { label: "Leaderboard", href: "/scrollgold-leaderboard", icon: Trophy },
-      ]
-    },
-    {
       title: "Academic Progress",
       icon: GraduationCap,
       items: [
         { label: "Transcript", href: "/transcript", icon: FileText },
         { label: "Degree Audit", href: "/degree-audit", icon: GraduationCap },
         { label: "Achievements", href: "/achievements", icon: Trophy },
-        { label: "Scholarships", href: "/scholarships", icon: Coins },
+        { label: "Scholarships", href: "/scholarships", icon: GraduationCap },
       ]
     },
     {
@@ -144,7 +135,6 @@ export const MainNavigation = () => {
 
   useEffect(() => {
     if (!activeSectionTitle) return;
-
     setExpandedSections(prev =>
       prev.includes(activeSectionTitle) ? prev : [...prev, activeSectionTitle]
     );
@@ -152,18 +142,13 @@ export const MainNavigation = () => {
 
   return (
     <div className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-sidebar border-r border-sidebar-border flex-col z-40">
-      {/* Logo */}
       <div className="p-4 border-b border-sidebar-border">
         <Logo size="md" to="/dashboard" />
       </div>
-
-      {/* User & Notifications */}
       <div className="px-4 py-3 border-b border-sidebar-border flex items-center justify-between">
         <UserProfileDropdown />
         <NotificationBell />
       </div>
-
-      {/* Nav */}
       <ScrollArea className="flex-1 py-2">
         <div className="px-3 space-y-0.5">
           {navigationSections.map((section) => (
@@ -175,32 +160,22 @@ export const MainNavigation = () => {
                 <span>{section.title}</span>
                 {expandedSections.includes(section.title)
                   ? <ChevronDown className="h-3.5 w-3.5" />
-                  : <ChevronRight className="h-3.5 w-3.5" />
-                }
+                  : <ChevronRight className="h-3.5 w-3.5" />}
               </button>
-
               {expandedSections.includes(section.title) && (
                 <div className="space-y-0.5 mt-0.5 mb-2">
                   {section.items.map((item) => {
                     const inner = (
-                      <div
-                        className={cn(
-                          "flex items-center gap-2.5 px-3 py-2 text-sm font-sans rounded-lg transition-all duration-150",
-                          !item.external && isActive(item.href)
-                            ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                        )}
-                      >
+                      <div className={cn(
+                        "flex items-center gap-2.5 px-3 py-2 text-sm font-sans rounded-lg transition-all duration-150",
+                        !item.external && isActive(item.href)
+                          ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                      )}>
                         {item.icon && <item.icon className="h-4 w-4 flex-shrink-0" />}
                         <span className="truncate">{item.label}</span>
-                        {item.external && (
-                          <span className="ml-auto text-[9px] uppercase tracking-wider text-sidebar-foreground/40">↗</span>
-                        )}
-                        {item.badge && (
-                          <span className="ml-auto text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
-                            {item.badge}
-                          </span>
-                        )}
+                        {item.external && <span className="ml-auto text-[9px] uppercase tracking-wider text-sidebar-foreground/40">↗</span>}
+                        {item.badge && <span className="ml-auto text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">{item.badge}</span>}
                       </div>
                     );
                     return item.external ? (
@@ -215,19 +190,15 @@ export const MainNavigation = () => {
           ))}
         </div>
       </ScrollArea>
-
-      {/* Bottom */}
       <div className="p-3 border-t border-sidebar-border space-y-1.5">
         <Link to="/ai-tutors">
           <Button size="sm" className="w-full font-sans text-xs">
-            <Bot className="h-3.5 w-3.5 mr-2" />
-            Start AI Session
+            <Bot className="h-3.5 w-3.5 mr-2" /> Start AI Session
           </Button>
         </Link>
         <Link to="/settings">
           <Button variant="ghost" size="sm" className="w-full font-sans text-xs text-sidebar-foreground/60">
-            <Settings className="h-3.5 w-3.5 mr-2" />
-            Settings
+            <Settings className="h-3.5 w-3.5 mr-2" /> Settings
           </Button>
         </Link>
       </div>
