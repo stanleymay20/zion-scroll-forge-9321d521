@@ -8,13 +8,9 @@ name: Production Deployment
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [main, master]
   pull_request:
-    branches:
-      - main
-      - master
+    branches: [main, master]
   workflow_dispatch:
 
 permissions:
@@ -37,7 +33,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Run Trivy vulnerability scanner (CRITICAL BLOCKING)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -48,23 +43,18 @@ jobs:
           severity: CRITICAL
           exit-code: '1'
           ignore-unfixed: true
-
       - name: Upload Trivy results to GitHub Security
         if: always() && hashFiles('trivy-results.sarif') != ''
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif
-
       - name: Run Snyk security scan advisory
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          if [ -z "$SNYK_TOKEN" ]; then
-            echo "SNYK_TOKEN not configured; skipping Snyk scan"
-            exit 0
-          fi
+          if [ -z "$SNYK_TOKEN" ]; then echo "SNYK_TOKEN not configured; skipping Snyk scan"; exit 0; fi
           npx snyk test --severity-threshold=critical
 
   backend-tests:
@@ -78,8 +68,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: scrolltest
-        ports:
-          - 5432:5432
+        ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
@@ -92,10 +81,8 @@ jobs:
       PGDATABASE: scrolltest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install psql
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
       - name: Provision roles + extensions + auth stub
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
@@ -119,7 +106,6 @@ jobs:
               SELECT coalesce(current_setting('request.jwt.claims', true)::json->>'role','anon')
             $$;
           SQL
-
       - name: Apply historical Supabase migrations (bootstrap advisory)
         run: |
           set -e
@@ -127,64 +113,49 @@ jobs:
           fail_count=0
           for f in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
             log="/tmp/mig-logs/$(basename "$f").log"
-            if psql -v ON_ERROR_STOP=1 -f "$f" >"$log" 2>&1; then
-              echo "✓ $f"
-            else
+            if psql -v ON_ERROR_STOP=1 -f "$f" >"$log" 2>&1; then echo "✓ $f"; else
               fail_count=$((fail_count+1))
               echo "::warning file=$f::Historical migration did not apply in vanilla Postgres bootstrap"
               tail -n 12 "$log" || true
             fi
           done
           echo "Migration bootstrap attempted; historical failures: $fail_count"
-
       - name: Enforce learning-currency retirement migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828151500_retire_learning_currency.sql
-
       - name: Enforce launch academic authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828160000_launch_academic_authority_boundary.sql
-
+      - name: Enforce launch financial authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828163000_launch_financial_authority_boundary.sql
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
-
       - name: Run lifecycle behavior suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_behavior.test.sql
-
       - name: Run lifecycle invariants suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_invariants.test.sql
-
       - name: Run executive scope isolation suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/executive_scope_isolation.test.sql
-
       - name: Run term rollover suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/term_rollover.test.sql
-
       - name: Run faculty analytics KPIs suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_analytics_kpis.test.sql
-
       - name: Run faculty office hours suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_office_hours.test.sql
-
       - name: Run faculty gradebook suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_gradebook.test.sql
-
       - name: Run faculty workload planner suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_workload_planner.test.sql
-
       - name: Run skill taxonomy suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/skill_taxonomy.test.sql
-
       - name: Run verified learning security suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/verified_learning_security.test.sql
-
       - name: Run launch academic authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_academic_authority.test.sql
-
+      - name: Run launch financial authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_financial_authority.test.sql
       - name: Run governance suite (advisory)
         continue-on-error: true
         run: |
-          if [ -f supabase/tests/program_transfer_governance.test.sql ]; then
-            psql -v ON_ERROR_STOP=1 -f supabase/tests/program_transfer_governance.test.sql
-          fi
+          if [ -f supabase/tests/program_transfer_governance.test.sql ]; then psql -v ON_ERROR_STOP=1 -f supabase/tests/program_transfer_governance.test.sql; fi
 
   frontend-tests:
     name: Frontend Tests
@@ -192,23 +163,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
           cache-dependency-path: package-lock.json
-
       - name: Install frontend dependencies
         run: npm ci --legacy-peer-deps
-
       - name: Run frontend lint advisory
         continue-on-error: true
         run: npm run lint
-
       - name: Type check
         run: npx tsc --noEmit -p tsconfig.app.json
-
       - name: Build frontend
         run: npm run build
