@@ -1,10 +1,10 @@
 name: Production Deployment
 
-# Per-push production quality gate. The frontend hosting platform may publish
-# from main, so this workflow must fail closed on academic/security regressions.
-# Historical Supabase migrations still contain bootstrap drift; those are logged
-# advisory, while current production truth-boundary migrations and regression
-# suites are explicitly blocking below.
+# Per-push production quality gate. Lovable may publish from main, so this
+# workflow must fail closed on security, academic-authority, financial-authority,
+# signup-provisioning, type-check, and build regressions before a SHA is treated
+# as release-ready. Historical Supabase migrations still contain bootstrap drift;
+# those are logged advisory while current launch boundaries are replayed blocking.
 
 on:
   push:
@@ -126,6 +126,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828160000_launch_academic_authority_boundary.sql
       - name: Enforce launch financial authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828163000_launch_financial_authority_boundary.sql
+      - name: Enforce signup provisioning authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828184000_signup_provisioning_without_wallet.sql
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
       - name: Run lifecycle behavior suite (BLOCKING)
@@ -152,6 +154,18 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_academic_authority.test.sql
       - name: Run launch financial authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_financial_authority.test.sql
+      - name: Verify signup no longer provisions learning currency (BLOCKING)
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE v_def text;
+          BEGIN
+            SELECT pg_get_functiondef('public.handle_new_user()'::regprocedure) INTO v_def;
+            IF v_def ~* 'wallets|scrollcoin' THEN
+              RAISE EXCEPTION 'signup_provisioning_still_references_learning_currency';
+            END IF;
+          END $$;
+          SQL
       - name: Run governance suite (advisory)
         continue-on-error: true
         run: |
@@ -178,3 +192,23 @@ jobs:
         run: npx tsc --noEmit -p tsconfig.app.json
       - name: Build frontend
         run: npm run build
+
+  release-ready:
+    name: Release Ready
+    runs-on: ubuntu-latest
+    needs: [security-scan, backend-tests, frontend-tests]
+    if: ${{ always() }}
+    steps:
+      - name: Require every production gate
+        env:
+          SECURITY_RESULT: ${{ needs.security-scan.result }}
+          BACKEND_RESULT: ${{ needs.backend-tests.result }}
+          FRONTEND_RESULT: ${{ needs.frontend-tests.result }}
+        run: |
+          echo "Security: $SECURITY_RESULT"
+          echo "Backend:  $BACKEND_RESULT"
+          echo "Frontend: $FRONTEND_RESULT"
+          test "$SECURITY_RESULT" = "success"
+          test "$BACKEND_RESULT" = "success"
+          test "$FRONTEND_RESULT" = "success"
+          echo "Release-ready gate passed for $GITHUB_SHA"
