@@ -138,7 +138,6 @@ serve(async (req) => {
       return json({ error: 'Forbidden' }, 403)
     }
 
-    // Bind the claimed module to the claimed course before reading/grading anything.
     const { data: moduleRow, error: moduleError } = await supabase
       .from('course_modules')
       .select('id,course_id')
@@ -178,7 +177,6 @@ serve(async (req) => {
     }
     if (questions.length === 0) return json({ error: 'Assessment has no questions' }, 409)
 
-    // Reject answers for question IDs outside this server-selected assessment.
     const allowedIds = new Set((questions as any[]).map((q) => q.id))
     if (Object.keys(answers).some((id) => !allowedIds.has(id))) {
       return json({ error: 'Answers contain unknown question IDs' }, 400)
@@ -224,8 +222,7 @@ serve(async (req) => {
     const passed = percentage >= 70
     const now = new Date().toISOString()
 
-    // Authoritative result. No client-supplied score is accepted.
-    const { data: submission, error: submissionError } = await supabase
+    const { error: submissionError } = await supabase
       .from('quiz_submissions')
       .insert({
         user_id: user.id,
@@ -235,8 +232,6 @@ serve(async (req) => {
         total: possible,
         submitted_at: now,
       })
-      .select('id')
-      .single()
     if (submissionError) throw new Error(`Failed to persist quiz submission: ${submissionError.message}`)
 
     for (const [learningObjectiveId, bucket] of outcomeBuckets.entries()) {
@@ -265,26 +260,8 @@ serve(async (req) => {
       }, { onConflict: 'user_id,module_id' })
     if (masteryError) throw new Error(`Failed to persist module mastery: ${masteryError.message}`)
 
-    let rewardAwarded = false
     if (passed) {
       await syncVerifiedCompletion(supabase, user.id, courseId, moduleId, percentage)
-
-      // One reward per learner+module, regardless of retries/replays. The amount is
-      // derived from the server score and cannot be supplied by the browser.
-      const { data: awarded, error: rewardError } = await supabase.rpc('award_verified_learning_reward', {
-        p_user_id: user.id,
-        p_reward_type: 'module_quiz_pass',
-        p_source_id: moduleId,
-        p_amount: Math.max(1, percentage),
-        p_metadata: {
-          course_id: courseId,
-          module_id: moduleId,
-          submission_id: submission.id,
-          score: percentage,
-        },
-      })
-      if (rewardError) throw new Error(`Failed to award verified learning reward: ${rewardError.message}`)
-      rewardAwarded = awarded === true
     }
 
     return json({
@@ -292,7 +269,6 @@ serve(async (req) => {
       passed,
       earned,
       possible,
-      rewardAwarded,
       review,
       outcomes: Array.from(outcomeBuckets.entries()).map(([learning_objective_id, bucket]) => ({
         learning_objective_id,
