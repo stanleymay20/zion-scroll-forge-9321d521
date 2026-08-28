@@ -2,6 +2,10 @@
 -- A historical term-rollover compatibility shim can create a no-op
 -- assert_not_maintenance() when the original operations migration does not
 -- bootstrap cleanly. Reassert the intended production behavior explicitly.
+--
+-- These functions are intentionally VOLATILE. A maintenance toggle is an
+-- operational kill-switch and must be visible immediately, including when it
+-- is changed earlier in the same transaction/command before a protected RPC.
 
 DO $$
 BEGIN
@@ -17,7 +21,7 @@ END $$;
 CREATE OR REPLACE FUNCTION public.is_maintenance_mode()
 RETURNS boolean
 LANGUAGE sql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path = ''
 AS $$
@@ -32,7 +36,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.assert_not_maintenance()
 RETURNS void
 LANGUAGE plpgsql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path = ''
 AS $$
@@ -55,4 +59,4 @@ REVOKE ALL ON FUNCTION public.assert_not_maintenance() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.assert_not_maintenance() TO authenticated, service_role;
 
 COMMENT ON FUNCTION public.assert_not_maintenance()
-IS 'Launch maintenance gate: blocks protected writes during maintenance for every caller except explicit active admin/superadmin role assignments.';
+IS 'Launch maintenance gate: blocks protected writes during maintenance for every caller except explicit active admin/superadmin role assignments; volatile so an operational toggle is immediately visible.';
