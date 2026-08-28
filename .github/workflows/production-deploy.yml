@@ -140,6 +140,9 @@ jobs:
       - name: Enforce learning-currency retirement migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828151500_retire_learning_currency.sql
 
+      - name: Enforce launch academic authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828160000_launch_academic_authority_boundary.sql
+
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
 
@@ -172,6 +175,9 @@ jobs:
 
       - name: Run verified learning security suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/verified_learning_security.test.sql
+
+      - name: Run launch academic authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_academic_authority.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true
