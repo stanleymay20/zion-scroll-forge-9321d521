@@ -15,6 +15,24 @@ BEGIN
   IF NOT p_ok THEN RAISE EXCEPTION 'VLS test % failed: % — %', p_no, p_name, p_detail; END IF;
 END $$;
 
+-- Synthetic auth principals in this suite are FK/JWT fixtures, not signup tests.
+-- Disable USER triggers only for the fixture INSERT so unrelated legacy signup
+-- provisioning cannot mutate public schema or mask the security assertion under test.
+-- Trigger state changes are transactional and the suite ends with ROLLBACK.
+CREATE OR REPLACE FUNCTION pg_temp.vls_seed_auth_user(p_user uuid, p_email text)
+RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE 'ALTER TABLE auth.users DISABLE TRIGGER USER';
+  BEGIN
+    INSERT INTO auth.users(id, email) VALUES (p_user, p_email)
+    ON CONFLICT (id) DO NOTHING;
+  EXCEPTION WHEN OTHERS THEN
+    EXECUTE 'ALTER TABLE auth.users ENABLE TRIGGER USER';
+    RAISE;
+  END;
+  EXECUTE 'ALTER TABLE auth.users ENABLE TRIGGER USER';
+END $$;
+
 -- 1/2: no answer-key column is readable by authenticated learners.
 DO $$
 DECLARE v_exists boolean;
@@ -75,7 +93,7 @@ BEGIN
     RETURN;
   END IF;
 
-  INSERT INTO auth.users(id,email) VALUES (v_user, 'vls-'||v_user::text||'@example.test');
+  PERFORM pg_temp.vls_seed_auth_user(v_user, 'vls-'||v_user::text||'@example.test');
   PERFORM set_config('request.jwt.claims', json_build_object('sub',v_user::text,'role','authenticated')::text, true);
 
   BEGIN
@@ -103,7 +121,7 @@ BEGIN
     RETURN;
   END IF;
 
-  INSERT INTO auth.users(id,email) VALUES (v_user, 'vls-'||v_user::text||'@example.test');
+  PERFORM pg_temp.vls_seed_auth_user(v_user, 'vls-'||v_user::text||'@example.test');
   PERFORM set_config('request.jwt.claims', json_build_object('sub',v_user::text,'role','authenticated')::text, true);
   v_event := public.record_skill_evidence(v_user, v_skill, 'inferred', 'self_claim', NULL, 100, 1.0, now());
 
@@ -170,9 +188,8 @@ BEGIN
     RETURN;
   END IF;
 
-  INSERT INTO auth.users(id,email) VALUES
-    (v_actor, 'vls-spender-'||v_actor::text||'@example.test'),
-    (v_victim, 'vls-victim-'||v_victim::text||'@example.test');
+  PERFORM pg_temp.vls_seed_auth_user(v_actor, 'vls-spender-'||v_actor::text||'@example.test');
+  PERFORM pg_temp.vls_seed_auth_user(v_victim, 'vls-victim-'||v_victim::text||'@example.test');
   PERFORM set_config('request.jwt.claims', json_build_object('sub',v_actor::text,'role','authenticated')::text, true);
 
   BEGIN
@@ -201,7 +218,7 @@ BEGIN
     RETURN;
   END IF;
 
-  INSERT INTO auth.users(id,email) VALUES (v_user, 'vls-reward-'||v_user::text||'@example.test');
+  PERFORM pg_temp.vls_seed_auth_user(v_user, 'vls-reward-'||v_user::text||'@example.test');
 
   v_first := public.award_verified_learning_reward(v_user,'test_verified_reward',v_source,5,'{}'::jsonb);
   v_second := public.award_verified_learning_reward(v_user,'test_verified_reward',v_source,5,'{}'::jsonb);
