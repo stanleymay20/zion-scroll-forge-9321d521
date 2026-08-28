@@ -11,6 +11,18 @@ BEGIN
   END IF;
 END $$;
 
+-- Older production schemas may already have user_roles from a narrower table
+-- definition. CREATE TABLE IF NOT EXISTS in historical migrations does not add
+-- later lifecycle columns to an existing relation, so establish the exact two
+-- authority fields this launch boundary depends on. Existing assignments remain
+-- active by default and unexpired until a trusted backend explicitly changes
+-- them; this preserves current access while making future deactivation auditable.
+ALTER TABLE public.user_roles
+  ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
+
+ALTER TABLE public.user_roles
+  ADD COLUMN IF NOT EXISTS expires_at timestamptz;
+
 -- Browser roles may inspect only what RLS permits; they cannot grant, change,
 -- or remove authorization assignments directly.
 REVOKE INSERT, UPDATE, DELETE ON TABLE public.user_roles FROM PUBLIC, anon, authenticated;
@@ -51,7 +63,7 @@ AS $$
     FROM public.user_roles ur
     WHERE ur.user_id = _user_id
       AND ur.role::text = _role::text
-      AND COALESCE(ur.is_active, true)
+      AND ur.is_active
       AND (ur.expires_at IS NULL OR ur.expires_at > now())
   );
 $$;
