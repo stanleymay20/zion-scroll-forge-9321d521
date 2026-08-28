@@ -3,9 +3,10 @@ name: Production Deployment
 # Per-push production quality gate. Lovable may publish from main, so this
 # workflow must fail closed on security, academic-authority, financial-authority,
 # signup-provisioning, skill-evidence authority, role authority, maintenance
-# authority, type-check, and build regressions before a SHA is treated as
-# release-ready. Historical Supabase migrations still contain bootstrap drift;
-# those are logged advisory while current launch boundaries are replayed blocking.
+# authority, operational invariants, type-check, and build regressions before a
+# SHA is treated as release-ready. Historical Supabase migrations still contain
+# bootstrap drift; those are logged advisory while current launch boundaries are
+# replayed blocking.
 
 on:
   push:
@@ -35,9 +36,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # archive/ is explicitly dormant and is not part of the deployed product.
-      # Keep the production gate fail-closed over every live dependency while
-      # preventing parked historical services from determining release status.
       - name: Run Trivy vulnerability scanner (CRITICAL BLOCKING)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -158,7 +156,11 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828201500_launch_role_authority_boundary.sql
       - name: Enforce launch maintenance authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828203000_launch_maintenance_authority_boundary.sql
+      - name: Enforce launch operational invariants (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828204500_launch_operational_invariants.sql
 
+      - name: Run signup provisioning suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
       - name: Seed representative cohort fixtures
@@ -192,19 +194,6 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_financial_authority.test.sql
       - name: Run launch role authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_role_authority.test.sql
-
-      - name: Verify signup no longer provisions learning currency (BLOCKING)
-        run: |
-          psql -v ON_ERROR_STOP=1 <<'SQL'
-          DO $$
-          DECLARE v_def text;
-          BEGIN
-            SELECT pg_get_functiondef('public.handle_new_user()'::regprocedure) INTO v_def;
-            IF v_def ~* 'wallets|scrollcoin|scrollgold' THEN
-              RAISE EXCEPTION 'signup_provisioning_still_references_learning_currency';
-            END IF;
-          END $$;
-          SQL
 
       - name: Run governance suite (advisory)
         continue-on-error: true
