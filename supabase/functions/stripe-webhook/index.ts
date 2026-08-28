@@ -1,349 +1,172 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@13.6.0?target=deno'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import Stripe from 'https://esm.sh/stripe@13.6.0?target=deno';
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
-  apiVersion: '2023-10-16',
-})
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', { apiVersion: '2023-10-16' });
+const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
-const cryptoProvider = Stripe.createSubtleCryptoProvider()
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+}
 
 serve(async (request) => {
-  const signature = request.headers.get('Stripe-Signature')
-  const body = await request.text()
-  
-  if (!signature) {
-    return new Response('No signature', { status: 400 })
+  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+  if (Deno.env.get('STRIPE_PAYMENTS_ENABLED') !== 'true') {
+    return json({ error: 'Online payments are not enabled for this deployment.' }, 503);
   }
 
+  const signature = request.headers.get('Stripe-Signature');
+  if (!signature) return json({ error: 'Missing Stripe signature' }, 400);
+  const secret = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '';
+  if (!secret) return json({ error: 'Webhook secret is not configured' }, 503);
+
+  const rawBody = await request.text();
+  let event: Stripe.Event;
   try {
-    const receivedEvent = await stripe.webhooks.constructEventAsync(
-      body,
-      signature,
-      Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '',
-      undefined,
-      cryptoProvider
-    )
+    event = await stripe.webhooks.constructEventAsync(rawBody, signature, secret, undefined, cryptoProvider);
+  } catch (error) {
+    console.error('Stripe signature verification failed', error);
+    return json({ error: 'Invalid Stripe signature' }, 400);
+  }
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  );
 
-    console.log(`Processing webhook: ${receivedEvent.type}`)
+  const { error: claimError } = await supabase.from('stripe_webhook_events').insert({
+    event_id: event.id,
+    event_type: event.type,
+    status: 'processing',
+  });
+  if (claimError?.code === '23505') return json({ received: true, duplicate: true });
+  if (claimError) return json({ error: 'Unable to claim webhook event' }, 500);
 
-    switch (receivedEvent.type) {
+  try {
+    switch (event.type) {
       case 'customer.created': {
-        const customer = receivedEvent.data.object as Stripe.Customer
-        
-        // Update billing record with Stripe customer ID
-        const { error } = await supabaseClient
-          .from('billing')
-          .update({ stripe_customer_id: customer.id })
-          .eq('billing_email', customer.email)
-
-        if (error) {
-          console.error('Error updating customer:', error)
+        const customer = event.data.object as Stripe.Customer;
+        if (customer.email) {
+          const { error } = await supabase.from('billing')
+            .update({ stripe_customer_id: customer.id, updated_at: new Date().toISOString() })
+            .eq('billing_email', customer.email);
+          if (error) throw error;
         }
-        break
+        break;
       }
-
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
-        const subscription = receivedEvent.data.object as Stripe.Subscription
-        
-        const { error } = await supabaseClient
-          .from('billing')
-          .update({
-            subscription_id: subscription.id,
-            subscription_status: subscription.status,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            plan_id: subscription.items.data[0]?.price?.id || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('stripe_customer_id', subscription.customer as string)
-
-        if (error) {
-          console.error('Error updating subscription:', error)
-        }
-        break
+        const subscription = event.data.object as Stripe.Subscription;
+        const { error } = await supabase.from('billing').update({
+          subscription_id: subscription.id,
+          subscription_status: subscription.status,
+          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          plan_id: subscription.items.data[0]?.price?.id ?? null,
+          updated_at: new Date().toISOString(),
+        }).eq('stripe_customer_id', String(subscription.customer));
+        if (error) throw error;
+        break;
       }
-
       case 'customer.subscription.deleted': {
-        const subscription = receivedEvent.data.object as Stripe.Subscription
-        
-        const { error } = await supabaseClient
-          .from('billing')
-          .update({
-            subscription_status: 'canceled',
-            updated_at: new Date().toISOString()
-          })
-          .eq('subscription_id', subscription.id)
-
-        if (error) {
-          console.error('Error canceling subscription:', error)
-        }
-        break
+        const subscription = event.data.object as Stripe.Subscription;
+        const { error } = await supabase.from('billing').update({
+          subscription_status: 'canceled', updated_at: new Date().toISOString(),
+        }).eq('subscription_id', subscription.id);
+        if (error) throw error;
+        break;
       }
-
       case 'invoice.payment_succeeded': {
-        const invoice = receivedEvent.data.object as Stripe.Invoice
-        
-        // Get billing record
-        const { data: billing } = await supabaseClient
-          .from('billing')
-          .select('*')
-          .eq('stripe_customer_id', invoice.customer as string)
-          .single()
-
-        if (billing) {
-          // Create payment record
-          const { error: paymentError } = await supabaseClient
-            .from('payments')
-            .insert({
-              user_id: billing.user_id,
-              billing_id: billing.id,
-              stripe_payment_intent_id: invoice.payment_intent as string,
-              stripe_invoice_id: invoice.id,
-              amount: invoice.amount_paid,
-              currency: invoice.currency,
-              status: 'succeeded',
-              description: invoice.description || 'Subscription payment',
-              receipt_url: invoice.hosted_invoice_url,
-              created_at: new Date().toISOString()
-            })
-
-          if (paymentError) {
-            console.error('Error creating payment record:', paymentError)
-          }
-
-          // Process enrollment if this is a tuition payment
-          if (invoice.metadata?.enrollment_id) {
-            await processEnrollmentPayment(supabaseClient, invoice.metadata.enrollment_id, billing.user_id)
-          }
-        }
-        break
+        const invoice = event.data.object as Stripe.Invoice;
+        const { data: billing, error: billingError } = await supabase.from('billing')
+          .select('id,user_id').eq('stripe_customer_id', String(invoice.customer)).maybeSingle();
+        if (billingError) throw billingError;
+        if (!billing) throw new Error('No authoritative billing record for Stripe customer');
+        const paymentIntentId = typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent?.id;
+        if (!paymentIntentId) throw new Error('Paid invoice has no payment intent id');
+        const { error } = await supabase.from('payments').upsert({
+          user_id: billing.user_id,
+          billing_id: billing.id,
+          stripe_payment_intent_id: paymentIntentId,
+          stripe_invoice_id: invoice.id,
+          amount: invoice.amount_paid,
+          currency: invoice.currency,
+          status: 'succeeded',
+          description: invoice.description || 'Stripe invoice payment',
+          receipt_url: invoice.hosted_invoice_url,
+          metadata: { stripe_event_id: event.id },
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'stripe_payment_intent_id' });
+        if (error) throw error;
+        // Deliberately no automatic enrollment. Payment receipt does not prove the
+        // charge/program/course entitlement until the bursar ledger reconciles it.
+        break;
       }
-
       case 'invoice.payment_failed': {
-        const invoice = receivedEvent.data.object as Stripe.Invoice
-        
-        // Get billing record
-        const { data: billing } = await supabaseClient
-          .from('billing')
-          .select('*')
-          .eq('stripe_customer_id', invoice.customer as string)
-          .single()
-
+        const invoice = event.data.object as Stripe.Invoice;
+        const { data: billing, error: billingError } = await supabase.from('billing')
+          .select('id,user_id').eq('stripe_customer_id', String(invoice.customer)).maybeSingle();
+        if (billingError) throw billingError;
         if (billing) {
-          // Create failed payment record
-          const { error } = await supabaseClient
-            .from('payments')
-            .insert({
+          const paymentIntentId = typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent?.id;
+          if (paymentIntentId) {
+            const { error } = await supabase.from('payments').upsert({
               user_id: billing.user_id,
               billing_id: billing.id,
+              stripe_payment_intent_id: paymentIntentId,
               stripe_invoice_id: invoice.id,
               amount: invoice.amount_due,
               currency: invoice.currency,
               status: 'failed',
-              description: 'Failed payment',
-              failure_reason: 'Payment failed',
-              created_at: new Date().toISOString()
-            })
-
-          if (error) {
-            console.error('Error creating failed payment record:', error)
+              description: 'Stripe payment failed',
+              failure_reason: 'Provider reported payment failure',
+              metadata: { stripe_event_id: event.id },
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'stripe_payment_intent_id' });
+            if (error) throw error;
           }
-
-          // Send notification to user
-          await supabaseClient
-            .from('notifications')
-            .insert({
-              user_id: billing.user_id,
-              type: 'payment_failed',
-              title: 'Payment Failed',
-              message: 'Your recent payment attempt was unsuccessful. Please update your payment method.',
-              data: { invoice_id: invoice.id },
-              created_at: new Date().toISOString()
-            })
         }
-        break
+        break;
       }
-
       case 'payment_intent.succeeded': {
-        const paymentIntent = receivedEvent.data.object as Stripe.PaymentIntent
-        
-        // Handle one-time payments (tuition, fees, etc.)
-        if (paymentIntent.metadata?.user_id && paymentIntent.metadata?.type === 'tuition') {
-          const userId = paymentIntent.metadata.user_id
-          const institutionId = paymentIntent.metadata.institution_id
-          
-          // Get or create student account
-          const { data: account } = await supabaseClient.rpc('create_student_account', {
-            user_uuid: userId,
-            institution_uuid: institutionId
-          })
-
-          if (account) {
-            // Record the payment
-            await supabaseClient.rpc('post_financial_transaction', {
-              account_uuid: account,
-              trans_type: 'payment',
-              trans_amount: paymentIntent.amount,
-              trans_description: paymentIntent.description || 'Tuition payment',
-              ref_id: paymentIntent.id,
-              ref_type: 'stripe_payment',
-              created_by_uuid: userId
-            })
-
-            // Award ScrollCoins for payment
-            await supabaseClient.rpc('earn_scrollcoin', {
-              user_uuid: userId,
-              amount: Math.floor(paymentIntent.amount / 1000), // 1 coin per dollar
-              reason: 'Payment: ' + (paymentIntent.description || 'Tuition'),
-              reference_id: paymentIntent.id,
-              reference_type: 'payment'
-            })
-
-            // Check if this enables enrollment
-            if (paymentIntent.metadata?.course_id) {
-              await processEnrollmentAfterPayment(supabaseClient, userId, paymentIntent.metadata.course_id)
-            }
-          }
+        const intent = event.data.object as Stripe.PaymentIntent;
+        const userId = intent.metadata?.user_id;
+        const institutionId = intent.metadata?.institution_id;
+        if (intent.metadata?.type === 'tuition' && userId && institutionId) {
+          const { data: billing, error: billingError } = await supabase.from('billing')
+            .select('id,user_id').eq('user_id', userId).eq('institution_id', institutionId).maybeSingle();
+          if (billingError) throw billingError;
+          if (!billing || billing.user_id !== userId) throw new Error('Tuition payment is not bound to an authoritative billing account');
+          const { error } = await supabase.from('payments').upsert({
+            user_id: userId,
+            billing_id: billing.id,
+            stripe_payment_intent_id: intent.id,
+            amount: intent.amount_received,
+            currency: intent.currency,
+            status: 'succeeded',
+            description: intent.description || 'Tuition payment received',
+            metadata: { stripe_event_id: event.id, reconciliation_required: true },
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'stripe_payment_intent_id' });
+          if (error) throw error;
         }
-        break
+        break;
       }
-
-      case 'setup_intent.succeeded': {
-        const setupIntent = receivedEvent.data.object as Stripe.SetupIntent
-        
-        if (setupIntent.metadata?.user_id) {
-          // Update billing record with payment method
-          const { error } = await supabaseClient
-            .from('billing')
-            .update({
-              payment_method: {
-                id: setupIntent.payment_method as string,
-                type: 'card' // We'll get details later if needed
-              },
-              auto_payment_enabled: true,
-              updated_at: new Date().toISOString()
-            })
-            .eq('user_id', setupIntent.metadata.user_id)
-
-          if (error) {
-            console.error('Error updating payment method:', error)
-          }
-        }
-        break
-      }
-
       default:
-        console.log(`Unhandled event type: ${receivedEvent.type}`)
+        console.info(`Stripe event acknowledged without state change: ${event.type}`);
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      headers: { 'Content-Type': 'application/json' }
-    })
-
+    const { error: doneError } = await supabase.from('stripe_webhook_events').update({
+      status: 'processed', processed_at: new Date().toISOString(), updated_at: new Date().toISOString(), last_error: null,
+    }).eq('event_id', event.id);
+    if (doneError) throw doneError;
+    return json({ received: true });
   } catch (error) {
-    console.error('Webhook error:', error)
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    )
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Stripe webhook processing failed', message);
+    await supabase.from('stripe_webhook_events').update({
+      status: 'failed', last_error: message.slice(0, 1000), updated_at: new Date().toISOString(),
+    }).eq('event_id', event.id);
+    return json({ error: 'Webhook processing failed' }, 500);
   }
-})
-
-async function processEnrollmentPayment(supabaseClient: any, enrollmentId: string, userId: string) {
-  try {
-    // Update enrollment status to active
-    const { error } = await supabaseClient
-      .from('enrollments')
-      .update({ 
-        status: 'active',
-        enrolled_at: new Date().toISOString()
-      })
-      .eq('id', enrollmentId)
-      .eq('user_id', userId)
-
-    if (error) {
-      console.error('Error updating enrollment:', error)
-      return
-    }
-
-    // Create notification
-    await supabaseClient
-      .from('notifications')
-      .insert({
-        user_id: userId,
-        type: 'enrollment_activated',
-        title: 'Enrollment Confirmed',
-        message: 'Your payment has been processed and your enrollment is now active!',
-        data: { enrollment_id: enrollmentId },
-        created_at: new Date().toISOString()
-      })
-
-  } catch (error) {
-    console.error('Error processing enrollment payment:', error)
-  }
-}
-
-async function processEnrollmentAfterPayment(supabaseClient: any, userId: string, courseId: string) {
-  try {
-    // Check if user has sufficient payment for the course
-    const { data: course } = await supabaseClient
-      .from('courses')
-      .select('price, title')
-      .eq('id', courseId)
-      .single()
-
-    if (!course) return
-
-    // Create enrollment
-    const { data: enrollment, error: enrollError } = await supabaseClient
-      .from('enrollments')
-      .insert({
-        user_id: userId,
-        course_id: courseId,
-        status: 'active',
-        enrolled_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (enrollError) {
-      console.error('Error creating enrollment:', enrollError)
-      return
-    }
-
-    // Award ScrollCoins for enrollment
-    await supabaseClient.rpc('earn_scrollcoin', {
-      user_uuid: userId,
-      amount: 100, // 100 coins for course enrollment
-      reason: `Enrolled in: ${course.title}`,
-      reference_id: courseId,
-      reference_type: 'course_enrollment'
-    })
-
-    // Create notification
-    await supabaseClient
-      .from('notifications')
-      .insert({
-        user_id: userId,
-        type: 'course_enrollment',
-        title: 'Course Enrollment Successful',
-        message: `You have successfully enrolled in ${course.title}!`,
-        data: { course_id: courseId, enrollment_id: enrollment.id },
-        action_url: `/courses/${courseId}`,
-        created_at: new Date().toISOString()
-      })
-
-  } catch (error) {
-    console.error('Error processing enrollment after payment:', error)
-  }
-}
+});
