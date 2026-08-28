@@ -26,6 +26,7 @@ DECLARE
   v_confidence numeric;
   v_id uuid;
   v_claim_role text;
+  v_claims jsonb;
 BEGIN
   BEGIN
     v_actor := auth.uid();
@@ -33,10 +34,15 @@ BEGIN
     v_actor := NULL;
   END;
 
-  v_claim_role := COALESCE(
-    NULLIF(current_setting('request.jwt.claim.role', true), ''),
-    NULLIF((current_setting('request.jwt.claims', true)::jsonb ->> 'role'), '')
-  );
+  -- Use one canonical claim source. Do not trust request.jwt.claim.role: that
+  -- independent session setting can outlive request.jwt.claims in pooled/test
+  -- sessions and must never silently grant service authority.
+  BEGIN
+    v_claims := NULLIF(current_setting('request.jwt.claims', true), '')::jsonb;
+  EXCEPTION WHEN OTHERS THEN
+    v_claims := NULL;
+  END;
+  v_claim_role := NULLIF(v_claims ->> 'role', '');
   v_is_service := (v_claim_role = 'service_role');
 
   IF v_actor IS NULL AND NOT v_is_service THEN
@@ -144,4 +150,4 @@ GRANT EXECUTE ON FUNCTION public.record_skill_evidence(
 
 COMMENT ON FUNCTION public.record_skill_evidence(
   uuid, uuid, text, text, uuid, numeric, numeric, timestamptz
-) IS 'Launch P0: learners may self-attest only inferred self_claim/manual evidence capped at confidence 0.20; demonstrated evidence requires faculty/admin/advisor or trusted service authority.';
+) IS 'Launch P0: learners may self-attest only inferred self_claim/manual evidence capped at confidence 0.20; demonstrated evidence requires faculty/admin/advisor or trusted service authority. Service authority is derived only from the canonical JWT claims object.';
