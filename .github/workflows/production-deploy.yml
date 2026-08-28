@@ -2,9 +2,10 @@ name: Production Deployment
 
 # Per-push production quality gate. Lovable may publish from main, so this
 # workflow must fail closed on security, academic-authority, financial-authority,
-# signup-provisioning, type-check, and build regressions before a SHA is treated
-# as release-ready. Historical Supabase migrations still contain bootstrap drift;
-# those are logged advisory while current launch boundaries are replayed blocking.
+# signup-provisioning, skill-evidence authority, type-check, and build regressions
+# before a SHA is treated as release-ready. Historical Supabase migrations still
+# contain bootstrap drift; those are logged advisory while current launch
+# boundaries are replayed blocking.
 
 on:
   push:
@@ -151,6 +152,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828163000_launch_financial_authority_boundary.sql
       - name: Enforce signup provisioning authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828170500_signup_provisioning_without_learning_currency.sql
+      - name: Enforce live skill-evidence authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828193000_live_skill_evidence_authority_boundary.sql
 
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
