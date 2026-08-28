@@ -38,7 +38,7 @@ export default function BillingDashboard() {
               <div className="space-y-3">{transactions.map((entry) => (
                 <div key={entry.id} className="rounded-lg border p-4 flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-medium">{entry.notes || entry.transaction_type.replaceAll('_', ' ')}</p>
+                    <p className="font-medium">{entry.notes || entry.transaction_type.replace(/_/g, ' ')}</p>
                     <p className="text-xs text-muted-foreground">{format(new Date(entry.created_at), 'PPP')}</p>
                     <Badge variant="outline" className="mt-2 capitalize">{entry.status}</Badge>
                   </div>
