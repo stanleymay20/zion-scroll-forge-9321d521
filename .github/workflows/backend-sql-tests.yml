@@ -98,7 +98,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828163000_launch_financial_authority_boundary.sql
 
       - name: Enforce signup provisioning authority migration (BLOCKING)
-        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828170000_signup_provisioning_no_wallet.sql
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828170500_signup_provisioning_without_learning_currency.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true
