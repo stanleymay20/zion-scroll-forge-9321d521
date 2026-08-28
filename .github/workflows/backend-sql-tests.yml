@@ -103,6 +103,9 @@ jobs:
       - name: Enforce live skill-evidence authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828193000_live_skill_evidence_authority_boundary.sql
 
+      - name: Enforce launch role authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828201500_launch_role_authority_boundary.sql
+
       - name: Run governance suite (advisory)
         continue-on-error: true
         run: |
@@ -154,6 +157,9 @@ jobs:
 
       - name: Run launch financial authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_financial_authority.test.sql
+
+      - name: Run launch role authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_role_authority.test.sql
 
       - name: Verify signup provisioning does not recreate learning currency (BLOCKING)
         run: |
