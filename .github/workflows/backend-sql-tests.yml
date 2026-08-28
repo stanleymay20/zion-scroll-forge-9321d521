@@ -9,6 +9,16 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PGPASSWORD: postgres
+  PGHOST: localhost
+  PGUSER: postgres
+  PGDATABASE: scrolltest
 
 jobs:
   sql-tests:
@@ -31,27 +41,23 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
-    env:
-      PGPASSWORD: postgres
-      PGHOST: localhost
-      PGUSER: postgres
-      PGDATABASE: scrolltest
-
     steps:
       - uses: actions/checkout@v4
+
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Provision roles + extensions
+
+      - name: Provision roles + extensions + auth stub
         run: |
-          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE anon NOLOGIN;"
-          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE authenticated NOLOGIN;"
-          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE service_role NOLOGIN BYPASSRLS;"
-          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE supabase_auth_admin NOLOGIN;"
-          psql -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
-          psql -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
-          psql -v ON_ERROR_STOP=1 -c "CREATE SCHEMA IF NOT EXISTS auth;"
-          psql -v ON_ERROR_STOP=1 -c "CREATE SCHEMA IF NOT EXISTS extensions;"
           psql -v ON_ERROR_STOP=1 <<'SQL'
+            CREATE ROLE anon NOLOGIN;
+            CREATE ROLE authenticated NOLOGIN;
+            CREATE ROLE service_role NOLOGIN BYPASSRLS;
+            CREATE ROLE supabase_auth_admin NOLOGIN;
+            CREATE EXTENSION IF NOT EXISTS pgcrypto;
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+            CREATE SCHEMA IF NOT EXISTS auth;
+            CREATE SCHEMA IF NOT EXISTS extensions;
             CREATE TABLE IF NOT EXISTS auth.users (
               id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
               email text,
@@ -64,60 +70,114 @@ jobs:
               SELECT coalesce(current_setting('request.jwt.claims', true)::json->>'role','anon')
             $$;
           SQL
+
       - name: Apply historical migrations (bootstrap advisory)
         run: |
           set -e
           mkdir -p /tmp/mig-logs
           fail_count=0
-          for f in $(ls supabase/migrations/*.sql | sort); do
+          for f in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
             log="/tmp/mig-logs/$(basename "$f").log"
-            if psql -v ON_ERROR_STOP=1 -f "$f" >"$log" 2>&1; then echo "✓ $f"; else
+            if psql -v ON_ERROR_STOP=1 -f "$f" >"$log" 2>&1; then
+              echo "✓ $f"
+            else
               fail_count=$((fail_count+1))
               echo "::warning file=$f::Historical migration did not apply in vanilla Postgres bootstrap"
               tail -n 20 "$log" || true
             fi
           done
           echo "Migration bootstrap attempted; historical failures: $fail_count"
+
       - name: Enforce learning-currency retirement migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828151500_retire_learning_currency.sql
+
       - name: Enforce launch academic authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828160000_launch_academic_authority_boundary.sql
+
       - name: Enforce launch financial authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828163000_launch_financial_authority_boundary.sql
-      - name: Run governance suite
+
+      - name: Enforce signup provisioning authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828170000_signup_provisioning_no_wallet.sql
+
+      - name: Run governance suite (advisory)
+        continue-on-error: true
         run: |
           if [ -f supabase/tests/program_transfer_governance.test.sql ]; then
-            psql -v ON_ERROR_STOP=1 -f supabase/tests/program_transfer_governance.test.sql || echo "::warning::Governance suite reported failures (advisory in CI bootstrap phase)"
+            psql -v ON_ERROR_STOP=1 -f supabase/tests/program_transfer_governance.test.sql
           fi
+
       - name: Run academic spine suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
+
       - name: Seed representative cohort fixtures
         run: |
-          if [ -f supabase/tests/fixtures/seed_cohort.sql ]; then psql -f supabase/tests/fixtures/seed_cohort.sql || echo "::warning::cohort fixtures partially skipped (expected in bootstrap)"; fi
+          if [ -f supabase/tests/fixtures/seed_cohort.sql ]; then
+            psql -f supabase/tests/fixtures/seed_cohort.sql || echo "::warning::cohort fixtures partially skipped (expected in bootstrap)"
+          fi
+
       - name: Run lifecycle behavior suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_behavior.test.sql
+
       - name: Run lifecycle invariants suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_invariants.test.sql
+
       - name: Run executive scope isolation suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/executive_scope_isolation.test.sql
+
       - name: Run term rollover suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/term_rollover.test.sql
+
       - name: Run faculty analytics KPIs suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_analytics_kpis.test.sql
+
       - name: Run faculty office hours suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_office_hours.test.sql
+
       - name: Run faculty gradebook suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_gradebook.test.sql
+
       - name: Run faculty workload planner suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_workload_planner.test.sql
+
       - name: Run skill taxonomy suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/skill_taxonomy.test.sql
+
       - name: Run verified learning security suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/verified_learning_security.test.sql
+
       - name: Run launch academic authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_academic_authority.test.sql
+
       - name: Run launch financial authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_financial_authority.test.sql
+
+      - name: Verify signup provisioning does not recreate learning currency (BLOCKING)
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+            DO $$
+            DECLARE
+              v_def text;
+            BEGIN
+              SELECT pg_get_functiondef(p.oid)
+                INTO v_def
+              FROM pg_proc p
+              JOIN pg_namespace n ON n.oid = p.pronamespace
+              WHERE n.nspname = 'public' AND p.proname = 'handle_new_user'
+              LIMIT 1;
+
+              IF v_def IS NULL THEN
+                RAISE EXCEPTION 'handle_new_user missing';
+              END IF;
+
+              IF lower(v_def) LIKE '%wallet%'
+                 OR lower(v_def) LIKE '%scrollcoin%'
+                 OR lower(v_def) LIKE '%scrollgold%' THEN
+                RAISE EXCEPTION 'signup provisioning reintroduced learning currency';
+              END IF;
+            END $$;
+          SQL
+
       - name: Summary
         if: always()
-        run: echo "✅ SQL test suite finished"
+        run: echo "SQL regression gate completed; inspect job conclusion for authoritative status."
