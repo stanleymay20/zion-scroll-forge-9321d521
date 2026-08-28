@@ -1,13 +1,11 @@
 // kpi-service — single source of truth for institutional KPIs.
 // Returns a versioned envelope so dashboards remain stable across changes.
 //
-// Contract v1:
-//   {
-//     "version": "v1",
-//     "generated_at": "...",
-//     "scope": { "metric": "...", "params": {...}, "requester_role": "..." },
-//     "metrics": {...}
-//   }
+// Launch authority boundary:
+//   - every request must carry a valid Supabase user session;
+//   - callers must hold an active faculty/admin/superadmin role according to
+//     the canonical has_role predicate;
+//   - sensitive financial/system/AI-review metrics remain admin-only.
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -25,10 +23,6 @@ const corsHeaders: HeadersInit = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-// --- Metric catalog --------------------------------------------------
-// Each entry maps a public metric key to a KPI view. Admin/superadmin
-// can request any. Non-privileged callers can only request metrics that
-// expose aggregate-only rows already permitted by the underlying view.
 type MetricDef = {
   view: string;
   selectCols?: string;
@@ -49,14 +43,16 @@ const METRICS: Record<string, MetricDef> = {
   financial_health:        { view: "vw_kpi_financial_health",        orderBy: { column: "month", ascending: false }, limit: 24, requiresAdmin: true },
   system_health:           { view: "vw_kpi_system_health",           orderBy: { column: "hour", ascending: false }, limit: 96, requiresAdmin: true },
   ai_review_backlog:       { view: "vw_kpi_ai_review_backlog",       requiresAdmin: true },
-  // Sprint D3.2: Faculty Analytics — consumed by /faculty-analytics
-  // (route gated to faculty/admin/superadmin). All three views are
-  // aggregate-only, no PII; safe for any authenticated caller of the
-  // route's allowed roles. Per-faculty scoping is deferred to D4
-  // pending courses/ai_tutors faculty-id schema unification.
   faculty_enrollment_trends: { view: "vw_kpi_faculty_enrollment_trends", orderBy: { column: "week", ascending: false }, limit: 26 },
   faculty_performance:       { view: "vw_kpi_faculty_performance",       limit: 1 },
   faculty_ai_tutor_usage:    { view: "vw_kpi_faculty_ai_tutor_usage",    orderBy: { column: "week", ascending: false }, limit: 26 },
+};
+
+type RequesterAccess = {
+  userId: string | null;
+  isFaculty: boolean;
+  isAdmin: boolean;
+  roleLabel: "anonymous" | "authenticated" | "faculty" | "admin";
 };
 
 async function logOp(
@@ -81,41 +77,74 @@ async function logOp(
       context,
     });
   } catch (_) {
-    // never throw from telemetry
+    // Telemetry must never change the request outcome.
   }
 }
 
-async function getRequesterRole(authHeader: string | null): Promise<{
-  userId: string | null;
-  isAdmin: boolean;
-}> {
-  if (!authHeader) return { userId: null, isAdmin: false };
+async function getRequesterAccess(authHeader: string | null): Promise<RequesterAccess> {
+  if (!authHeader) {
+    return { userId: null, isFaculty: false, isAdmin: false, roleLabel: "anonymous" };
+  }
+
   try {
     const client = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: userData } = await client.auth.getUser();
-    const userId = userData?.user?.id ?? null;
-    if (!userId) return { userId: null, isAdmin: false };
 
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { data: roles } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    const roleSet = new Set((roles ?? []).map((r: any) => r.role));
-    return { userId, isAdmin: roleSet.has("admin") || roleSet.has("superadmin") };
+    const { data: userData, error: userError } = await client.auth.getUser();
+    const userId = userData?.user?.id ?? null;
+    if (userError || !userId) {
+      return { userId: null, isFaculty: false, isAdmin: false, roleLabel: "anonymous" };
+    }
+
+    const [facultyResult, adminResult, superadminResult] = await Promise.all([
+      client.rpc("has_role", { _user_id: userId, _role: "faculty" }),
+      client.rpc("has_role", { _user_id: userId, _role: "admin" }),
+      client.rpc("has_role", { _user_id: userId, _role: "superadmin" }),
+    ]);
+
+    const isAdmin = adminResult.data === true || superadminResult.data === true;
+    const isFaculty = facultyResult.data === true || isAdmin;
+
+    return {
+      userId,
+      isFaculty,
+      isAdmin,
+      roleLabel: isAdmin ? "admin" : isFaculty ? "faculty" : "authenticated",
+    };
   } catch {
-    return { userId: null, isAdmin: false };
+    return { userId: null, isFaculty: false, isAdmin: false, roleLabel: "anonymous" };
   }
+}
+
+function jsonResponse(
+  body: unknown,
+  status: number,
+  correlationId: string,
+) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      "x-correlation-id": correlationId,
+      "x-kpi-contract-version": KPI_CONTRACT_VERSION,
+    },
+  });
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "GET" && req.method !== "POST") {
+    return new Response(JSON.stringify({ error: { code: "method_not_allowed", message: "GET or POST required" } }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const start = Date.now();
-  const correlationId =
-    req.headers.get("x-correlation-id") ?? crypto.randomUUID();
+  const correlationId = req.headers.get("x-correlation-id") ?? crypto.randomUUID();
 
   try {
     const url = new URL(req.url);
@@ -127,7 +156,9 @@ Deno.serve(async (req) => {
         const body = await req.json();
         metricKey = body.metric ?? metricKey;
         params = body.params ?? {};
-      } catch {/* allow empty body */}
+      } catch {
+        // Empty bodies are allowed; validation below handles missing metric.
+      }
     }
 
     if (!metricKey || !(metricKey in METRICS)) {
@@ -141,36 +172,51 @@ Deno.serve(async (req) => {
         },
       };
       await logOp(correlationId, "request.invalid", "warn", Date.now() - start, status, "unknown_metric", { metricKey });
-      return new Response(JSON.stringify(payload), {
-        status,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "x-correlation-id": correlationId },
-      });
+      return jsonResponse(payload, status, correlationId);
+    }
+
+    const access = await getRequesterAccess(req.headers.get("Authorization"));
+    if (!access.userId) {
+      const status = 401;
+      await logOp(correlationId, "request.unauthenticated", "warn", Date.now() - start, status, "authentication_required", { metricKey });
+      return jsonResponse({
+        version: KPI_CONTRACT_VERSION,
+        generated_at: new Date().toISOString(),
+        error: { code: "unauthenticated", message: "Valid user session required" },
+      }, status, correlationId);
+    }
+
+    if (!access.isFaculty) {
+      const status = 403;
+      await logOp(correlationId, "request.forbidden", "warn", Date.now() - start, status, "faculty_authority_required", { metricKey, userId: access.userId });
+      return jsonResponse({
+        version: KPI_CONTRACT_VERSION,
+        generated_at: new Date().toISOString(),
+        error: { code: "forbidden", message: "Faculty or administrator role required" },
+      }, status, correlationId);
     }
 
     const def = METRICS[metricKey];
-    const { userId, isAdmin } = await getRequesterRole(req.headers.get("Authorization"));
-
-    if (def.requiresAdmin && !isAdmin) {
+    if (def.requiresAdmin && !access.isAdmin) {
       const status = 403;
-      const payload = {
+      await logOp(correlationId, "request.forbidden", "warn", Date.now() - start, status, "admin_metric_forbidden", { metricKey, userId: access.userId });
+      return jsonResponse({
         version: KPI_CONTRACT_VERSION,
         generated_at: new Date().toISOString(),
-        error: { code: "forbidden", message: "Admin role required for this metric" },
-      };
-      await logOp(correlationId, "request.forbidden", "warn", Date.now() - start, status, "forbidden_metric", { metricKey, userId });
-      return new Response(JSON.stringify(payload), {
-        status,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "x-correlation-id": correlationId },
-      });
+        error: { code: "forbidden", message: "Administrator role required for this metric" },
+      }, status, correlationId);
     }
 
-    // Read via service role — views are aggregate-only, no PII.
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-    let q = admin.from(def.view).select(def.selectCols ?? "*");
-    if (def.orderBy) q = q.order(def.orderBy.column, { ascending: def.orderBy.ascending });
-    if (def.limit) q = q.limit(def.limit);
+    // Service role is used only after caller identity and authority have been
+    // established through the canonical active-role predicate.
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    let query = admin.from(def.view).select(def.selectCols ?? "*");
+    if (def.orderBy) query = query.order(def.orderBy.column, { ascending: def.orderBy.ascending });
+    if (def.limit) query = query.limit(def.limit);
 
-    const { data, error } = await q;
+    const { data, error } = await query;
     if (error) throw error;
 
     const envelope = {
@@ -179,7 +225,7 @@ Deno.serve(async (req) => {
       scope: {
         metric: metricKey,
         params,
-        requester_role: isAdmin ? "admin" : userId ? "authenticated" : "anonymous",
+        requester_role: access.roleLabel,
       },
       metrics: {
         rows: data ?? [],
@@ -189,32 +235,19 @@ Deno.serve(async (req) => {
 
     await logOp(correlationId, "request.success", "info", Date.now() - start, 200, "ok", {
       metricKey,
+      requester_role: access.roleLabel,
       row_count: (data ?? []).length,
     });
 
-    return new Response(JSON.stringify(envelope), {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-        "x-correlation-id": correlationId,
-        "x-kpi-contract-version": KPI_CONTRACT_VERSION,
-      },
-    });
+    return jsonResponse(envelope, 200, correlationId);
   } catch (err) {
     const status = 500;
     const message = err instanceof Error ? err.message : "unknown error";
     await logOp(correlationId, "request.error", "error", Date.now() - start, status, message, {});
-    return new Response(
-      JSON.stringify({
-        version: KPI_CONTRACT_VERSION,
-        generated_at: new Date().toISOString(),
-        error: { code: "internal_error", message },
-      }),
-      {
-        status,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "x-correlation-id": correlationId },
-      },
-    );
+    return jsonResponse({
+      version: KPI_CONTRACT_VERSION,
+      generated_at: new Date().toISOString(),
+      error: { code: "internal_error", message: "KPI service failed" },
+    }, status, correlationId);
   }
 });
