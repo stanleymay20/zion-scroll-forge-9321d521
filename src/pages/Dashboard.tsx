@@ -5,7 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonCard, SkeletonList } from "@/components/ui/skeleton-card";
 import { 
-  Book, Users, Trophy, Coins, Heart, Brain, 
+  Book, Trophy, Heart, Brain, 
   TrendingUp, Calendar, Star, ArrowRight, Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -37,9 +37,11 @@ export default function Dashboard() {
     );
   }
 
+  const completedCourses = (enrollments ?? []).filter((enrollment: any) => Number(enrollment.progress ?? 0) >= 100).length;
+
   const quickStats = [
     { label: "Courses Enrolled", value: String(dashboardData.courses_enrolled), sub: `${enrollments?.length ?? 0} active`, icon: Book, color: "text-primary" },
-    { label: "ScrollCoins", value: String(Math.round(dashboardData.balance)), sub: "Live balance", icon: Coins, color: "text-accent" },
+    { label: "Courses Completed", value: String(completedCourses), sub: "Verified course progress", icon: Trophy, color: "text-accent" },
     { label: "Prayer Requests", value: String(dashboardData.total_prayers), sub: `${dashboardData.prayers_answered} answered`, icon: Heart, color: "text-destructive" },
     { label: "Avg Progress", value: `${Math.round(dashboardData.avg_progress ?? 0)}%`, sub: "Across all courses", icon: TrendingUp, color: "text-success" },
   ];
@@ -67,7 +69,6 @@ export default function Dashboard() {
     >
       <StudentProgramAssignmentBanner />
       <AcademicStandingCard />
-      {/* Daily Acknowledgment */}
       <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 animate-fade-up">
         <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-5">
           <div className="flex items-start gap-3">
@@ -93,7 +94,6 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {quickStats.map((stat, i) => (
           <Card key={stat.label} className={cn("card-hover animate-fade-up", `animate-fade-up-delay-${i + 1}`)}>
@@ -109,9 +109,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Learning Progress */}
         <div className="lg:col-span-2 space-y-4">
           <Card className="animate-fade-up animate-fade-up-delay-2">
             <CardHeader className="pb-3">
@@ -159,9 +157,7 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-4">
-          {/* Spiritual Formation */}
           <Card className="animate-fade-up animate-fade-up-delay-3">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -190,7 +186,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
           <Card className="animate-fade-up animate-fade-up-delay-4">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Quick Actions</CardTitle>
@@ -200,7 +195,7 @@ export default function Dashboard() {
                 { label: "Courses", href: "/courses", icon: Book },
                 { label: "AI Tutor", href: "/ai-tutors", icon: Brain },
                 { label: "Prayer", href: "/prayer-requests", icon: Heart },
-                { label: "Wallet", href: "/scrollgold-wallet", icon: Coins },
+                { label: "Achievements", href: "/achievements", icon: Trophy },
               ].map(action => (
                 <Link key={action.href} to={action.href}>
                   <Button variant="outline" size="sm" className="w-full h-auto py-3 flex-col gap-1.5 text-xs">
@@ -212,7 +207,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* AI Tutor */}
           <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5 animate-fade-up animate-fade-up-delay-4">
             <CardContent className="pt-5 pb-4">
               <div className="flex items-center gap-2 mb-2">
