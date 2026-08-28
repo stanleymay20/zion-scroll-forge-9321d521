@@ -39,10 +39,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
       - name: Provision roles + extensions
         run: |
           psql -v ON_ERROR_STOP=1 -c "CREATE ROLE anon NOLOGIN;"
@@ -66,7 +64,6 @@ jobs:
               SELECT coalesce(current_setting('request.jwt.claims', true)::json->>'role','anon')
             $$;
           SQL
-
       - name: Apply historical migrations (bootstrap advisory)
         run: |
           set -e
@@ -74,75 +71,53 @@ jobs:
           fail_count=0
           for f in $(ls supabase/migrations/*.sql | sort); do
             log="/tmp/mig-logs/$(basename "$f").log"
-            if psql -v ON_ERROR_STOP=1 -f "$f" >"$log" 2>&1; then
-              echo "✓ $f"
-            else
+            if psql -v ON_ERROR_STOP=1 -f "$f" >"$log" 2>&1; then echo "✓ $f"; else
               fail_count=$((fail_count+1))
               echo "::warning file=$f::Historical migration did not apply in vanilla Postgres bootstrap"
-              echo "----- last 20 lines of $f -----"
               tail -n 20 "$log" || true
-              echo "-------------------------------"
             fi
           done
           echo "Migration bootstrap attempted; historical failures: $fail_count"
-
       - name: Enforce learning-currency retirement migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828151500_retire_learning_currency.sql
-
       - name: Enforce launch academic authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828160000_launch_academic_authority_boundary.sql
-
+      - name: Enforce launch financial authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828163000_launch_financial_authority_boundary.sql
       - name: Run governance suite
         run: |
           if [ -f supabase/tests/program_transfer_governance.test.sql ]; then
-            psql -v ON_ERROR_STOP=1 -f supabase/tests/program_transfer_governance.test.sql || {
-              echo "::warning::Governance suite reported failures (advisory in CI bootstrap phase)"
-            }
+            psql -v ON_ERROR_STOP=1 -f supabase/tests/program_transfer_governance.test.sql || echo "::warning::Governance suite reported failures (advisory in CI bootstrap phase)"
           fi
-
       - name: Run academic spine suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
-
       - name: Seed representative cohort fixtures
         run: |
-          if [ -f supabase/tests/fixtures/seed_cohort.sql ]; then
-            psql -f supabase/tests/fixtures/seed_cohort.sql || \
-              echo "::warning::cohort fixtures partially skipped (expected in bootstrap)"
-          fi
-
+          if [ -f supabase/tests/fixtures/seed_cohort.sql ]; then psql -f supabase/tests/fixtures/seed_cohort.sql || echo "::warning::cohort fixtures partially skipped (expected in bootstrap)"; fi
       - name: Run lifecycle behavior suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_behavior.test.sql
-
       - name: Run lifecycle invariants suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/lifecycle_invariants.test.sql
-
       - name: Run executive scope isolation suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/executive_scope_isolation.test.sql
-
       - name: Run term rollover suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/term_rollover.test.sql
-
       - name: Run faculty analytics KPIs suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_analytics_kpis.test.sql
-
       - name: Run faculty office hours suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_office_hours.test.sql
-
       - name: Run faculty gradebook suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_gradebook.test.sql
-
       - name: Run faculty workload planner suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/faculty_workload_planner.test.sql
-
       - name: Run skill taxonomy suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/skill_taxonomy.test.sql
-
       - name: Run verified learning security suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/verified_learning_security.test.sql
-
       - name: Run launch academic authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_academic_authority.test.sql
-
+      - name: Run launch financial authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_financial_authority.test.sql
       - name: Summary
         if: always()
         run: echo "✅ SQL test suite finished"
