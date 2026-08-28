@@ -109,6 +109,12 @@ jobs:
       - name: Enforce launch maintenance authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828203000_launch_maintenance_authority_boundary.sql
 
+      - name: Enforce launch operational invariants (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828204500_launch_operational_invariants.sql
+
+      - name: Run signup provisioning suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
+
       - name: Run governance suite (advisory)
         continue-on-error: true
         run: |
@@ -163,32 +169,6 @@ jobs:
 
       - name: Run launch role authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_role_authority.test.sql
-
-      - name: Verify signup provisioning does not recreate learning currency (BLOCKING)
-        run: |
-          psql -v ON_ERROR_STOP=1 <<'SQL'
-            DO $$
-            DECLARE
-              v_def text;
-            BEGIN
-              SELECT pg_get_functiondef(p.oid)
-                INTO v_def
-              FROM pg_proc p
-              JOIN pg_namespace n ON n.oid = p.pronamespace
-              WHERE n.nspname = 'public' AND p.proname = 'handle_new_user'
-              LIMIT 1;
-
-              IF v_def IS NULL THEN
-                RAISE EXCEPTION 'handle_new_user missing';
-              END IF;
-
-              IF lower(v_def) LIKE '%wallet%'
-                 OR lower(v_def) LIKE '%scrollcoin%'
-                 OR lower(v_def) LIKE '%scrollgold%' THEN
-                RAISE EXCEPTION 'signup provisioning reintroduced learning currency';
-              END IF;
-            END $$;
-          SQL
 
       - name: Summary
         if: always()
