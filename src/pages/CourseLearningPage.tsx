@@ -1,35 +1,24 @@
-/**
- * CourseLearningPage - Complete course learning experience
- * Auto-awards certificates on course completion
- */
-
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  AlertCircle, ArrowLeft, Award, BookOpen, Bot, CalendarDays,
+  ClipboardCheck, GraduationCap, List, Loader2, ShieldCheck, Target,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageTemplate } from '@/components/layout/PageTemplate';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ArrowLeft, BookOpen, List, Loader2, AlertCircle,
-  MessageSquare, GraduationCap, Award, Video, ClipboardCheck, Target, CalendarDays,
-  PlayCircle, Headphones, ScrollText, UploadCloud
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ModuleLearningContent } from '@/components/learning/ModuleLearningContent';
 import { CourseCurriculumBrowser } from '@/components/learning/CourseCurriculumBrowser';
-import { AITutorAvatar } from '@/components/AITutorAvatar';
-import { LiveAvatarLecture } from '@/components/learning/LiveAvatarLecture';
-import { useLiveClassContext } from '@/hooks/useLiveClassContext';
-import { OutcomesAchievedPanel } from '@/components/learning/OutcomesAchievedPanel';
-import { earnScrollGold } from '@/services/scrollgold';
+import { QuizInterface } from '@/components/course/QuizInterface';
 import { usePrerequisiteCheck } from '@/hooks/usePrerequisiteCheck';
 import { PrerequisiteBlock } from '@/components/courses/PrerequisiteBlock';
-import confetti from 'canvas-confetti';
 import { getAcademicCourseProfile } from '@/lib/academicRigor';
 
 export default function CourseLearningPage() {
@@ -37,665 +26,267 @@ export default function CourseLearningPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'avatar' | 'learn' | 'curriculum' | 'tutor'>('avatar');
+  const [activeTab, setActiveTab] = useState<'learn' | 'assessment' | 'curriculum' | 'support'>('learn');
   const [currentModuleId, setCurrentModuleId] = useState<string | null>(null);
-  const [certificateAwarded, setCertificateAwarded] = useState(false);
 
-  // Fetch course with modules
   const { data: courseData, isLoading, error } = useQuery({
-    queryKey: ['course-learning-full', courseId],
+    queryKey: ['course-learning', courseId],
+    enabled: !!courseId,
     queryFn: async () => {
-      const { data: course, error: courseError } = await supabase
+      const { data, error } = await supabase
         .from('courses')
-        .select('*, course_modules (*, learning_materials (*))')
+        .select('*, course_modules(*, learning_materials(*))')
         .eq('id', courseId!)
         .single();
-      if (courseError) throw courseError;
-      return course;
+      if (error) throw error;
+      return data;
     },
-    enabled: !!courseId
   });
 
-  // Fetch enrollment
   const { data: enrollment } = useQuery({
-    queryKey: ['enrollment-learning', courseId, user?.id],
+    queryKey: ['course-enrollment', courseId, user?.id],
+    enabled: !!courseId && !!user?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('enrollments')
-        .select('*')
+        .select('id,user_id,course_id')
         .eq('course_id', courseId!)
         .eq('user_id', user!.id)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!courseId && !!user
   });
 
-  // Fetch module completions
-  const { data: moduleCompletions = [] } = useQuery({
-    queryKey: ['module-completions', courseId, user?.id],
+  const modules = useMemo(
+    () => [...(courseData?.course_modules ?? [])].sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0)),
+    [courseData?.course_modules],
+  );
+  const moduleIds = useMemo(() => modules.map((m: any) => m.id), [modules]);
+
+  const { data: verifiedRows = [] } = useQuery({
+    queryKey: ['verified-module-progress', courseId, user?.id, moduleIds.join(',')],
+    enabled: !!user?.id && moduleIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('module_completions' as any)
-        .select('module_id')
-        .eq('user_id', user!.id);
-      if (error) return [];
-      return (data as any[])?.map(mc => mc.module_id) || [];
+        .from('student_module_progress')
+        .select('module_id,status,mastery_level,completed_at')
+        .eq('user_id', user!.id)
+        .in('module_id', moduleIds);
+      if (error) throw error;
+      return data ?? [];
     },
-    enabled: !!user
   });
 
-  // Check existing certificate
+  const verifiedCompletedIds = useMemo(
+    () => verifiedRows
+      .filter((row: any) => row.status === 'completed' && Number(row.mastery_level ?? 0) >= 70)
+      .map((row: any) => row.module_id),
+    [verifiedRows],
+  );
+
+  const { data: courseCompletion } = useQuery({
+    queryKey: ['verified-course-completion', courseId, user?.id, verifiedCompletedIds.join(',')],
+    enabled: !!courseId && !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc('get_verified_course_completion', {
+        p_user_id: user!.id,
+        p_course_id: courseId!,
+      });
+      if (error) throw error;
+      return data as {
+        progress: number;
+        complete: boolean;
+        total_modules: number;
+        verified_modules: number;
+        authority: string;
+      };
+    },
+  });
+
   const { data: existingCert } = useQuery({
     queryKey: ['course-certificate', courseId, user?.id],
+    enabled: !!courseId && !!user?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('course_certificates')
-        .select('id')
+        .select('id,completion_date')
         .eq('course_id', courseId!)
         .eq('user_id', user!.id)
         .maybeSingle();
+      if (error) throw error;
       return data;
     },
-    enabled: !!courseId && !!user
   });
 
-  const modules = courseData?.course_modules || [];
-  const sortedModules = [...modules].sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0));
+  const prerequisite = usePrerequisiteCheck(courseId, 'course-learning');
 
-  // Set initial module
   useEffect(() => {
-    if (sortedModules.length > 0 && !currentModuleId) {
-      const firstIncomplete = sortedModules.find((m: any) => !moduleCompletions.includes(m.id));
-      setCurrentModuleId(firstIncomplete?.id || sortedModules[0].id);
-    }
-  }, [sortedModules, moduleCompletions, currentModuleId]);
+    if (!modules.length || currentModuleId) return;
+    const firstIncomplete = modules.find((m: any) => !verifiedCompletedIds.includes(m.id));
+    setCurrentModuleId(firstIncomplete?.id ?? modules[0].id);
+  }, [modules, currentModuleId, verifiedCompletedIds]);
 
-  const currentModule = sortedModules.find((m: any) => m.id === currentModuleId);
-  const currentModuleIndex = sortedModules.findIndex((m: any) => m.id === currentModuleId);
-  const { data: liveCtx } = useLiveClassContext(currentModuleId || undefined);
-  const aiTutor = liveCtx?.tutor ?? null;
+  const currentModuleIndex = modules.findIndex((m: any) => m.id === currentModuleId);
+  const currentModule = modules[currentModuleIndex];
+  const currentVerified = !!currentModuleId && verifiedCompletedIds.includes(currentModuleId);
+  const overallProgress = Number(courseCompletion?.progress ?? 0);
+  const academicProfile = courseData ? getAcademicCourseProfile(courseData, modules.length) : null;
 
-  // Auto-award certificate when course is 100% complete
-  const awardCertificate = useCallback(async () => {
-    if (!user?.id || !courseId || certificateAwarded || existingCert) return;
-    
-    try {
-      setCertificateAwarded(true);
+  const certificateMutation = useMutation({
+    mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('generate-certificate', {
-        body: { userId: user.id, courseId, type: 'course' }
+        body: { courseId, userId: user!.id, type: 'course' },
       });
-      
       if (error) throw error;
-      
-      confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
-      toast.success('🎓 Course Completed! Certificate awarded!', {
-        duration: 6000,
-        action: {
-          label: 'View Certificate',
-          onClick: () => {
-            if (data?.html) {
-              const win = window.open();
-              if (win) win.document.write(data.html);
-            }
-          }
-        }
-      });
-      
-      queryClient.invalidateQueries({ queryKey: ['course-certificate'] });
-      queryClient.invalidateQueries({ queryKey: ['graduation-eligibility'] });
-    } catch (err) {
-      console.error('Certificate generation failed:', err);
-      setCertificateAwarded(false);
-    }
-  }, [user?.id, courseId, certificateAwarded, existingCert, queryClient]);
-
-  // Complete module mutation — also awards ScrollGold and writes auditable xp_awarded
-  const completeModuleMutation = useMutation({
-    mutationFn: async (moduleId: string) => {
-      const moduleObj = sortedModules.find((m: any) => m.id === moduleId);
-      const rewardAmount: number = Number(moduleObj?.rewards_amount ?? 0);
-
-      // Outcome-mastery gate: if this module has authored quiz questions tagged to outcomes,
-      // require >=70% of its outcomes to be "Achieved" before allowing completion.
-      const { data: tagged } = await (supabase as any)
-        .from('quiz_questions')
-        .select('learning_objective_id')
-        .eq('module_id', moduleId)
-        .not('learning_objective_id', 'is', null);
-      const objIds: string[] = Array.from(new Set(((tagged ?? []) as any[]).map((r) => r.learning_objective_id))).filter(Boolean);
-      if (objIds.length > 0) {
-        const { data: mastery } = await (supabase as any)
-          .from('student_outcome_mastery')
-          .select('learning_objective_id,score_pct')
-          .eq('user_id', user!.id)
-          .eq('module_id', moduleId)
-          .in('learning_objective_id', objIds);
-        const achieved = ((mastery ?? []) as any[]).filter((r) => (r.score_pct ?? 0) >= 70).length;
-        const ratio = achieved / objIds.length;
-        if (ratio < 0.7) {
-          throw new Error(`Outcome mastery required: ${achieved}/${objIds.length} achieved. Retake the assessment to reach 70%.`);
-        }
-      }
-
-      const { data: existing } = await supabase
-        .from('module_completions' as any)
-        .select('id')
-        .eq('module_id', moduleId)
-        .eq('user_id', user!.id)
-        .maybeSingle();
-
-      if (existing) return { existing: true };
-
-      const { data, error } = await supabase
-        .from('module_completions' as any)
-        .insert({ module_id: moduleId, user_id: user!.id, course_id: courseId, xp_awarded: rewardAmount })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Award ScrollGold (best-effort; do not block completion if economy is offline)
-      if (rewardAmount > 0) {
-        try {
-          await earnScrollGold(user!.id, rewardAmount, `Module completed: ${moduleObj?.title ?? moduleId}`);
-        } catch (e) {
-          console.warn('[CourseLearningPage] earnScrollGold failed:', e);
-        }
-      }
-
-      // Update enrollment progress
-      const newCompletedCount = moduleCompletions.length + 1;
-      const newProgress = Math.round((newCompletedCount / sortedModules.length) * 100);
-
-      if (enrollment) {
-        await supabase
-          .from('enrollments')
-          .update({ progress: newProgress })
-          .eq('id', enrollment.id);
-      }
-
-      return { data, progress: newProgress, rewarded: rewardAmount };
+      return data;
     },
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['module-completions'] });
-      queryClient.invalidateQueries({ queryKey: ['enrollment-learning'] });
-      queryClient.invalidateQueries({ queryKey: ['outcome-mastery'] });
-
-      if (!result?.existing) {
-        const rewarded = (result as any)?.rewarded ?? 0;
-        toast.success(rewarded > 0 ? `Module completed! +${rewarded} ScrollGold 🎉` : 'Module completed! 🎉');
-
-        const newCount = moduleCompletions.length + 1;
-        if (newCount >= sortedModules.length && sortedModules.length > 0) {
-          setTimeout(() => awardCertificate(), 1000);
-        }
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['course-certificate', courseId, user?.id] });
+      toast.success('Verified course certificate issued.');
+      if (data?.html) {
+        const win = window.open();
+        if (win) win.document.write(data.html);
       }
     },
-    onError: (e: any) => toast.error(e?.message ?? 'Failed to mark module as complete'),
+    onError: () => toast.error('Certificate issuance was not authorized by verified course evidence.'),
   });
 
-  const handleModuleComplete = () => {
-    if (currentModuleId && !moduleCompletions.includes(currentModuleId)) {
-      completeModuleMutation.mutate(currentModuleId);
-    }
+  const refreshVerifiedProgress = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['verified-module-progress', courseId, user?.id] }),
+      queryClient.invalidateQueries({ queryKey: ['verified-course-completion', courseId, user?.id] }),
+      queryClient.invalidateQueries({ queryKey: ['course-certificate', courseId, user?.id] }),
+    ]);
   };
 
-  const handleNextModule = () => {
-    if (currentModuleIndex < sortedModules.length - 1) {
-      setCurrentModuleId(sortedModules[currentModuleIndex + 1].id);
-      setActiveTab('avatar');
+  const goNext = () => {
+    if (currentModuleIndex >= 0 && currentModuleIndex < modules.length - 1) {
+      setCurrentModuleId(modules[currentModuleIndex + 1].id);
+      setActiveTab('learn');
     } else {
-      // All modules done — navigate to graduation
-      navigate('/graduation');
+      setActiveTab('curriculum');
     }
   };
-
-  const handlePreviousModule = () => {
-    if (currentModuleIndex > 0) {
-      setCurrentModuleId(sortedModules[currentModuleIndex - 1].id);
-      setActiveTab('avatar');
-    }
-  };
-
-  const handleModuleSelect = (moduleId: string) => {
-    setCurrentModuleId(moduleId);
-    setActiveTab('avatar');
-  };
-
-  const overallProgress = sortedModules.length > 0 
-    ? Math.round((moduleCompletions.filter((id: string) => 
-        sortedModules.some((m: any) => m.id === id)
-      ).length / sortedModules.length) * 100)
-    : 0;
-  const academicProfile = courseData
-    ? getAcademicCourseProfile(courseData, sortedModules.length)
-    : null;
 
   if (isLoading) {
-    return (
-      <PageTemplate title="Loading..." description="">
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </PageTemplate>
-    );
+    return <PageTemplate title="Loading course" description=""><div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div></PageTemplate>;
   }
 
   if (error || !courseData) {
     return (
-      <PageTemplate title="Course Not Found" description="">
-        <div className="text-center py-12">
-          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <p className="text-lg text-muted-foreground mb-4">Failed to load course content</p>
-          <Button onClick={() => navigate('/courses')}>
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Courses
-          </Button>
-        </div>
+      <PageTemplate title="Course unavailable" description="">
+        <div className="text-center py-12"><AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" /><p className="text-muted-foreground mb-4">The course could not be loaded.</p><Button onClick={() => navigate('/catalog')}><ArrowLeft className="h-4 w-4 mr-2" />Catalog</Button></div>
       </PageTemplate>
     );
   }
 
   if (!enrollment) {
     return (
-      <PageTemplate title={courseData.title} description="">
-        <div className="text-center py-12">
-          <GraduationCap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-lg text-muted-foreground mb-4">
-            You need to enroll in this course to access the content
-          </p>
-          <Button onClick={() => navigate(`/courses/${courseId}`)}>
-            <ArrowLeft className="h-4 w-4 mr-2" /> Go to Course Details
-          </Button>
-        </div>
+      <PageTemplate title={courseData.title} description="Enrollment required">
+        <div className="text-center py-12"><GraduationCap className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><p className="text-muted-foreground mb-4">You must be enrolled before accessing course learning materials.</p><Button onClick={() => navigate(`/courses/${courseId}`)}>Course details</Button></div>
+      </PageTemplate>
+    );
+  }
+
+  if (prerequisite.isLoading) {
+    return <PageTemplate title={courseData.title} description="Checking academic eligibility"><div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div></PageTemplate>;
+  }
+
+  if (!prerequisite.data?.eligible) {
+    return (
+      <PageTemplate title={courseData.title} description="Prerequisite verification required">
+        <PrerequisiteBlock result={prerequisite.data!} onRetry={() => prerequisite.refetch()} />
       </PageTemplate>
     );
   }
 
   return (
-    <CourseLearningGuard courseId={courseId!} courseTitle={courseData.title} navigate={navigate}>
     <div className="min-h-screen pb-24 md:pb-8">
-      {/* Sticky Progress Header */}
-      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3">
-
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate(`/courses/${courseId}`)} className="shrink-0">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-sm font-semibold text-foreground truncate">{courseData.title}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <Progress value={overallProgress} className="h-1.5 flex-1" />
-                <span className="text-xs text-muted-foreground whitespace-nowrap">{overallProgress}%</span>
-              </div>
-            </div>
-            {existingCert && (
-              <Badge variant="secondary" className="bg-accent/10 text-accent shrink-0">
-                <Award className="h-3 w-3 mr-1" /> Certified
-              </Badge>
-            )}
+      <div className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur px-4 py-3">
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/courses/${courseId}`)}><ArrowLeft className="h-5 w-5" /></Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-semibold truncate">{courseData.title}</h1>
+            <div className="flex items-center gap-2 mt-1"><Progress value={overallProgress} className="h-1.5 flex-1" /><span className="text-xs text-muted-foreground">{overallProgress}% verified</span></div>
           </div>
+          {existingCert && <Badge variant="secondary"><Award className="h-3 w-3 mr-1" />Certified</Badge>}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 pt-4">
+      <div className="max-w-7xl mx-auto px-4 pt-4 space-y-4">
         {academicProfile && (
-          <div className="grid md:grid-cols-4 gap-3 mb-4">
-            <Card>
-              <CardContent className="p-3 text-sm">
-                <div className="flex items-center gap-2 font-medium"><CalendarDays className="h-4 w-4 text-primary" /> Weekly Load</div>
-                <p className="text-xs text-muted-foreground mt-1">{academicProfile.workload} · {academicProfile.duration}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-3 text-sm">
-                <div className="flex items-center gap-2 font-medium"><Target className="h-4 w-4 text-primary" /> Mastery Standard</div>
-                <p className="text-xs text-muted-foreground mt-1">Reflect, practice, pass outcomes, then complete.</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-3 text-sm">
-                <div className="flex items-center gap-2 font-medium"><ClipboardCheck className="h-4 w-4 text-primary" /> Evidence</div>
-                <p className="text-xs text-muted-foreground mt-1">{academicProfile.assessmentModel[1]} and final synthesis.</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-3 text-sm">
-                <div className="flex items-center gap-2 font-medium"><MessageSquare className="h-4 w-4 text-primary" /> Support</div>
-                <p className="text-xs text-muted-foreground mt-1">AI tutor, advising, checkpoints, and remediation.</p>
-              </CardContent>
-            </Card>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Card><CardContent className="p-3 text-sm"><div className="flex gap-2 font-medium"><CalendarDays className="h-4 w-4" />Weekly load</div><p className="text-xs text-muted-foreground mt-1">{academicProfile.workload} · {academicProfile.duration}</p></CardContent></Card>
+            <Card><CardContent className="p-3 text-sm"><div className="flex gap-2 font-medium"><Target className="h-4 w-4" />Mastery</div><p className="text-xs text-muted-foreground mt-1">70%+ trusted module mastery required.</p></CardContent></Card>
+            <Card><CardContent className="p-3 text-sm"><div className="flex gap-2 font-medium"><ClipboardCheck className="h-4 w-4" />Evidence</div><p className="text-xs text-muted-foreground mt-1">Server-graded assessments drive completion.</p></CardContent></Card>
+            <Card><CardContent className="p-3 text-sm"><div className="flex gap-2 font-medium"><ShieldCheck className="h-4 w-4" />Authority</div><p className="text-xs text-muted-foreground mt-1">Browser activity never self-certifies mastery.</p></CardContent></Card>
           </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-4">
-            <TabsTrigger value="avatar" className="flex items-center gap-1.5 text-xs sm:text-sm">
-              <Video className="h-4 w-4" />
-              <span className="hidden sm:inline">Lecture Hall</span>
-            </TabsTrigger>
-            <TabsTrigger value="learn" className="flex items-center gap-1.5 text-xs sm:text-sm">
-              <BookOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Study Packet</span>
-            </TabsTrigger>
-            <TabsTrigger value="curriculum" className="flex items-center gap-1.5 text-xs sm:text-sm">
-              <List className="h-4 w-4" />
-              <span className="hidden sm:inline">Modules</span>
-            </TabsTrigger>
-            <TabsTrigger value="tutor" className="flex items-center gap-1.5 text-xs sm:text-sm">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">AI Tutor</span>
-            </TabsTrigger>
+        {courseCompletion?.complete && !existingCert && (
+          <Card className="border-emerald-500/30 bg-emerald-500/5"><CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><p className="font-semibold">Verified course completion established</p><p className="text-sm text-muted-foreground">All {courseCompletion.verified_modules}/{courseCompletion.total_modules} modules meet the mastery standard.</p></div><Button onClick={() => certificateMutation.mutate()} disabled={certificateMutation.isPending}>{certificateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Issue verified certificate</Button></CardContent></Card>
+        )}
+
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="learn"><BookOpen className="h-4 w-4 mr-1" />Learn</TabsTrigger>
+            <TabsTrigger value="assessment"><ClipboardCheck className="h-4 w-4 mr-1" />Assess</TabsTrigger>
+            <TabsTrigger value="curriculum"><List className="h-4 w-4 mr-1" />Modules</TabsTrigger>
+            <TabsTrigger value="support"><Bot className="h-4 w-4 mr-1" />Support</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="avatar">
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-card p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="font-serif text-xl">AI Professor Lecture Hall</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Watch the recorded AI professor lecture anytime, then use live AI Q&A for questions, tutoring, and seminar discussion.
-                    </p>
-                  </div>
-                  <Badge variant="secondary" className="w-fit">
-                    24/7 lecture + live questions
-                  </Badge>
-                </div>
-              </div>
-
-              {currentModule && (
-                <RecordedLecturePanel
-                  module={currentModule}
-                  onOpenStudyPacket={() => setActiveTab('learn')}
-                />
-              )}
-
-              {aiTutor ? (
-                <LiveAvatarLecture
-                  userId={liveCtx?.userId || user?.id}
-                  tutorName={aiTutor.name}
-                  tutorSpecialty={aiTutor.specialty}
-                  tutorAvatar={aiTutor.avatar_image_url}
-                  tutorId={aiTutor.id}
-                  moduleId={currentModuleId || undefined}
-                  moduleContent={currentModule?.content_md}
-                  moduleTitle={currentModule?.title}
-                  courseId={liveCtx?.courseId || courseData?.id}
-                  courseTitle={liveCtx?.courseTitle || courseData?.title}
-                  facultyName={liveCtx?.facultyName || courseData?.faculty}
-                  programTitle={liveCtx?.programTitle || undefined}
-                  studentName={liveCtx?.studentName || undefined}
-                  learningObjectives={liveCtx?.learningObjectives || []}
-                />
-              ) : (
-                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                  {liveCtx?.blockedReason || 'No AI faculty has been assigned to this course yet. Live lecture is unavailable until a tutor is provisioned for this faculty.'}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="learn">
+          <TabsContent value="learn" className="mt-4">
             {currentModule ? (
-              <div className="space-y-4">
-                <Card>
-                  <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium">This module follows a university lecture sequence.</p>
-                      <p className="text-sm text-muted-foreground">Watch the recorded lecture first, complete the study packet, then use live AI Q&A for discussion.</p>
-                    </div>
-                    <Button onClick={() => setActiveTab('avatar')} className="gap-2">
-                      <Video className="h-4 w-4" />
-                      Open Lecture Hall
-                    </Button>
-                  </CardContent>
-                </Card>
-                <ModuleLearningContent
-                  module={currentModule}
-                  courseTitle={courseData.title}
-                  totalModules={sortedModules.length}
-                  onComplete={handleModuleComplete}
-                  onNext={handleNextModule}
-                  onPrevious={handlePreviousModule}
-                  isCompleted={moduleCompletions.includes(currentModuleId!)}
-                  isFirst={currentModuleIndex === 0}
-                  isLast={currentModuleIndex === sortedModules.length - 1}
-                />
-                {user?.id && currentModuleId && (
-                  <OutcomesAchievedPanel
-                    userId={user.id}
-                    moduleId={currentModuleId}
-                    title="Your Outcomes for This Module"
-                  />
-                )}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">No modules available yet</p>
-                </CardContent>
-              </Card>
-            )}
+              <ModuleLearningContent
+                module={currentModule as any}
+                courseTitle={courseData.title}
+                totalModules={modules.length}
+                isCompleted={currentVerified}
+                isFirst={currentModuleIndex <= 0}
+                isLast={currentModuleIndex === modules.length - 1}
+                onComplete={() => setActiveTab('assessment')}
+                onPrevious={() => {
+                  if (currentModuleIndex > 0) {
+                    setCurrentModuleId(modules[currentModuleIndex - 1].id);
+                    setActiveTab('learn');
+                  }
+                }}
+                onNext={goNext}
+              />
+            ) : <Card><CardContent className="py-10 text-center text-muted-foreground">No published modules are available.</CardContent></Card>}
           </TabsContent>
 
-          <TabsContent value="curriculum">
+          <TabsContent value="assessment" className="mt-4">
+            {currentModuleId ? (
+              <QuizInterface
+                lectureId={currentModuleId}
+                courseId={courseId!}
+                onComplete={async () => {
+                  await refreshVerifiedProgress();
+                  goNext();
+                }}
+              />
+            ) : <Card><CardContent className="py-10 text-center text-muted-foreground">Choose a module first.</CardContent></Card>}
+          </TabsContent>
+
+          <TabsContent value="curriculum" className="mt-4">
             <CourseCurriculumBrowser
-              course={courseData}
-              modules={sortedModules}
-              currentModuleId={currentModuleId || undefined}
-              completedModuleIds={moduleCompletions}
+              course={courseData as any}
+              modules={modules as any}
+              currentModuleId={currentModuleId ?? undefined}
+              completedModuleIds={verifiedCompletedIds}
               overallProgress={overallProgress}
-              onModuleSelect={handleModuleSelect}
+              onModuleSelect={(id) => { setCurrentModuleId(id); setActiveTab('learn'); }}
+              onStartCourse={() => { if (modules[0]) { setCurrentModuleId(modules[0].id); setActiveTab('learn'); } }}
             />
           </TabsContent>
 
-          <TabsContent value="tutor">
-            {aiTutor ? (
-              <AITutorAvatar
-                tutorId={aiTutor.id}
-                tutorName={aiTutor.name}
-                tutorSpecialty={aiTutor.specialty}
-                tutorAvatar={aiTutor.avatar_image_url}
-                moduleId={currentModuleId || undefined}
-                moduleContent={currentModule?.content_md}
-              />
-            ) : (
-              <Card>
-                <CardContent className="py-12 text-center space-y-4">
-                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground" />
-                  <p className="text-muted-foreground">
-                    No AI Tutor is assigned to this course yet. You can still get help from any of our specialized AI Tutors.
-                  </p>
-                  <Button asChild variant="outline">
-                    <a href="/ai-tutors">Browse AI Tutors</a>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+          <TabsContent value="support" className="mt-4">
+            <Card><CardContent className="py-8 text-center space-y-3"><Bot className="h-10 w-10 mx-auto text-primary" /><div><p className="font-semibold">Academic support</p><p className="text-sm text-muted-foreground">Use the AI tutor for explanation, practice and study planning. Tutor interaction is pedagogical context, not credential evidence.</p></div><Button onClick={() => navigate('/ai-tutors')}>Open AI Tutors</Button></CardContent></Card>
           </TabsContent>
         </Tabs>
       </div>
     </div>
-    </CourseLearningGuard>
   );
-}
-
-type LearningMaterial = {
-  id: string;
-  title: string | null;
-  kind: string | null;
-  url: string | null;
-  meta?: any;
-};
-
-function RecordedLecturePanel({
-  module,
-  onOpenStudyPacket,
-}: {
-  module: {
-    title: string;
-    duration_minutes?: number | null;
-    learning_materials?: LearningMaterial[];
-    content?: any;
-  };
-  onOpenStudyPacket: () => void;
-}) {
-  const materials = Array.isArray(module.learning_materials) ? module.learning_materials : [];
-  const videoLecture = materials.find((material) => {
-    const type = typeof material.meta === 'object' && material.meta ? material.meta.type : undefined;
-    return material.url && (material.kind === 'video' || type === 'video_lecture');
-  });
-  const audioLecture = materials.find((material) => {
-    const type = typeof material.meta === 'object' && material.meta ? material.meta.type : undefined;
-    return material.url && (material.kind === 'audio' || type === 'audio_lecture');
-  });
-  const lectureScript = materials.find((material) => {
-    const type = typeof material.meta === 'object' && material.meta ? material.meta.type : undefined;
-    return material.url && (material.kind === 'video_script' || type === 'video_script');
-  });
-  const moduleVideoUrl = typeof module.content?.video_url === 'string' ? module.content.video_url : null;
-  const videoUrl = videoLecture?.url || moduleVideoUrl;
-  const videoTitle = videoLecture?.title || 'Recorded AI professor lecture';
-  const expectedDuration = module.duration_minutes && module.duration_minutes >= 30
-    ? `${module.duration_minutes} min`
-    : '45-60 min target';
-
-  return (
-    <section className="rounded-lg border bg-background">
-      <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="border-b lg:border-b-0 lg:border-r">
-          {videoUrl ? (
-            <video
-              src={videoUrl}
-              controls
-              preload="metadata"
-              className="aspect-video h-full w-full bg-black object-contain"
-              aria-label={videoTitle}
-            />
-          ) : (
-            <div className="flex aspect-video min-h-[260px] flex-col items-center justify-center gap-3 bg-muted/40 p-6 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                <UploadCloud className="h-7 w-7 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Recorded lecture not published yet</p>
-                <p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">
-                  Publish a generated MP4 as a video learning material for this module to make the full professor lecture available 24/7.
-                </p>
-              </div>
-              {lectureScript?.url && (
-                <Button asChild variant="outline" size="sm" className="gap-2">
-                  <a href={lectureScript.url} target="_blank" rel="noreferrer">
-                    <ScrollText className="h-4 w-4" />
-                    Open Lecture Script
-                  </a>
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col justify-between gap-4 p-4">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="gap-1">
-                <PlayCircle className="h-3 w-3" />
-                Recorded Lecture
-              </Badge>
-              <Badge variant="outline">{expectedDuration}</Badge>
-            </div>
-            <div>
-              <h3 className="font-serif text-lg leading-tight">{module.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                This is the cost-controlled core lecture. Generate it once, store the MP4, and let every enrolled student watch it on demand.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            {audioLecture?.url && (
-              <Button asChild variant="outline" className="w-full justify-start gap-2">
-                <a href={audioLecture.url} target="_blank" rel="noreferrer">
-                  <Headphones className="h-4 w-4" />
-                  Open Audio Lecture
-                </a>
-              </Button>
-            )}
-            {lectureScript?.url && (
-              <Button asChild variant="outline" className="w-full justify-start gap-2">
-                <a href={lectureScript.url} target="_blank" rel="noreferrer">
-                  <ScrollText className="h-4 w-4" />
-                  Review Lecture Script
-                </a>
-              </Button>
-            )}
-            <Button onClick={onOpenStudyPacket} className="w-full justify-start gap-2">
-              <BookOpen className="h-4 w-4" />
-              Continue to Study Packet
-            </Button>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function CourseLearningGuard({
-  courseId,
-  courseTitle,
-  navigate,
-  children,
-}: {
-  courseId: string;
-  courseTitle: string;
-  navigate: (to: string) => void;
-  children: React.ReactNode;
-}) {
-  const { data: prereq, isLoading, isError, refetch } = usePrerequisiteCheck(
-    courseId,
-    'CourseLearningPage'
-  );
-
-  if (isLoading) {
-    return (
-      <PageTemplate title={courseTitle} description="">
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </PageTemplate>
-    );
-  }
-
-  if (isError || !prereq) {
-    return (
-      <PageTemplate title={courseTitle} description="">
-        <div className="text-center py-12 space-y-3">
-          <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
-          <p className="text-muted-foreground">
-            Unable to verify prerequisites. Access is blocked until we can re-check.
-          </p>
-          <Button onClick={() => refetch()}>Retry</Button>
-        </div>
-      </PageTemplate>
-    );
-  }
-
-  if (!prereq.eligible) {
-    return (
-      <PageTemplate title={courseTitle} description="">
-        <div className="max-w-2xl mx-auto py-8 space-y-4">
-          <Button variant="ghost" onClick={() => navigate(`/courses/${courseId}`)}>
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back to course details
-          </Button>
-          <PrerequisiteBlock result={prereq} onRetry={() => refetch()} />
-        </div>
-      </PageTemplate>
-    );
-  }
-
-  return <>{children}</>;
 }
