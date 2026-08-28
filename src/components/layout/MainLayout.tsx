@@ -3,6 +3,7 @@ import { MainNavigation } from "./MainNavigation";
 import { MobileNavigation } from "./MobileNavigation";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { BackButton } from "./BackButton";
+import { AppCommandPalette } from "./AppCommandPalette";
 import { InstitutionGuard } from "@/components/InstitutionGuard";
 
 export const MainLayout = () => {
@@ -29,7 +30,21 @@ export const MainLayout = () => {
         id="main-content"
         className="lg:ml-64 pb-24 lg:pb-10 pt-14 lg:pt-0 min-h-screen"
       >
-        <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 mx-auto">
+        <div className="sticky top-0 z-30 hidden h-14 items-center border-b border-border/70 bg-background/90 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/75 lg:flex">
+          <div className="flex min-w-0 flex-1 items-center gap-4">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                Scroll University
+              </p>
+              <p className="truncate text-sm font-semibold text-foreground">Digital Campus</p>
+            </div>
+            <div className="ml-auto flex w-full max-w-md justify-end">
+              <AppCommandPalette />
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-7 mx-auto">
           {showBack && (
             <div className="flex items-center justify-between gap-2 mb-1 lg:mb-2">
               <BackButton />
