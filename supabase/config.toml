@@ -15,17 +15,20 @@ project_id = "klbtvdqfsctrfdkilrmx"
     enabled = false
 
 [auth]
-  additional_redirect_urls = ["https://127.0.0.1:3000"]
+  additional_redirect_urls = [
+    "https://zion-scroll-forge.lovable.app",
+    "http://127.0.0.1:3000"
+  ]
   enable_anonymous_sign_ins = false
   enable_refresh_token_rotation = true
   enable_signup = true
   enabled = true
   jwt_expiry = 3600
   refresh_token_reuse_interval = 10
-  site_url = "http://127.0.0.1:3000"
+  site_url = "https://scrolluniversity.org"
   [auth.email]
     double_confirm_changes = true
-    enable_confirmations = false
+    enable_confirmations = true
     enable_signup = true
   [auth.sms]
     enable_confirmations = false
@@ -133,7 +136,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.cohort-simulation]
-verify_jwt = false
+verify_jwt = true
 
 [functions.kpi-service]
-verify_jwt = false
+verify_jwt = true
