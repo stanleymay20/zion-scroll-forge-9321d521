@@ -150,19 +150,37 @@ BEGIN
   END IF;
 END$$;
 
--- Old free-text rollover must not be app/backend executable anymore.
+-- The direct legacy clone path stays retired. The existing Operations UI
+-- compatibility facade may execute, but its text inputs must resolve only to
+-- canonical academic_terms and delegate to UUID-based SUYAS rollover.
 DO $$
+DECLARE def text; blocked boolean := false;
 BEGIN
-  IF to_regprocedure('public.rollover_term(text,text,boolean)') IS NOT NULL THEN
-    IF has_function_privilege('authenticated','public.rollover_term(text,text,boolean)','EXECUTE')
-       OR has_function_privilege('service_role','public.rollover_term(text,text,boolean)','EXECUTE') THEN
-      RAISE EXCEPTION 'FAIL: legacy free-text rollover remains executable';
-    END IF;
+  IF to_regprocedure('public.clone_section_for_term(uuid,text,jsonb,uuid)') IS NOT NULL
+     AND (has_function_privilege('authenticated','public.clone_section_for_term(uuid,text,jsonb,uuid)','EXECUTE')
+          OR has_function_privilege('service_role','public.clone_section_for_term(uuid,text,jsonb,uuid)','EXECUTE')) THEN
+    RAISE EXCEPTION 'FAIL: direct legacy free-text clone remains executable';
   END IF;
 
   IF NOT has_function_privilege('authenticated','public.rollover_suyas_term(uuid,uuid,boolean)','EXECUTE') THEN
     RAISE EXCEPTION 'FAIL: governed SUYAS rollover is not executable by authenticated callers';
   END IF;
+
+  IF NOT has_function_privilege('authenticated','public.rollover_term(text,text,boolean)','EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: Operations compatibility facade is unavailable';
+  END IF;
+
+  SELECT pg_get_functiondef('public.rollover_term(text,text,boolean)'::regprocedure) INTO def;
+  IF def NOT LIKE '%public.academic_terms%' OR def NOT LIKE '%rollover_suyas_term%' THEN
+    RAISE EXCEPTION 'FAIL: rollover compatibility facade does not resolve canonical terms and delegate';
+  END IF;
+
+  BEGIN
+    PERFORM public.rollover_term('THIS-TERM-DOES-NOT-EXIST','NOR-DOES-THIS',true);
+  EXCEPTION WHEN OTHERS THEN
+    blocked := SQLERRM LIKE 'source_canonical_suyas_term_not_found%';
+  END;
+  IF NOT blocked THEN RAISE EXCEPTION 'FAIL: arbitrary rollover labels did not fail closed'; END IF;
 END$$;
 
 -- New section cloning carries the real target term id. Planned terms create
