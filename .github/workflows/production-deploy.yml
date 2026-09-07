@@ -3,10 +3,11 @@ name: Production Deployment
 # Per-push production quality gate. Lovable may publish from main, so this
 # workflow must fail closed on security, academic-authority, financial-authority,
 # signup-provisioning, skill-evidence authority, role authority, maintenance,
-# storage authority, operational invariants, content authority, type-check, and
-# build regressions before a SHA is treated as release-ready. Historical
-# Supabase migrations still contain bootstrap drift; those are logged advisory
-# while current launch boundaries are replayed blocking.
+# storage authority, operational invariants, content authority, curriculum
+# completeness authority, type-check, and build regressions before a SHA is
+# treated as release-ready. Historical Supabase migrations still contain
+# bootstrap drift; those are logged advisory while current launch boundaries
+# are replayed blocking.
 
 on:
   push:
@@ -194,6 +195,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907104000_module_content_authority_hardening.sql
       - name: Enforce module content state fail-closed migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907104100_module_content_state_fail_closed.sql
+      - name: Enforce course curriculum completeness authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113000_course_curriculum_completeness_authority.sql
 
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
@@ -207,6 +210,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/module_quiz_attempt_authority.test.sql
       - name: Run module content authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/module_content_authority.test.sql
+      - name: Run course curriculum completeness authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/course_curriculum_completeness_authority.test.sql
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
       - name: Seed representative cohort fixtures
