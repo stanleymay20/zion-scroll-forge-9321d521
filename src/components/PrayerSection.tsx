@@ -32,7 +32,7 @@ const formationPaths = [
 export const PrayerSection = () => {
   return (
     <section id="prayer" className="relative overflow-hidden border-y border-border/60 bg-secondary/35 px-4 py-20 sm:py-28">
-      <div className="pointer-events-none absolute -right-32 top-8 h-80 w-80 rounded-full bg-accent/8 blur-3xl" />
+      <div className="pointer-events-none absolute -right-32 top-8 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
       <div className="container relative mx-auto max-w-7xl">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16">
           <div className="max-w-xl">
@@ -73,8 +73,8 @@ export const PrayerSection = () => {
                   style={{ animationDelay: `${index * 0.06}s` }}
                 >
                   <article className="flex h-full min-h-[210px] flex-col rounded-[1.4rem] border border-border/60 bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-lg sm:p-6">
-                    <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/8">
-                      <Icon className="h-4.5 w-4.5 text-primary" />
+                    <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+                      <Icon className="h-5 w-5 text-primary" />
                     </div>
                     <div className="mt-auto">
                       <h3 className="mb-2 font-serif text-xl font-semibold text-foreground">{path.title}</h3>
