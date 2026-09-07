@@ -146,6 +146,15 @@ jobs:
       - name: Enforce module quiz attempt authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907102000_module_quiz_attempt_authority.sql
 
+      - name: Enforce module content review authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907103000_module_content_review_authority.sql
+
+      - name: Enforce module content authority hardening migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907104000_module_content_authority_hardening.sql
+
+      - name: Enforce module content state fail-closed migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907104100_module_content_state_fail_closed.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
@@ -160,6 +169,9 @@ jobs:
 
       - name: Run module quiz attempt authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/module_quiz_attempt_authority.test.sql
+
+      - name: Run module content authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/module_content_authority.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true
