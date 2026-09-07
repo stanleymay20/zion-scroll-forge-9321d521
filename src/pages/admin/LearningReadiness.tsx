@@ -197,7 +197,7 @@ export default function LearningReadiness() {
             <Row label="Courses linked to a faculty" value={data.courses_with_faculty} total={data.courses_total} hint="Supports faculty dashboards, ownership and filtering." />
             <Row label="Modules passing quality evaluation" value={data.modules_verified} total={data.modules_total} hint="Native module-quality evaluator result; not a substitute for whole-course readiness." />
             <Row label="AI tutors mapped to a faculty" value={data.tutors_with_faculty} total={data.tutors_total} hint="Required for faculty-aware tutor experiences." />
-            <Row label="Courses with upcoming live lectures" value={data.courses_with_upcoming_sessions} total={data.courses_total} hint="Scheduling coverage only; a session does not prove curriculum depth." />
+            <Row label="Courses with active scheduled sections" value={data.courses_with_upcoming_sessions} total={data.courses_total} hint="Registrar scheduling coverage only; an active section does not prove curriculum depth." />
             <Row label="Quizzes with question pools" value={data.quiz_pools} total={data.quizzes_total} hint="Question availability; review and course-level assessment evidence still apply." />
           </div>
         </section>
@@ -229,7 +229,7 @@ export default function LearningReadiness() {
             <div>Total courses: <strong>{data.courses_total.toLocaleString()}</strong></div>
             <div>Total modules: <strong>{data.modules_total.toLocaleString()}</strong></div>
             <div>Total assignments: <strong>{data.assignments_total.toLocaleString()}</strong></div>
-            <div>Upcoming live sessions: <strong>{data.upcoming_sessions.toLocaleString()}</strong></div>
+            <div>Active course sections: <strong>{data.upcoming_sessions.toLocaleString()}</strong></div>
           </CardContent>
         </Card>
       </div>
