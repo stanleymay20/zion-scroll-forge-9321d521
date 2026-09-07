@@ -60,6 +60,22 @@ async function isAuthorizedLearner(supabase: any, userId: string, courseId: stri
   return !!sectionEnrollment
 }
 
+async function getAttemptPolicy(supabase: any, userId: string, courseId: string, moduleId: string) {
+  const { data, error } = await supabase.rpc('module_quiz_attempt_policy', {
+    p_user_id: userId,
+    p_course_id: courseId,
+    p_module_id: moduleId,
+  })
+  if (error) throw new Error(`Failed to load quiz attempt policy: ${error.message}`)
+  return data ?? {
+    attempts_allowed: 3,
+    attempts_used: 0,
+    attempts_remaining: 3,
+    can_attempt: true,
+    passing_score: 70,
+  }
+}
+
 async function syncVerifiedCompletion(
   supabase: any,
   userId: string,
@@ -67,8 +83,6 @@ async function syncVerifiedCompletion(
   moduleId: string,
   percentage: number,
 ) {
-  // Compatibility projections. Learners cannot write these tables directly;
-  // this trusted boundary keeps older UI/reporting paths coherent.
   await supabase.from('learning_progress').upsert({
     user_id: userId,
     module_id: moduleId,
@@ -147,6 +161,8 @@ serve(async (req) => {
     if (moduleError) throw new Error(`Failed to verify module: ${moduleError.message}`)
     if (!moduleRow) return json({ error: 'Module not found in course' }, 404)
 
+    const attemptPolicy = await getAttemptPolicy(supabase, user.id, courseId, moduleId)
+
     const { data: rows, error: questionError } = await supabase
       .from('quiz_questions')
       .select('*')
@@ -168,7 +184,16 @@ serve(async (req) => {
           learning_objective_id: row.learning_objective_id ?? null,
           bloom_level: row.bloom_level ?? null,
         })),
+        attemptPolicy,
       })
+    }
+
+    if (attemptPolicy.can_attempt !== true) {
+      return json({
+        error: 'Quiz attempt limit reached',
+        code: 'quiz_attempt_limit_reached',
+        attemptPolicy,
+      }, 409)
     }
 
     const answers = body?.answers
@@ -219,20 +244,32 @@ serve(async (req) => {
     }
 
     const percentage = possible > 0 ? Math.round((earned / possible) * 100) : 0
-    const passed = percentage >= 70
-    const now = new Date().toISOString()
 
-    const { error: submissionError } = await supabase
-      .from('quiz_submissions')
-      .insert({
-        user_id: user.id,
-        course_id: courseId,
-        module_id: moduleId,
-        score: percentage,
-        total: possible,
-        submitted_at: now,
-      })
-    if (submissionError) throw new Error(`Failed to persist quiz submission: ${submissionError.message}`)
+    const { data: attemptRecord, error: attemptError } = await supabase.rpc(
+      'record_verified_module_quiz_submission',
+      {
+        p_user_id: user.id,
+        p_course_id: courseId,
+        p_module_id: moduleId,
+        p_score: percentage,
+        p_total: possible,
+      },
+    )
+
+    if (attemptError) {
+      if (attemptError.message?.includes('quiz_attempt_limit_reached')) {
+        return json({
+          error: 'Quiz attempt limit reached',
+          code: 'quiz_attempt_limit_reached',
+          attemptPolicy: await getAttemptPolicy(supabase, user.id, courseId, moduleId),
+        }, 409)
+      }
+      throw new Error(`Failed to persist verified quiz attempt: ${attemptError.message}`)
+    }
+
+    const passingScore = Number(attemptRecord?.passing_score ?? attemptPolicy.passing_score ?? 70)
+    const passed = attemptRecord?.passed === true || percentage >= passingScore
+    const now = new Date().toISOString()
 
     for (const [learningObjectiveId, bucket] of outcomeBuckets.entries()) {
       const scorePct = bucket.possible > 0 ? Math.round((bucket.earned / bucket.possible) * 100) : 0
@@ -267,9 +304,17 @@ serve(async (req) => {
     return json({
       score: percentage,
       passed,
+      passingScore,
       earned,
       possible,
       review,
+      attemptPolicy: {
+        attempts_allowed: Number(attemptRecord?.attempts_allowed ?? attemptPolicy.attempts_allowed ?? 3),
+        attempts_used: Number(attemptRecord?.attempts_used ?? attemptPolicy.attempts_used ?? 0),
+        attempts_remaining: Number(attemptRecord?.attempts_remaining ?? 0),
+        can_attempt: attemptRecord?.can_attempt === true,
+        passing_score: passingScore,
+      },
       outcomes: Array.from(outcomeBuckets.entries()).map(([learning_objective_id, bucket]) => ({
         learning_objective_id,
         score_pct: bucket.possible > 0 ? Math.round((bucket.earned / bucket.possible) * 100) : 0,

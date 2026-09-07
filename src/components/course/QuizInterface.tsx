@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, Loader2, AlertCircle, Trophy, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, AlertCircle, Trophy, RefreshCw, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { ExplainScoreDialog } from '@/components/ai/ExplainScoreDialog';
 
@@ -39,12 +39,22 @@ interface ReviewRow {
   correctIndex: number | null;
 }
 
+interface AttemptPolicy {
+  attempts_allowed: number;
+  attempts_used: number;
+  attempts_remaining: number;
+  can_attempt: boolean;
+  passing_score: number;
+}
+
 interface SubmitResult {
   score: number;
   passed: boolean;
+  passingScore: number;
   earned: number;
   possible: number;
   review: ReviewRow[];
+  attemptPolicy: AttemptPolicy;
   outcomes: Array<{ learning_objective_id: string; score_pct: number }>;
 }
 
@@ -54,7 +64,7 @@ export function QuizInterface({ lectureId, courseId, onComplete }: QuizInterface
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [result, setResult] = useState<SubmitResult | null>(null);
 
-  const { data: quizData, isLoading } = useQuery({
+  const { data: quizData, isLoading, refetch } = useQuery({
     queryKey: ['quiz', lectureId, courseId],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('module-quiz', {
@@ -63,6 +73,13 @@ export function QuizInterface({ lectureId, courseId, onComplete }: QuizInterface
       if (error) throw error;
 
       const questions = (data?.questions ?? []) as QuizQuestion[];
+      const attemptPolicy = (data?.attemptPolicy ?? {
+        attempts_allowed: 3,
+        attempts_used: 0,
+        attempts_remaining: 3,
+        can_attempt: true,
+        passing_score: 70,
+      }) as AttemptPolicy;
       const objectiveIds = Array.from(new Set(
         questions.map((q) => q.learning_objective_id).filter((id): id is string => !!id),
       ));
@@ -77,12 +94,13 @@ export function QuizInterface({ lectureId, courseId, onComplete }: QuizInterface
         outcomes = (rows ?? []) as OutcomeMeta[];
       }
 
-      return { questions, outcomes };
+      return { questions, outcomes, attemptPolicy };
     },
   });
 
   const questions = quizData?.questions ?? [];
   const outcomes = quizData?.outcomes ?? [];
+  const attemptPolicy = quizData?.attemptPolicy;
   const currentQuestion = questions[currentQuestionIndex];
 
   const reviewById = useMemo(
@@ -107,9 +125,7 @@ export function QuizInterface({ lectureId, courseId, onComplete }: QuizInterface
 
   const submitQuizMutation = useMutation({
     mutationFn: async () => {
-      const answers = Object.fromEntries(
-        questions.map((q) => [q.id, selectedAnswers[q.id]]),
-      );
+      const answers = Object.fromEntries(questions.map((q) => [q.id, selectedAnswers[q.id]]));
       const { data, error } = await supabase.functions.invoke('module-quiz', {
         body: { action: 'submit', moduleId: lectureId, courseId, answers },
       });
@@ -121,19 +137,25 @@ export function QuizInterface({ lectureId, courseId, onComplete }: QuizInterface
       queryClient.invalidateQueries({ queryKey: ['quiz-submissions', lectureId] });
       queryClient.invalidateQueries({ queryKey: ['outcome-mastery', lectureId] });
       queryClient.invalidateQueries({ queryKey: ['module-progress', lectureId] });
+      queryClient.invalidateQueries({ queryKey: ['quiz', lectureId, courseId] });
 
       if (data.passed) {
         toast.success('Quiz Passed!', { description: `Verified score: ${data.score}%.` });
       } else {
-        toast.error('Quiz Not Passed', { description: `Verified score: ${data.score}%. You need 70% to pass.` });
+        toast.error('Quiz Not Passed', {
+          description: `Verified score: ${data.score}%. Passing score: ${data.passingScore}%. ${data.attemptPolicy.attempts_remaining} attempt${data.attemptPolicy.attempts_remaining === 1 ? '' : 's'} remaining.`,
+        });
       }
     },
-    onError: (error: any) => {
-      toast.error('Quiz submission failed', { description: error?.message ?? 'Please try again.' });
+    onError: async (error: unknown) => {
+      await refetch();
+      const message = error instanceof Error ? error.message : 'Please try again.';
+      toast.error('Quiz submission failed', { description: message });
     },
   });
 
-  const handleRetake = () => {
+  const handleRetake = async () => {
+    await refetch();
     setSelectedAnswers({});
     setCurrentQuestionIndex(0);
     setResult(null);
@@ -161,7 +183,26 @@ export function QuizInterface({ lectureId, courseId, onComplete }: QuizInterface
     );
   }
 
+  if (!result && attemptPolicy && !attemptPolicy.can_attempt) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" /> Assessment attempt limit reached
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            You have used {attemptPolicy.attempts_used} of {attemptPolicy.attempts_allowed} permitted attempts for this module quiz.
+          </p>
+          <p>The passing threshold for this assessment is {attemptPolicy.passing_score}%.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (result) {
+    const canRetake = !result.passed && result.attemptPolicy.can_attempt;
     return (
       <Card>
         <CardHeader>
@@ -176,11 +217,15 @@ export function QuizInterface({ lectureId, courseId, onComplete }: QuizInterface
               {result.score}%
             </div>
             <p className="text-lg text-muted-foreground">
-              {result.passed ? 'Congratulations! You passed.' : 'Keep studying and try again.'}
+              {result.passed ? 'Congratulations! You passed.' : 'Review the material before your next permitted attempt.'}
             </p>
-            <Badge variant={result.passed ? 'default' : 'destructive'} className="mt-2">
-              Server-verified assessment
-            </Badge>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              <Badge variant={result.passed ? 'default' : 'destructive'}>Server-verified assessment</Badge>
+              <Badge variant="outline">Pass: {result.passingScore}%</Badge>
+              <Badge variant="outline">
+                Attempts: {result.attemptPolicy.attempts_used}/{result.attemptPolicy.attempts_allowed}
+              </Badge>
+            </div>
           </div>
 
           {outcomeMastery.length > 0 && (
@@ -232,13 +277,23 @@ export function QuizInterface({ lectureId, courseId, onComplete }: QuizInterface
             })}
           </div>
 
+          {!result.passed && (
+            <p className="text-sm text-muted-foreground text-center">
+              {result.attemptPolicy.attempts_remaining > 0
+                ? `${result.attemptPolicy.attempts_remaining} attempt${result.attemptPolicy.attempts_remaining === 1 ? '' : 's'} remaining.`
+                : 'No attempts remain for this assessment.'}
+            </p>
+          )}
+
           <div className="flex flex-wrap gap-2">
-            <Button onClick={handleRetake} variant="outline" className="flex-1 min-w-[140px]">
-              <RefreshCw className="h-4 w-4 mr-2" /> Retake Quiz
-            </Button>
+            {canRetake && (
+              <Button onClick={handleRetake} variant="outline" className="flex-1 min-w-[140px]">
+                <RefreshCw className="h-4 w-4 mr-2" /> Retake Quiz
+              </Button>
+            )}
             <ExplainScoreDialog
               score={result.score}
-              threshold={70}
+              threshold={result.passingScore}
               aiSystem="verified-module-grader"
               decisionReference={lectureId}
               decisionType="grade"
@@ -258,7 +313,17 @@ export function QuizInterface({ lectureId, courseId, onComplete }: QuizInterface
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Module Quiz</CardTitle>
+        <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+          <span>Module Quiz</span>
+          {attemptPolicy && (
+            <span className="flex gap-2 text-xs font-normal">
+              <Badge variant="outline">Pass: {attemptPolicy.passing_score}%</Badge>
+              <Badge variant="outline">
+                Attempt {attemptPolicy.attempts_used + 1} of {attemptPolicy.attempts_allowed}
+              </Badge>
+            </span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
