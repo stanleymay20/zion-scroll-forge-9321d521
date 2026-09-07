@@ -155,6 +155,15 @@ jobs:
       - name: Enforce module content state fail-closed migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907104100_module_content_state_fail_closed.sql
 
+      - name: Enforce course curriculum completeness authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113000_course_curriculum_completeness_authority.sql
+
+      - name: Enforce course curriculum completeness hardening migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113100_course_curriculum_completeness_hardening.sql
+
+      - name: Enforce course curriculum invoker privilege fix (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113200_course_curriculum_invoker_privilege_fix.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
@@ -172,6 +181,9 @@ jobs:
 
       - name: Run module content authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/module_content_authority.test.sql
+
+      - name: Run course curriculum completeness authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/course_curriculum_completeness_authority.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true
