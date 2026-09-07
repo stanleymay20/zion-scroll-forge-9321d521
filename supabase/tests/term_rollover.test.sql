@@ -142,7 +142,10 @@ BEGIN
 END$$;
 
 -- =====================================================================
--- TEST 2: clone_section_for_term does NOT carry over section_enrollments.
+-- TEST 2: clone_section_for_term does NOT carry over historical
+-- section_enrollment rows. Use a dropped row because active enrollment
+-- into this deliberately minimal legacy fixture would now correctly fail
+-- the canonical course teaching-readiness gate.
 -- =====================================================================
 DO $$
 DECLARE
@@ -157,7 +160,7 @@ BEGIN
    WHERE term_label='D31_SRC' AND course_code='THEO101' AND section_code='002';
 
   INSERT INTO public.section_enrollments (section_id, student_user_id, status)
-    VALUES (v_source_id, '33333333-3333-3333-3333-333333333333'::uuid, 'enrolled');
+    VALUES (v_source_id, '33333333-3333-3333-3333-333333333333'::uuid, 'dropped');
 
   v_new_id := public.clone_section_for_term(v_source_id, 'D31_TGT_T2');
 
@@ -165,7 +168,7 @@ BEGIN
     FROM public.section_enrollments
    WHERE section_id = v_new_id;
 
-  PERFORM pg_temp.record(2,'clone_section_for_term: enrollments NOT carried over',
+  PERFORM pg_temp.record(2,'clone_section_for_term: enrollment history NOT carried over',
                          v_enr_count = 0,
                          format('enr_in_new=%s', v_enr_count));
 END$$;
