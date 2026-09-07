@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -26,15 +25,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { 
-  Calendar, 
-  Plus, 
-  Pencil, 
+import {
+  Calendar,
+  Plus,
   Archive,
   Send,
   Loader2,
   CheckCircle2,
-  Clock,
   FileText,
   AlertCircle
 } from "lucide-react";
@@ -65,9 +62,11 @@ interface Term {
   start_date: string;
   end_date: string;
   is_active: boolean;
+  academic_year_id?: string | null;
 }
 
-// Fetch academic years
+type LifecycleAction = 'publish' | 'archive';
+
 const useAcademicYears = () => {
   return useQuery({
     queryKey: ['academic-years'],
@@ -76,17 +75,16 @@ const useAcademicYears = () => {
         .from('academic_years')
         .select('*')
         .order('start_date', { ascending: false });
-      
+
       if (error) throw error;
       return data as AcademicYear[];
     }
   });
 };
 
-// Create academic year
 const useCreateAcademicYear = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (year: Omit<AcademicYear, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
@@ -94,7 +92,7 @@ const useCreateAcademicYear = () => {
         .insert(year)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -108,33 +106,27 @@ const useCreateAcademicYear = () => {
   });
 };
 
-// Update academic year
-const useUpdateAcademicYear = () => {
+const useAcademicYearLifecycle = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<AcademicYear> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('academic_years')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
-      
+    mutationFn: async ({ id, action }: { id: string; action: LifecycleAction }) => {
+      const rpcName = action === 'publish' ? 'publish_academic_year' : 'archive_academic_year';
+      const { error } = await (supabase as any).rpc(rpcName, { p_year_id: id });
       if (error) throw error;
-      return data;
+      return action;
     },
-    onSuccess: () => {
+    onSuccess: (action) => {
       queryClient.invalidateQueries({ queryKey: ['academic-years'] });
-      toast.success('Academic year updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['academic-terms'] });
+      toast.success(action === 'publish' ? 'Academic year published through SUYAS' : 'Academic year archived through SUYAS');
     },
     onError: (error: Error) => {
-      toast.error("Failed to update academic year", { description: getUserFriendlyError(error) });
+      toast.error("SUYAS lifecycle action failed", { description: getUserFriendlyError(error) });
     }
   });
 };
 
-// Fetch terms for an academic year
 const useTerms = () => {
   return useQuery({
     queryKey: ['academic-terms'],
@@ -143,7 +135,7 @@ const useTerms = () => {
         .from('academic_terms')
         .select('*')
         .order('start_date', { ascending: true });
-      
+
       if (error) throw error;
       return data as Term[];
     }
@@ -154,7 +146,7 @@ export default function AcademicYearBuilder() {
   const { data: years, isLoading: yearsLoading } = useAcademicYears();
   const { data: terms } = useTerms();
   const createYear = useCreateAcademicYear();
-  const updateYear = useUpdateAcademicYear();
+  const lifecycle = useAcademicYearLifecycle();
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -182,23 +174,17 @@ export default function AcademicYearBuilder() {
   };
 
   const handlePublish = async (year: AcademicYear) => {
-    await updateYear.mutateAsync({ 
-      id: year.id, 
-      is_active: true 
-    });
+    await lifecycle.mutateAsync({ id: year.id, action: 'publish' });
   };
 
   const handleArchive = async (year: AcademicYear) => {
-    await updateYear.mutateAsync({ 
-      id: year.id, 
-      is_active: false 
-    });
+    await lifecycle.mutateAsync({ id: year.id, action: 'archive' });
   };
 
   const getYearStatus = (year: AcademicYear): 'draft' | 'published' | 'archived' => {
+    if (year.status) return year.status;
     const now = new Date();
     const endDate = new Date(year.end_date);
-    
     if (endDate < now && !year.is_active) return 'archived';
     if (year.is_active) return 'published';
     return 'draft';
@@ -212,6 +198,8 @@ export default function AcademicYearBuilder() {
         return <Badge variant="outline"><FileText className="h-3 w-3 mr-1" />Draft</Badge>;
       case 'archived':
         return <Badge variant="secondary"><Archive className="h-3 w-3 mr-1" />Archived</Badge>;
+      default:
+        return null;
     }
   };
 
@@ -229,15 +217,14 @@ export default function AcademicYearBuilder() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Calendar className="h-6 w-6 text-primary" />
             Academic Year Builder
           </h2>
           <p className="text-muted-foreground">
-            Create and manage academic years with full lifecycle control
+            SUYAS owns year publication, archival and canonical term membership.
           </p>
         </div>
 
@@ -252,7 +239,7 @@ export default function AcademicYearBuilder() {
             <DialogHeader>
               <DialogTitle>Create Academic Year</DialogTitle>
               <DialogDescription>
-                Define a new academic year with terms and key dates
+                New years start in draft. SUYAS will only publish them after the required canonical terms exist.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -260,17 +247,17 @@ export default function AcademicYearBuilder() {
                 <Label htmlFor="name">Academic Year Name</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Academic Year 2025-2026"
+                  placeholder="e.g., 2026-2027 Academic Year"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="year_type">Year Structure</Label>
                 <Select
                   value={formData.year_type}
-                  onValueChange={(value: 'semester' | 'trimester' | 'quarter') => 
+                  onValueChange={(value: 'semester' | 'trimester' | 'quarter') =>
                     setFormData({ ...formData, year_type: value })
                   }
                 >
@@ -278,9 +265,9 @@ export default function AcademicYearBuilder() {
                     <SelectValue placeholder="Select structure" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="semester">Semester (2 terms)</SelectItem>
-                    <SelectItem value="trimester">Trimester (3 terms)</SelectItem>
-                    <SelectItem value="quarter">Quarter (4 terms)</SelectItem>
+                    <SelectItem value="semester">Semester (minimum 2 terms)</SelectItem>
+                    <SelectItem value="trimester">Trimester (minimum 3 terms)</SelectItem>
+                    <SelectItem value="quarter">Quarter (minimum 4 terms)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -316,35 +303,33 @@ export default function AcademicYearBuilder() {
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button 
-                onClick={handleCreate} 
+              <Button
+                onClick={handleCreate}
                 disabled={createYear.isPending || !formData.name || !formData.start_date || !formData.end_date}
               >
                 {createYear.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Create Year
+                Create Draft Year
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Academic Years List */}
       <div className="space-y-4">
         {years?.map((year) => {
           const status = getYearStatus(year);
-          const yearTerms = terms?.filter(t => {
-            const termStart = new Date(t.start_date);
-            const yearStart = new Date(year.start_date);
-            const yearEnd = new Date(year.end_date);
-            return termStart >= yearStart && termStart <= yearEnd;
+          const yearTerms = terms?.filter((term) => {
+            if (term.academic_year_id) return term.academic_year_id === year.id;
+            const termStart = new Date(term.start_date);
+            return termStart >= new Date(year.start_date) && termStart <= new Date(year.end_date);
           });
 
           return (
             <Card key={year.id} className={status === 'published' ? "border-primary/50 bg-primary/5" : ""}>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <CardTitle className="flex items-center gap-3">
+                    <CardTitle className="flex items-center gap-3 flex-wrap">
                       {year.name}
                       {getStatusBadge(status)}
                     </CardTitle>
@@ -361,10 +346,10 @@ export default function AcademicYearBuilder() {
                         variant="default"
                         size="sm"
                         onClick={() => handlePublish(year)}
-                        disabled={updateYear.isPending}
+                        disabled={lifecycle.isPending}
                       >
-                        <Send className="h-4 w-4 mr-1" />
-                        Publish
+                        {lifecycle.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
+                        Publish via SUYAS
                       </Button>
                     )}
                     {status === 'published' && (
@@ -372,15 +357,12 @@ export default function AcademicYearBuilder() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleArchive(year)}
-                        disabled={updateYear.isPending}
+                        disabled={lifecycle.isPending}
                       >
-                        <Archive className="h-4 w-4 mr-1" />
-                        Archive
+                        {lifecycle.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Archive className="h-4 w-4 mr-1" />}
+                        Archive via SUYAS
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -388,14 +370,14 @@ export default function AcademicYearBuilder() {
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="terms" className="border-none">
                     <AccordionTrigger className="py-2 text-sm">
-                      Terms & Semesters ({yearTerms?.length || 0})
+                      Canonical Terms ({yearTerms?.length || 0})
                     </AccordionTrigger>
                     <AccordionContent>
                       {yearTerms && yearTerms.length > 0 ? (
                         <div className="grid gap-2">
-                          {yearTerms.map(term => (
-                            <div 
-                              key={term.id} 
+                          {yearTerms.map((term) => (
+                            <div
+                              key={term.id}
                               className="flex items-center justify-between p-3 bg-muted rounded-lg"
                             >
                               <div>
@@ -404,19 +386,15 @@ export default function AcademicYearBuilder() {
                                   {format(parseISO(term.start_date), 'MMM d')} - {format(parseISO(term.end_date), 'MMM d, yyyy')}
                                 </p>
                               </div>
-                              {term.is_active && (
-                                <Badge className="bg-green-500">Active</Badge>
-                              )}
+                              {term.is_active && <Badge className="bg-green-500">In session</Badge>}
                             </div>
                           ))}
                         </div>
                       ) : (
                         <div className="text-center py-4 text-muted-foreground">
                           <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p>No terms configured for this academic year</p>
-                          <Button variant="link" size="sm" className="mt-2">
-                            Add Terms
-                          </Button>
+                          <p>No canonical terms are attached to this academic year.</p>
+                          <p className="text-xs mt-1">SUYAS will refuse to publish an incomplete year.</p>
                         </div>
                       )}
                     </AccordionContent>
@@ -433,7 +411,7 @@ export default function AcademicYearBuilder() {
               <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
               <p className="text-muted-foreground">No academic years configured</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Click "New Academic Year" to create your first academic year.
+                Create a draft year, attach its canonical terms, then publish through SUYAS.
               </p>
             </CardContent>
           </Card>
