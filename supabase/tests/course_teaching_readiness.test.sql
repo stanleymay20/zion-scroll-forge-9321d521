@@ -5,6 +5,7 @@ DECLARE
   missing jsonb;
   trigger_count integer;
   view_column_count integer;
+  dashboard_view_def text;
 BEGIN
   missing := public.course_teaching_readiness(gen_random_uuid());
   IF missing->>'state' <> 'not_found' OR COALESCE((missing->>'content_ready')::boolean, true) THEN
@@ -42,5 +43,16 @@ BEGIN
      OR position('insufficient_assessment_evidence' in pg_get_functiondef('public.course_teaching_readiness(uuid)'::regprocedure)) = 0
      OR position('learning_resources_missing' in pg_get_functiondef('public.course_teaching_readiness(uuid)'::regprocedure)) = 0 THEN
     RAISE EXCEPTION 'Readiness function is missing required evidence blockers';
+  END IF;
+
+  SELECT lower(pg_get_viewdef('public.v_learning_readiness'::regclass, true))
+    INTO dashboard_view_def;
+
+  IF position('course_sections' in dashboard_view_def) = 0 THEN
+    RAISE EXCEPTION 'Learning readiness must derive scheduling from canonical course_sections';
+  END IF;
+
+  IF position('live_sessions' in dashboard_view_def) > 0 THEN
+    RAISE EXCEPTION 'Learning readiness must not depend on optional legacy live_sessions';
   END IF;
 END $$;
