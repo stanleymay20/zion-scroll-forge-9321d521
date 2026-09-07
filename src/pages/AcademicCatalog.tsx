@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useSearchParams } from "react-router-dom";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -383,7 +381,7 @@ export default function AcademicCatalog() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <Helmet>
         <title>Course Catalogue | ScrollUniversity</title>
         <meta
@@ -393,189 +391,181 @@ export default function AcademicCatalog() {
         <link rel="canonical" href="https://scrolluniversity.org/catalog" />
       </Helmet>
 
-      <Header />
+      <div className="space-y-10 pb-12">
+        <section className="-mx-4 rounded-[2rem] border border-border/50 bg-secondary/30 px-5 py-10 sm:-mx-6 sm:px-8 sm:py-12">
+          <div className="max-w-3xl">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-accent">Academic catalogue</p>
+            <h1 className="font-serif text-4xl font-semibold leading-tight text-foreground sm:text-5xl">
+              Find a course by subject, programme, level or direction.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+              This catalogue is drawn from current course records. Course availability, programme status and accreditation claims are disclosed separately so learners can distinguish what exists from what is formally recognized.
+            </p>
+          </div>
 
-      <main>
-        <section className="border-b border-border/60 bg-secondary/30 px-4 pb-14 pt-32 sm:pb-16 sm:pt-36">
-          <div className="container mx-auto max-w-7xl">
-            <div className="max-w-3xl">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-accent">Academic catalogue</p>
-              <h1 className="font-serif text-4xl font-semibold leading-tight text-foreground sm:text-5xl md:text-6xl">
-                Find a course by subject, programme, level or direction.
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                This catalogue is drawn from current course records. Course availability, programme status and accreditation claims are disclosed separately so learners can distinguish what exists from what is formally recognized.
-              </p>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild variant="outline" className="rounded-full bg-background/70">
-                <Link to="/degrees">
-                  <GraduationCap className="mr-2 h-4 w-4" />
-                  Browse programmes
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="rounded-full bg-background/70">
-                <Link to="/academic-trust">
-                  <ShieldCheck className="mr-2 h-4 w-4" />
-                  Academic trust
-                </Link>
-              </Button>
-              <Button asChild variant="ghost" className="rounded-full">
-                <Link to="/accreditation-status">Accreditation status <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
-            </div>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button asChild variant="outline" className="rounded-full bg-background/70">
+              <Link to="/degrees">
+                <GraduationCap className="mr-2 h-4 w-4" />
+                Browse programmes
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="rounded-full bg-background/70">
+              <Link to="/academic-trust">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Academic trust
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" className="rounded-full">
+              <Link to="/accreditation-status">Accreditation status <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
           </div>
         </section>
 
-        <section className="px-4 py-10 sm:py-12">
-          <div className="container mx-auto max-w-7xl">
-            <div className="rounded-[1.5rem] border border-border/60 bg-card p-4 shadow-sm sm:p-5">
-              <div className="grid gap-3 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search courses, subjects or career pathways"
-                    className="h-11 rounded-xl pl-9"
+        <section>
+          <div className="rounded-[1.5rem] border border-border/60 bg-card p-4 shadow-sm sm:p-5">
+            <div className="grid gap-3 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search courses, subjects or career pathways"
+                  className="h-11 rounded-xl pl-9"
+                />
+              </div>
+
+              <Select value={facultyFilter} onValueChange={handleFacultyChange}>
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder="Faculty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All faculties</SelectItem>
+                  {facultyOptions.map((faculty) => (
+                    <SelectItem key={faculty} value={faculty}>{faculty.replace("Scroll ", "")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={levelFilter} onValueChange={setLevelFilter}>
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder="Level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All levels</SelectItem>
+                  {levelOptions.map((level) => (
+                    <SelectItem key={level} value={level}>{level}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={accessFilter} onValueChange={setAccessFilter}>
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder="Access" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All access states</SelectItem>
+                  <SelectItem value="preview">Preview available</SelectItem>
+                  <SelectItem value="enrolled">Enrolled</SelectItem>
+                  <SelectItem value="locked">Sign in required</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4 text-sm text-muted-foreground">
+              <span>{loading ? "Loading catalogue…" : `${filteredCourses.length} matching ${filteredCourses.length === 1 ? "course" : "courses"}`}</span>
+              {(query || facultyFilter !== "all" || levelFilter !== "all" || accessFilter !== "all") ? (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="rounded-full">Clear filters</Button>
+              ) : null}
+            </div>
+          </div>
+
+          {loadError ? (
+            <Card className="mt-8 border-destructive/20">
+              <CardContent className="py-10 text-center">
+                <p className="font-medium text-foreground">The catalogue could not be loaded.</p>
+                <p className="mt-2 text-sm text-muted-foreground">No course totals are being inferred while live records are unavailable.</p>
+              </CardContent>
+            </Card>
+          ) : loading ? (
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-[330px] rounded-[1.4rem]" />
+              ))}
+            </div>
+          ) : filteredCourses.length === 0 ? (
+            <Card className="mt-8">
+              <CardContent className="py-12 text-center">
+                <Layers3 className="mx-auto h-10 w-10 text-muted-foreground/40" />
+                <p className="mt-4 font-medium text-foreground">No courses match these filters.</p>
+                <Button variant="link" onClick={clearFilters}>Reset the catalogue</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <Tabs defaultValue="faculty" className="mt-10">
+              <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl bg-secondary/50 p-1 sm:w-auto">
+                <TabsTrigger value="faculty" className="rounded-lg">Faculty</TabsTrigger>
+                <TabsTrigger value="programme" className="rounded-lg">Programme</TabsTrigger>
+                <TabsTrigger value="level" className="rounded-lg">Level</TabsTrigger>
+                <TabsTrigger value="career" className="rounded-lg">Career pathway</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="faculty" className="mt-8 space-y-12">
+                {byFaculty.map(([faculty, groupedCourses]) => (
+                  <CourseGroup
+                    key={faculty}
+                    title={faculty.replace("Scroll ", "")}
+                    courses={groupedCourses}
+                    enrolledIds={enrolledIds}
+                    signedIn={signedIn}
+                    programNameById={programNameByCourseId}
                   />
-                </div>
-
-                <Select value={facultyFilter} onValueChange={handleFacultyChange}>
-                  <SelectTrigger className="h-11 rounded-xl">
-                    <SelectValue placeholder="Faculty" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All faculties</SelectItem>
-                    {facultyOptions.map((faculty) => (
-                      <SelectItem key={faculty} value={faculty}>{faculty.replace("Scroll ", "")}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={levelFilter} onValueChange={setLevelFilter}>
-                  <SelectTrigger className="h-11 rounded-xl">
-                    <SelectValue placeholder="Level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All levels</SelectItem>
-                    {levelOptions.map((level) => (
-                      <SelectItem key={level} value={level}>{level}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={accessFilter} onValueChange={setAccessFilter}>
-                  <SelectTrigger className="h-11 rounded-xl">
-                    <SelectValue placeholder="Access" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All access states</SelectItem>
-                    <SelectItem value="preview">Preview available</SelectItem>
-                    <SelectItem value="enrolled">Enrolled</SelectItem>
-                    <SelectItem value="locked">Sign in required</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4 text-sm text-muted-foreground">
-                <span>{loading ? "Loading catalogue…" : `${filteredCourses.length} matching ${filteredCourses.length === 1 ? "course" : "courses"}`}</span>
-                {(query || facultyFilter !== "all" || levelFilter !== "all" || accessFilter !== "all") ? (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="rounded-full">Clear filters</Button>
-                ) : null}
-              </div>
-            </div>
-
-            {loadError ? (
-              <Card className="mt-8 border-destructive/20">
-                <CardContent className="py-10 text-center">
-                  <p className="font-medium text-foreground">The catalogue could not be loaded.</p>
-                  <p className="mt-2 text-sm text-muted-foreground">No course totals are being inferred while live records are unavailable.</p>
-                </CardContent>
-              </Card>
-            ) : loading ? (
-              <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <Skeleton key={index} className="h-[330px] rounded-[1.4rem]" />
                 ))}
-              </div>
-            ) : filteredCourses.length === 0 ? (
-              <Card className="mt-8">
-                <CardContent className="py-12 text-center">
-                  <Layers3 className="mx-auto h-10 w-10 text-muted-foreground/40" />
-                  <p className="mt-4 font-medium text-foreground">No courses match these filters.</p>
-                  <Button variant="link" onClick={clearFilters}>Reset the catalogue</Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <Tabs defaultValue="faculty" className="mt-10">
-                <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl bg-secondary/50 p-1 sm:w-auto">
-                  <TabsTrigger value="faculty" className="rounded-lg">Faculty</TabsTrigger>
-                  <TabsTrigger value="programme" className="rounded-lg">Programme</TabsTrigger>
-                  <TabsTrigger value="level" className="rounded-lg">Level</TabsTrigger>
-                  <TabsTrigger value="career" className="rounded-lg">Career pathway</TabsTrigger>
-                </TabsList>
+              </TabsContent>
 
-                <TabsContent value="faculty" className="mt-8 space-y-12">
-                  {byFaculty.map(([faculty, groupedCourses]) => (
-                    <CourseGroup
-                      key={faculty}
-                      title={faculty.replace("Scroll ", "")}
-                      courses={groupedCourses}
-                      enrolledIds={enrolledIds}
-                      signedIn={signedIn}
-                      programNameById={programNameByCourseId}
-                    />
-                  ))}
-                </TabsContent>
+              <TabsContent value="programme" className="mt-8 space-y-12">
+                {byProgram.length > 0 ? byProgram.map(({ program, courses: groupedCourses }) => (
+                  <CourseGroup
+                    key={program.id}
+                    title={program.title}
+                    courses={groupedCourses}
+                    enrolledIds={enrolledIds}
+                    signedIn={signedIn}
+                  />
+                )) : (
+                  <p className="text-sm text-muted-foreground">No programme-linked courses match the current filters.</p>
+                )}
+              </TabsContent>
 
-                <TabsContent value="programme" className="mt-8 space-y-12">
-                  {byProgram.length > 0 ? byProgram.map(({ program, courses: groupedCourses }) => (
-                    <CourseGroup
-                      key={program.id}
-                      title={program.title}
-                      courses={groupedCourses}
-                      enrolledIds={enrolledIds}
-                      signedIn={signedIn}
-                    />
-                  )) : (
-                    <p className="text-sm text-muted-foreground">No programme-linked courses match the current filters.</p>
-                  )}
-                </TabsContent>
+              <TabsContent value="level" className="mt-8 space-y-12">
+                {byLevel.map(([level, groupedCourses]) => (
+                  <CourseGroup
+                    key={level}
+                    title={level}
+                    courses={groupedCourses}
+                    enrolledIds={enrolledIds}
+                    signedIn={signedIn}
+                    programNameById={programNameByCourseId}
+                  />
+                ))}
+              </TabsContent>
 
-                <TabsContent value="level" className="mt-8 space-y-12">
-                  {byLevel.map(([level, groupedCourses]) => (
-                    <CourseGroup
-                      key={level}
-                      title={level}
-                      courses={groupedCourses}
-                      enrolledIds={enrolledIds}
-                      signedIn={signedIn}
-                      programNameById={programNameByCourseId}
-                    />
-                  ))}
-                </TabsContent>
-
-                <TabsContent value="career" className="mt-8 space-y-12">
-                  {byTrack.map(([track, groupedCourses]) => (
-                    <CourseGroup
-                      key={track}
-                      title={track}
-                      courses={groupedCourses}
-                      enrolledIds={enrolledIds}
-                      signedIn={signedIn}
-                      programNameById={programNameByCourseId}
-                    />
-                  ))}
-                </TabsContent>
-              </Tabs>
-            )}
-          </div>
+              <TabsContent value="career" className="mt-8 space-y-12">
+                {byTrack.map(([track, groupedCourses]) => (
+                  <CourseGroup
+                    key={track}
+                    title={track}
+                    courses={groupedCourses}
+                    enrolledIds={enrolledIds}
+                    signedIn={signedIn}
+                    programNameById={programNameByCourseId}
+                  />
+                ))}
+              </TabsContent>
+            </Tabs>
+          )}
         </section>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </>
   );
 }
