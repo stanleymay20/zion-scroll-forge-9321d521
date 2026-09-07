@@ -5,6 +5,7 @@ DECLARE
   attempts_col integer;
   attempt_no_col integer;
   attempt_index integer;
+  rls_enabled boolean;
   recorder_def text;
 BEGIN
   SELECT count(*) INTO attempts_col
@@ -17,6 +18,10 @@ BEGIN
     RAISE EXCEPTION 'quizzes.attempts_allowed authority column missing';
   END IF;
 
+  IF to_regclass('public.quiz_submissions') IS NULL THEN
+    RAISE EXCEPTION 'quiz_submissions must be reconciled by the attempt-authority migration';
+  END IF;
+
   SELECT count(*) INTO attempt_no_col
   FROM information_schema.columns
   WHERE table_schema = 'public'
@@ -24,6 +29,24 @@ BEGIN
     AND column_name = 'attempt_number';
   IF attempt_no_col <> 1 THEN
     RAISE EXCEPTION 'quiz_submissions.attempt_number missing';
+  END IF;
+
+  SELECT c.relrowsecurity INTO rls_enabled
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public' AND c.relname = 'quiz_submissions';
+  IF COALESCE(rls_enabled, false) IS NOT TRUE THEN
+    RAISE EXCEPTION 'quiz_submissions RLS must be enabled';
+  END IF;
+
+  IF has_table_privilege('authenticated', 'public.quiz_submissions', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.quiz_submissions', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.quiz_submissions', 'DELETE') THEN
+    RAISE EXCEPTION 'Authenticated clients must not write authoritative quiz submissions';
+  END IF;
+
+  IF NOT has_table_privilege('authenticated', 'public.quiz_submissions', 'SELECT') THEN
+    RAISE EXCEPTION 'Authenticated learners must retain read access to their own quiz submissions';
   END IF;
 
   SELECT count(*) INTO attempt_index
