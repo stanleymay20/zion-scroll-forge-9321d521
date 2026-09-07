@@ -6,8 +6,45 @@ ALTER TABLE public.quizzes
   ADD COLUMN IF NOT EXISTS attempts_allowed integer NOT NULL DEFAULT 3
     CHECK (attempts_allowed BETWEEN 1 AND 20);
 
+-- quiz_submissions is a legacy/optional relation in older clean bootstraps.
+-- The active module-quiz trusted boundary now requires it, so reconcile the
+-- minimal canonical shape here rather than depending on a partially applied
+-- historical migration.
+CREATE TABLE IF NOT EXISTS public.quiz_submissions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  course_id uuid NOT NULL REFERENCES public.courses(id) ON DELETE CASCADE,
+  module_id uuid NOT NULL REFERENCES public.course_modules(id) ON DELETE CASCADE,
+  score numeric NOT NULL CHECK (score >= 0 AND score <= 100),
+  total numeric NOT NULL DEFAULT 100 CHECK (total > 0),
+  submitted_at timestamptz NOT NULL DEFAULT now(),
+  attempt_number integer
+);
+
+-- Reconcile older table shapes without weakening existing rows or policies.
 ALTER TABLE public.quiz_submissions
+  ADD COLUMN IF NOT EXISTS user_id uuid,
+  ADD COLUMN IF NOT EXISTS course_id uuid,
+  ADD COLUMN IF NOT EXISTS module_id uuid,
+  ADD COLUMN IF NOT EXISTS score numeric,
+  ADD COLUMN IF NOT EXISTS total numeric DEFAULT 100,
+  ADD COLUMN IF NOT EXISTS submitted_at timestamptz DEFAULT now(),
   ADD COLUMN IF NOT EXISTS attempt_number integer;
+
+ALTER TABLE public.quiz_submissions ENABLE ROW LEVEL SECURITY;
+
+-- Reassert the verified-learning truth boundary even when this table had to be
+-- created after the earlier optional-table hardening migration.
+REVOKE INSERT, UPDATE, DELETE ON public.quiz_submissions FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.quiz_submissions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.quiz_submissions TO service_role;
+
+DROP POLICY IF EXISTS "Users can insert own submissions" ON public.quiz_submissions;
+DROP POLICY IF EXISTS "Users can view own submissions" ON public.quiz_submissions;
+CREATE POLICY "Users can view own submissions"
+  ON public.quiz_submissions
+  FOR SELECT TO authenticated
+  USING (user_id = auth.uid());
 
 -- Give historical submissions deterministic attempt numbers per learner/module.
 WITH ranked AS (
@@ -28,6 +65,9 @@ WHERE ranked.id = qs.id
 CREATE UNIQUE INDEX IF NOT EXISTS quiz_submissions_attempt_unique
   ON public.quiz_submissions(user_id, course_id, module_id, attempt_number)
   WHERE attempt_number IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS quiz_submissions_user_module_idx
+  ON public.quiz_submissions(user_id, course_id, module_id, submitted_at DESC);
 
 CREATE OR REPLACE FUNCTION public.module_quiz_attempt_policy(
   p_user_id uuid,
@@ -166,8 +206,8 @@ $$;
 
 -- Policy can be read only through the authenticated Edge boundary; the atomic
 -- recorder itself is trusted-server-only.
-REVOKE ALL ON FUNCTION public.module_quiz_attempt_policy(uuid, uuid, uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.record_verified_module_quiz_submission(uuid, uuid, uuid, numeric, numeric) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.module_quiz_attempt_policy(uuid, uuid, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.record_verified_module_quiz_submission(uuid, uuid, uuid, numeric, numeric) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.module_quiz_attempt_policy(uuid, uuid, uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.record_verified_module_quiz_submission(uuid, uuid, uuid, numeric, numeric) TO service_role;
 
