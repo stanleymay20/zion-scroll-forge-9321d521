@@ -17,15 +17,15 @@ const Index = () => {
   return (
     <div className="min-h-screen">
       <Helmet>
-        <title>ScrollUniversity — The Transcendent AI University</title>
+        <title>ScrollUniversity — Christ-Centered AI-Powered Learning</title>
         <meta
           name="description"
-          content="A fully governed digital university with verifiable credentials, live AI tutors, spiritual formation, and the ScrollGold economy. 12 Supreme Scroll Faculties."
+          content="A governed digital learning institution with structured programmes, AI-supported learning, verifiable learning records, spiritual formation, and public academic-transparency controls."
         />
-        <meta property="og:title" content="ScrollUniversity — The Transcendent AI University" />
+        <meta property="og:title" content="ScrollUniversity — Christ-Centered AI-Powered Learning" />
         <meta
           property="og:description"
-          content="Christ-centered higher education powered by AI. Earn verifiable degrees across 12 Supreme Scroll Faculties."
+          content="Explore Christ-centered, AI-supported programmes across ScrollUniversity faculties. Accreditation and academic-authority claims are published only when verified evidence exists."
         />
         <meta property="og:type" content="website" />
         <meta name="theme-color" content="#5C1F2A" />
