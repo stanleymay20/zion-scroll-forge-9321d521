@@ -269,7 +269,19 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907180100_suyas_rollover_compatibility.sql
 
       - name: Run SUYAS academic-year authority suite (BLOCKING)
-        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/suyas_academic_year_authority.test.sql
+        shell: bash
+        run: |
+          set -o pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/suyas_academic_year_authority.test.sql 2>&1 | tee /tmp/suyas-academic-year-authority-test.log
+
+      - name: Upload SUYAS test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: suyas-academic-year-authority-test-${{ github.run_id }}
+          path: /tmp/suyas-academic-year-authority-test.log
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: Summary
         if: always()
