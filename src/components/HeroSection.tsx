@@ -1,155 +1,167 @@
 import { Button } from "@/components/ui/button";
 import { AuthAwareLink } from "@/components/auth/AuthAwareLink";
 import { Link } from "react-router-dom";
-import { BookOpen, ArrowRight, GraduationCap, Sparkles, LogIn, ShieldCheck } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  Bot,
+  CheckCircle2,
+  GraduationCap,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import scrollLogo from "@/assets/scroll-university-logo-optimized.png";
 import heroBackground from "@/assets/hero-background.jpg";
 import { onboardingRoutes } from "@/lib/onboardingRoutes";
 
+const proofPoints = [
+  "Governed content-review controls",
+  "AI used as learning support",
+  "Public academic-status pages",
+];
+
 export const HeroSection = () => {
   const { user } = useAuth();
-  return (
-    <section className="relative min-h-[100dvh] flex items-start sm:items-center justify-center px-4 pt-20 sm:pt-24 pb-16 overflow-hidden">
-      <img
-        src={heroBackground}
-        alt=""
-        aria-hidden="true"
-        width={1920}
-        height={1080}
-        className="absolute inset-0 w-full h-full object-cover object-center"
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background/95" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,hsl(var(--background)/0.55)_65%,hsl(var(--background))_100%)]" />
 
+  return (
+    <section className="relative overflow-hidden px-4 pb-16 pt-28 sm:pb-24 sm:pt-36 lg:pt-40">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,hsl(var(--accent)/0.12),transparent_34%),radial-gradient(circle_at_80%_20%,hsl(var(--primary)/0.08),transparent_28%)]" />
       <div
-        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        className="pointer-events-none absolute inset-0 opacity-[0.035]"
         style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--primary)) 1px, transparent 0)`,
-          backgroundSize: "44px 44px",
+          backgroundImage: `linear-gradient(hsl(var(--primary)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--primary)) 1px, transparent 1px)`,
+          backgroundSize: "48px 48px",
         }}
       />
-      <div className="absolute -bottom-40 right-0 w-[500px] h-[500px] rounded-full bg-primary/5 blur-3xl pointer-events-none" />
 
-      <div className="container mx-auto text-center max-w-5xl relative z-10 pt-2 sm:pt-0">
-        <div className="animate-fade-up flex justify-center mb-6">
-          <div className="relative">
-            <div className="absolute inset-0 bg-accent/20 blur-2xl rounded-full" />
-            <img
-              src={scrollLogo}
-              alt="ScrollUniversity Crest"
-              className="relative h-24 w-24 sm:h-28 sm:w-28 object-contain drop-shadow-2xl"
-              loading="eager"
-              decoding="async"
-            />
-          </div>
-        </div>
-
-        <div className="animate-fade-up animate-fade-up-delay-1 mb-5 flex justify-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-card/70 backdrop-blur-sm rounded-full border border-accent/30">
-            <Sparkles className="w-3.5 h-3.5 text-accent" />
-            <p className="text-[11px] sm:text-xs font-sans font-semibold tracking-[0.2em] uppercase text-primary">
-              Veritas · Sapientia · Imperium
-            </p>
-          </div>
-        </div>
-
-        <div className="animate-fade-up animate-fade-up-delay-2">
-          <h1 className="font-serif font-bold text-primary mb-2 leading-[0.95] tracking-tight text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem]">
-            The Transcendent
-          </h1>
-          <p className="font-serif italic font-medium mb-6 leading-[1] text-4xl sm:text-5xl md:text-6xl lg:text-[4.5rem]">
-            <span className="bg-gradient-to-r from-accent via-[hsl(42_85%_45%)] to-accent bg-clip-text text-transparent divine-glow">
-              AI University
+      <div className="container relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+        <div className="animate-fade-up max-w-3xl">
+          <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-border/70 bg-card/80 py-1.5 pl-1.5 pr-4 shadow-sm backdrop-blur-sm">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/8">
+              <img src={scrollLogo} alt="" className="h-6 w-6 object-contain" aria-hidden="true" />
             </span>
-          </p>
-        </div>
+            <span className="text-xs font-semibold tracking-wide text-primary">
+              Veritas · Sapientia · Imperium
+            </span>
+          </div>
 
-        <div className="animate-fade-up animate-fade-up-delay-3 mb-6 sm:mb-8">
-          <p className="text-base sm:text-lg font-serif italic text-primary/80 max-w-2xl mx-auto leading-relaxed">
-            "Jesus Christ is Lord over every algorithm, decision, and interaction."
+          <h1 className="mb-6 max-w-3xl font-serif text-5xl font-bold leading-[0.98] tracking-[-0.045em] text-foreground sm:text-6xl md:text-7xl lg:text-[5.4rem]">
+            Education with conviction for an
+            <span className="block text-primary">AI-shaped world.</span>
+          </h1>
+
+          <p className="mb-8 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+            ScrollUniversity is a Christ-centered digital learning institution combining structured academic pathways,
+            AI-supported study, governed content review, and spiritual formation in one learning environment.
           </p>
-          <div className="flex items-center justify-center gap-3 mt-3">
-            <div className="h-px w-8 bg-accent/40" />
-            <p className="text-[10px] sm:text-xs text-muted-foreground font-sans tracking-[0.25em] uppercase">
-              Founded by divine decree · Mount Zion
-            </p>
-            <div className="h-px w-8 bg-accent/40" />
+
+          <div className="mb-7 flex flex-col gap-3 sm:flex-row">
+            <Link to={onboardingRoutes.signUpToApply}>
+              <Button size="lg" className="group w-full rounded-full px-7 py-6 text-sm sm:w-auto sm:text-base">
+                <GraduationCap className="mr-2 h-5 w-5" />
+                Start an application
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+            <AuthAwareLink to={onboardingRoutes.catalog}>
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full rounded-full border-primary/20 bg-background/70 px-7 py-6 text-sm backdrop-blur-sm hover:border-primary/40 hover:bg-primary/5 sm:w-auto sm:text-base"
+              >
+                <BookOpen className="mr-2 h-5 w-5" />
+                Explore the catalogue
+              </Button>
+            </AuthAwareLink>
+          </div>
+
+          <div className="mb-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            {proofPoints.map((point) => (
+              <span key={point} className="inline-flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                {point}
+              </span>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 border-t border-border/70 pt-5 text-sm">
+            <Link
+              to={user ? onboardingRoutes.studentDashboard : onboardingRoutes.signIn}
+              className="font-semibold text-primary transition-colors hover:text-primary/75"
+            >
+              {user ? "Go to your dashboard" : "Accepted student? Sign in"}
+            </Link>
+            <span className="hidden h-4 w-px bg-border sm:block" />
+            <Link
+              to="/accreditation-status"
+              className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              View academic-status transparency
+            </Link>
           </div>
         </div>
 
-        <div className="animate-fade-up animate-fade-up-delay-4 flex justify-center mb-5 sm:mb-8">
-          <Link to={user ? onboardingRoutes.studentDashboard : onboardingRoutes.signIn} className="w-full sm:w-auto max-w-sm">
-            <Button
-              variant="outline"
-              size="lg"
-              className="text-sm sm:text-base px-6 sm:px-8 py-4 sm:py-6 font-sans w-full bg-card/90 backdrop-blur-sm border-accent/50 text-primary hover:bg-accent/10 hover:border-accent shadow-md transition-all"
+        <div className="animate-fade-up animate-fade-up-delay-2 relative mx-auto w-full max-w-2xl lg:max-w-none">
+          <div className="rounded-[2rem] border border-border/60 bg-card/70 p-2 shadow-[0_24px_80px_-32px_hsl(var(--primary)/0.28)] backdrop-blur-sm">
+            <div className="relative aspect-[5/4] overflow-hidden rounded-[1.6rem] bg-primary">
+              <img
+                src={heroBackground}
+                alt=""
+                aria-hidden="true"
+                width={1920}
+                height={1080}
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="eager"
+                decoding="async"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/30 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-6 text-primary-foreground sm:p-8">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary-foreground/65">
+                  ScrollUniversity digital campus
+                </p>
+                <h2 className="max-w-lg font-serif text-2xl font-semibold leading-tight sm:text-3xl">
+                  Serious learning, supported by AI and governed by independent academic review.
+                </h2>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <AuthAwareLink
+              to="/ai-tutors"
+              className="group rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
             >
-              <LogIn className="w-5 h-5 mr-2" />
-              {user ? "Go to Dashboard" : "Accepted Student? Sign In"}
-            </Button>
-          </Link>
-        </div>
+              <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-primary/8">
+                <Bot className="h-4 w-4 text-primary" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">AI-supported study</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Tutor tools that support, not replace, governed academic judgment.</p>
+            </AuthAwareLink>
 
-        <p className="animate-fade-up animate-fade-up-delay-3 text-base sm:text-lg md:text-xl text-muted-foreground mb-8 sm:mb-10 font-sans max-w-2xl mx-auto leading-relaxed">
-          Where divine revelation meets advanced AI. Explore{" "}
-          <span className="text-primary font-semibold">structured learning programmes</span> and build{" "}
-          <span className="text-primary font-semibold">verifiable learning records</span> across ScrollUniversity faculties—from Theology to Technology, Governance to the Arts.
-        </p>
-
-        <div className="animate-fade-up animate-fade-up-delay-4 flex flex-col sm:flex-row gap-3 justify-center mb-8 sm:mb-10">
-          <Link to={onboardingRoutes.signUpToApply}>
-            <Button
-              size="lg"
-              className="text-sm sm:text-base px-8 py-6 font-sans w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/20 hover:shadow-xl hover:shadow-accent/30 transition-all group"
+            <AuthAwareLink
+              to="/academic-trust"
+              className="group rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
             >
-              <GraduationCap className="w-5 h-5 mr-2" />
-              Apply to ScrollUniversity
-              <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
-            </Button>
-          </Link>
-          <AuthAwareLink to={onboardingRoutes.catalog}>
-            <Button
-              variant="outline"
-              size="lg"
-              className="text-sm sm:text-base px-8 py-6 font-sans w-full sm:w-auto border-primary/25 hover:bg-primary/5 hover:border-primary/50 transition-all"
+              <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">Academic trust</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Review, evidence and status information surfaced clearly.</p>
+            </AuthAwareLink>
+
+            <a
+              href="#experience"
+              className="group rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
             >
-              <BookOpen className="w-5 h-5 mr-2" />
-              Explore the Catalog
-            </Button>
-          </AuthAwareLink>
-        </div>
-
-        <div className="animate-fade-up animate-fade-up-delay-4 mb-8 flex justify-center">
-          <Link
-            to="/accreditation-status"
-            className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-4 py-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-foreground hover:border-primary/30"
-          >
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            View accreditation & academic-status transparency
-          </Link>
-        </div>
-
-        <div className="animate-fade-up animate-fade-up-delay-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[11px] sm:text-xs font-sans text-muted-foreground tracking-wide uppercase">
-          <span className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-success" />
-            Verifiable Learning Records
-          </span>
-          <span className="hidden sm:inline opacity-30">·</span>
-          <span className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-            Live AI Tutors
-          </span>
-          <span className="hidden sm:inline opacity-30">·</span>
-          <span className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-info" />
-            Governed Academic Workflows
-          </span>
-          <span className="hidden sm:inline opacity-30">·</span>
-          <span className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            Kingdom Aligned
-          </span>
+              <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-primary/8">
+                <Sparkles className="h-4 w-4 text-primary" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">Whole-person formation</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Learning, reflection, community and spiritual practice.</p>
+            </a>
+          </div>
         </div>
       </div>
     </section>

@@ -1,155 +1,93 @@
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { AuthAwareLink } from "@/components/auth/AuthAwareLink";
-import { Heart, Users, Globe, Shield, Crown, Target, ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen, Heart, MessageCircleHeart, NotebookPen, Users } from "lucide-react";
 
-const prayerFeatures = [
-  { title: "Prophetic Check-ins", desc: "Daily spiritual growth tracking with divine scorecard", icon: Target },
-  { title: "Global Intercession", desc: "Coordinate prayer with scroll sons worldwide", icon: Globe },
-  { title: "Spiritual Protection", desc: "AI-coordinated protection under Christ's authority", icon: Shield },
-  { title: "Ministry Preparation", desc: "Character development and deployment readiness", icon: Crown },
-];
-
-const prayerRequests = [
-  { title: "Global Revival Breakthrough", region: "West Africa", urgency: "High", participants: 1247, progress: 89 },
-  { title: "Kingdom Leaders Protection", region: "Middle East", urgency: "Critical", participants: 892, progress: 76 },
-  { title: "ScrollUniversity Launch", region: "Worldwide", urgency: "Medium", participants: 3456, progress: 94 },
+const formationPaths = [
+  {
+    icon: NotebookPen,
+    title: "Prayer journal",
+    desc: "Create a private rhythm of prayer, reflection, gratitude, and written spiritual practice.",
+    href: "/prayer-journal",
+  },
+  {
+    icon: BookOpen,
+    title: "Daily devotion",
+    desc: "Use Scripture, reflection prompts, and practical application as part of your learning rhythm.",
+    href: "/daily-devotion",
+  },
+  {
+    icon: MessageCircleHeart,
+    title: "Prayer requests",
+    desc: "Share requests and participate in community prayer through the platform's dedicated prayer space.",
+    href: "/prayer-requests",
+  },
+  {
+    icon: Users,
+    title: "Formation in community",
+    desc: "Connect spiritual practice with study, fellowship, service, and accountability rather than treating faith as an add-on.",
+    href: "/community",
+  },
 ];
 
 export const PrayerSection = () => {
   return (
-    <section id="prayer" className="py-16 sm:py-24 px-4">
-      <div className="container mx-auto max-w-6xl">
-        {/* Header */}
-        <div className="text-center mb-10 sm:mb-14">
-          <p className="text-xs font-sans font-semibold tracking-[0.2em] uppercase text-accent mb-3">
-            Spiritual Formation
-          </p>
-          <h2 className="text-primary mb-4">Prayer Integration Center</h2>
-          <p className="text-sm sm:text-base text-muted-foreground font-sans max-w-xl mx-auto">
-            Comprehensive spiritual formation through AI-enhanced prayer coordination 
-            and prophetic intelligence for kingdom advancement.
-          </p>
-        </div>
-
-        {/* Prayer Dashboard */}
-        <div className="bg-card rounded-2xl border border-border/60 elevation-2 p-5 sm:p-8 mb-10">
-          <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
-            {/* Today's Check-in */}
-            <div>
-              <h3 className="text-base sm:text-lg font-serif font-semibold text-primary mb-4 flex items-center gap-2">
-                <Heart className="w-4 h-4 text-accent" />
-                Today's Check-in
-              </h3>
-              <div className="bg-accent/5 border border-accent/15 rounded-xl p-5 space-y-4">
-                {[
-                  { label: "Spiritual Growth", value: "87%", color: "bg-accent/20 text-accent" },
-                  { label: "Prayer Hours", value: "2h 45m", color: "" },
-                  { label: "Prophetic Accuracy", value: "94%", color: "bg-accent/15 text-accent" },
-                ].map((item) => (
-                  <div key={item.label} className="flex justify-between items-center">
-                    <span className="font-sans text-sm text-muted-foreground">{item.label}</span>
-                    {item.color ? (
-                      <Badge variant="secondary" className={`${item.color} text-xs`}>
-                        {item.value}
-                      </Badge>
-                    ) : (
-                      <span className="font-serif font-semibold text-sm">{item.value}</span>
-                    )}
-                  </div>
-                ))}
-                <Button asChild size="sm" className="w-full font-sans mt-2">
-                  <AuthAwareLink to="/prayer-journal">Complete Check-in</AuthAwareLink>
-                </Button>
-              </div>
-            </div>
-
-            {/* Active Prayer Requests */}
-            <div className="lg:col-span-2">
-              <h3 className="text-base sm:text-lg font-serif font-semibold text-primary mb-4 flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
-                Active Global Requests
-              </h3>
-              <div className="space-y-3">
-                {prayerRequests.map((req, i) => (
-                  <div key={i} className="bg-background/60 border border-border/40 rounded-xl p-4 card-hover">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-serif font-semibold text-sm text-primary">{req.title}</h4>
-                      <Badge
-                        variant={req.urgency === "Critical" ? "destructive" : "secondary"}
-                        className="text-[10px] font-sans"
-                      >
-                        {req.urgency}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground font-sans mb-3">
-                      <span className="flex items-center gap-1">
-                        <Globe className="w-3.5 h-3.5" />
-                        {req.region}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5" />
-                        {req.participants.toLocaleString()} praying
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-muted rounded-full h-1.5">
-                        <div
-                          className="bg-accent h-1.5 rounded-full transition-all duration-500"
-                          style={{ width: `${req.progress}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-semibold text-accent">{req.progress}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+    <section id="prayer" className="relative overflow-hidden border-y border-border/60 bg-secondary/35 px-4 py-20 sm:py-28">
+      <div className="pointer-events-none absolute -right-32 top-8 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
+      <div className="container relative mx-auto max-w-7xl">
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16">
+          <div className="max-w-xl">
+            <span className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+              <Heart className="h-5 w-5" />
+            </span>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-accent">Spiritual formation</p>
+            <h2 className="mb-5 font-serif text-3xl font-semibold leading-tight text-foreground sm:text-4xl md:text-5xl">
+              Faith belongs inside the learning journey, not in a separate tab of life.
+            </h2>
+            <p className="mb-7 text-sm leading-7 text-muted-foreground sm:text-base">
+              ScrollUniversity brings prayer, Scripture, reflection, community, and character formation into the digital campus without turning spiritual growth into a fabricated score or public performance metric.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button asChild size="lg" className="rounded-full px-6">
+                <AuthAwareLink to="/prayer-journal">
+                  <NotebookPen className="mr-2 h-4 w-4" />
+                  Open prayer journal
+                </AuthAwareLink>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="rounded-full border-primary/20 px-6 hover:bg-primary/5">
+                <AuthAwareLink to="/daily-devotion">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  View daily devotion
+                </AuthAwareLink>
+              </Button>
             </div>
           </div>
-        </div>
 
-        {/* Prayer Features */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-10">
-          {prayerFeatures.map((f, i) => (
-            <div
-              key={f.title}
-              className="animate-fade-up bg-card rounded-xl border border-border/60 p-4 sm:p-5 card-hover"
-              style={{ animationDelay: `${i * 0.08}s` }}
-            >
-              <div className="w-9 h-9 bg-primary/8 rounded-lg flex items-center justify-center mb-3">
-                <f.icon className="w-4 h-4 text-primary" />
-              </div>
-              <h4 className="text-xs sm:text-sm font-serif font-semibold text-primary mb-1">{f.title}</h4>
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-sans leading-relaxed line-clamp-3">
-                {f.desc}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* CTA */}
-        <div className="text-center bg-primary/4 rounded-2xl p-6 sm:p-8 border border-primary/10">
-          <h3 className="text-lg sm:text-xl font-serif font-bold text-primary mb-2">
-            Join the Global Prayer Network
-          </h3>
-          <p className="text-xs sm:text-sm text-muted-foreground font-sans mb-5 max-w-lg mx-auto">
-            Connect with scroll sons worldwide for comprehensive intercession 
-            coordinated with prophetic intelligence.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button asChild size="lg" className="font-sans">
-              <AuthAwareLink to="/prayer-requests">
-                <Heart className="w-4 h-4 mr-2" />
-                Start Praying Now
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </AuthAwareLink>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="font-sans border-primary/20">
-              <AuthAwareLink to="/daily-devotion">
-                <BookOpen className="w-4 h-4 mr-2" />
-                View Prayer Guide
-              </AuthAwareLink>
-            </Button>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {formationPaths.map((path, index) => {
+              const Icon = path.icon;
+              return (
+                <AuthAwareLink
+                  key={path.title}
+                  to={path.href}
+                  className="animate-fade-up group block"
+                  style={{ animationDelay: `${index * 0.06}s` }}
+                >
+                  <article className="flex h-full min-h-[210px] flex-col rounded-[1.4rem] border border-border/60 bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-lg sm:p-6">
+                    <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+                      <Icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="mt-auto">
+                      <h3 className="mb-2 font-serif text-xl font-semibold text-foreground">{path.title}</h3>
+                      <p className="mb-4 text-sm leading-6 text-muted-foreground">{path.desc}</p>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                        Explore
+                        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                      </span>
+                    </div>
+                  </article>
+                </AuthAwareLink>
+              );
+            })}
           </div>
         </div>
       </div>

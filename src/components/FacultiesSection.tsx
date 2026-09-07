@@ -2,9 +2,26 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AuthAwareLink } from "@/components/auth/AuthAwareLink";
 import { useFacultyStats } from "@/hooks/useFaculties";
-import { Loader2, School, ArrowRight, BookOpen, Scale, Stethoscope, Landmark, Coins, GraduationCap, Cpu, Wheat, Palette, FlaskConical, Globe, Gavel, Zap } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  Coins,
+  Cpu,
+  FlaskConical,
+  Gavel,
+  Globe,
+  GraduationCap,
+  Landmark,
+  Loader2,
+  Palette,
+  School,
+  Stethoscope,
+  Wheat,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 
-const facultyIcons: Record<string, any> = {
+const facultyIcons: Record<string, LucideIcon> = {
   "Scroll Theology": BookOpen,
   "Scroll Medicine": Stethoscope,
   "Scroll Governance": Landmark,
@@ -24,8 +41,8 @@ export const FacultiesSection = () => {
 
   if (isLoading) {
     return (
-      <section id="faculties" className="py-20 px-4">
-        <div className="container mx-auto max-w-6xl flex items-center justify-center py-12">
+      <section id="faculties" className="px-4 py-20">
+        <div className="container mx-auto flex max-w-7xl items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
         </div>
       </section>
@@ -34,79 +51,63 @@ export const FacultiesSection = () => {
 
   if (!faculties || faculties.length === 0) return null;
 
-  // Prioritize the original 12 Supreme Scroll Faculties
-  const original12 = [
-    "Scroll Theology", "Scroll Medicine", "Scroll Governance", "Scroll Economy",
-    "Scroll Education", "Scroll Technology", "Scroll Agriculture", "Scroll Arts",
-    "Scroll Science", "Scroll Diplomacy", "Scroll Justice", "Scroll Energy",
-  ];
-  
-  const sorted = [...faculties].sort((a, b) => {
-    const ai = original12.indexOf(a.name);
-    const bi = original12.indexOf(b.name);
-    if (ai !== -1 && bi !== -1) return ai - bi;
-    if (ai !== -1) return -1;
-    if (bi !== -1) return 1;
-    return (b.courseCount || 0) - (a.courseCount || 0);
-  });
-
-  // Show original 12 only
-  const displayed = sorted.filter(f => original12.includes(f.name));
+  const displayed = [...faculties]
+    .sort((a, b) => (b.courseCount || 0) - (a.courseCount || 0) || a.name.localeCompare(b.name))
+    .slice(0, 8);
 
   return (
-    <section id="faculties" className="py-16 sm:py-24 px-4 bg-secondary/30">
-      <div className="container mx-auto max-w-6xl">
-        {/* Section Header */}
-        <div className="text-center mb-12 sm:mb-16">
-          <p className="text-xs font-sans font-semibold tracking-[0.2em] uppercase text-accent mb-3">
-            12 Supreme Scroll Faculties
-          </p>
-          <h2 className="text-primary mb-4">Academic Departments</h2>
-          <p className="text-sm sm:text-base text-muted-foreground font-sans max-w-xl mx-auto">
-            Comprehensive kingdom education spanning theology, science, governance, and the arts.
+    <section id="faculties" className="border-y border-border/60 bg-secondary/35 px-4 py-20 sm:py-28">
+      <div className="container mx-auto max-w-7xl">
+        <div className="mb-12 flex flex-col gap-6 sm:mb-16 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-accent">Explore the academic landscape</p>
+            <h2 className="font-serif text-3xl font-semibold leading-tight text-foreground sm:text-4xl md:text-5xl">
+              Find the faculty that matches the questions you want to pursue.
+            </h2>
+          </div>
+          <p className="max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
+            These areas are drawn from the current ScrollUniversity catalogue. Course counts are shown from live catalogue data rather than fixed marketing totals.
           </p>
         </div>
 
-        {/* Faculty Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-          {displayed.map((faculty, i) => {
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {displayed.map((faculty, index) => {
             const Icon = facultyIcons[faculty.name] || BookOpen;
             return (
               <AuthAwareLink
                 key={faculty.id}
-                to={`/courses?faculty=${encodeURIComponent(faculty.name)}`}
-                className={`animate-fade-up group`}
-                style={{ animationDelay: `${i * 0.05}s` }}
+                to={`/catalog?faculty=${encodeURIComponent(faculty.name)}`}
+                className="animate-fade-up group block"
+                style={{ animationDelay: `${index * 0.05}s` }}
               >
-                <div className="h-full bg-card rounded-xl border border-border/60 p-4 sm:p-5 card-hover">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/8 rounded-lg flex items-center justify-center mb-3 group-hover:bg-primary/12 transition-colors">
-                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                <article className="flex h-full min-h-[220px] flex-col rounded-[1.4rem] border border-border/60 bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-lg sm:p-6">
+                  <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 transition-colors group-hover:bg-primary/15">
+                    <Icon className="h-5 w-5 text-primary" />
                   </div>
-                  <h3 className="text-xs sm:text-sm font-serif font-semibold text-primary mb-1 leading-snug">
-                    {faculty.name.replace("Scroll ", "")}
-                  </h3>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground font-sans line-clamp-2 mb-2.5 leading-relaxed">
-                    {faculty.description}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-sans">
-                      {faculty.courseCount} courses
-                    </Badge>
-                    <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                  <div className="mt-auto">
+                    <h3 className="mb-2 font-serif text-xl font-semibold leading-snug text-foreground">
+                      {faculty.name.replace("Scroll ", "")}
+                    </h3>
+                    <p className="mb-5 line-clamp-2 text-sm leading-6 text-muted-foreground">{faculty.description}</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
+                        {faculty.courseCount} {faculty.courseCount === 1 ? "course" : "courses"}
+                      </Badge>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground transition-all group-hover:translate-x-1 group-hover:text-primary" />
+                    </div>
                   </div>
-                </div>
+                </article>
               </AuthAwareLink>
             );
           })}
         </div>
 
-        {/* CTA */}
-        <div className="text-center mt-10 sm:mt-14">
-          <AuthAwareLink to="/courses">
-            <Button size="lg" variant="outline" className="font-sans border-primary/20 hover:border-primary/40 hover:bg-primary/5">
-              <School className="w-4 h-4 mr-2" />
-              View All Courses
-              <ArrowRight className="w-4 h-4 ml-2" />
+        <div className="mt-10 flex justify-center sm:mt-12">
+          <AuthAwareLink to="/catalog">
+            <Button size="lg" variant="outline" className="rounded-full border-primary/20 px-6 hover:border-primary/40 hover:bg-primary/5">
+              <School className="mr-2 h-4 w-4" />
+              Browse the full course catalogue
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </AuthAwareLink>
         </div>

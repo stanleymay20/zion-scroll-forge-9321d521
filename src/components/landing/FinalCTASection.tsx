@@ -1,55 +1,60 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { GraduationCap, ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen, GraduationCap, ShieldCheck } from "lucide-react";
 import { AuthAwareLink } from "@/components/auth/AuthAwareLink";
+import { onboardingRoutes } from "@/lib/onboardingRoutes";
 
 export const FinalCTASection = () => {
   return (
-    <section className="py-20 sm:py-28 px-4 relative overflow-hidden">
-      <div className="absolute inset-0 gradient-hero" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-accent/10 blur-3xl rounded-full pointer-events-none" />
+    <section className="relative overflow-hidden px-4 py-20 sm:py-28">
+      <div className="absolute inset-0 bg-primary" />
+      <div className="pointer-events-none absolute -left-24 top-1/2 h-80 w-80 -translate-y-1/2 rounded-full bg-accent/10 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-primary-foreground/5 blur-3xl" />
 
-      <div className="container mx-auto max-w-3xl text-center relative">
-        <p className="text-xs font-sans font-semibold tracking-[0.25em] uppercase text-accent mb-4">
-          Your Calling Awaits
-        </p>
-        <h2 className="font-serif font-bold text-primary mb-5 text-3xl sm:text-4xl md:text-5xl leading-tight">
-          Step into a university built for the
-          <span className="italic"> Kingdom Era</span>.
+      <div className="container relative mx-auto max-w-5xl text-center text-primary-foreground">
+        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-accent">Take the next step deliberately</p>
+        <h2 className="mx-auto mb-5 max-w-4xl font-serif text-4xl font-semibold leading-tight sm:text-5xl md:text-6xl">
+          Explore the learning model, review the evidence, then decide whether ScrollUniversity fits your goals.
         </h2>
-        <p className="text-base sm:text-lg text-muted-foreground font-sans mb-10 max-w-xl mx-auto leading-relaxed">
-          Join scroll sons and daughters from every continent. Earn a real degree. Become
-          a kingdom-grade leader.
+        <p className="mx-auto mb-9 max-w-2xl text-sm leading-7 text-primary-foreground/70 sm:text-base sm:leading-8">
+          Start with the current catalogue and public academic-status information. If the pathway is right for you, continue into the application process.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link to="/auth?tab=signup&redirect=/apply">
+
+        <div className="flex flex-col justify-center gap-3 sm:flex-row">
+          <Link to={onboardingRoutes.signUpToApply}>
             <Button
               size="lg"
-              className="text-base px-8 py-6 font-sans w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/20 hover:shadow-xl transition-all group"
+              className="group w-full rounded-full bg-accent px-7 py-6 text-accent-foreground shadow-lg shadow-black/10 hover:bg-accent/90 sm:w-auto"
             >
-              <GraduationCap className="w-5 h-5 mr-2" />
-              Begin Your Application
-              <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
+              <GraduationCap className="mr-2 h-5 w-5" />
+              Start an application
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
           </Link>
-          <AuthAwareLink to="/degrees">
+          <AuthAwareLink to={onboardingRoutes.catalog}>
             <Button
               variant="outline"
               size="lg"
-              className="text-base px-8 py-6 font-sans w-full sm:w-auto border-primary/25 hover:bg-primary/5 hover:border-primary/50"
+              className="w-full rounded-full border-primary-foreground/25 bg-transparent px-7 py-6 text-primary-foreground hover:border-primary-foreground/45 hover:bg-primary-foreground/10 hover:text-primary-foreground sm:w-auto"
             >
-              <BookOpen className="w-5 h-5 mr-2" />
-              View Degree Programs
+              <BookOpen className="mr-2 h-5 w-5" />
+              Browse the catalogue
             </Button>
           </AuthAwareLink>
         </div>
 
+        <Link
+          to="/accreditation-status"
+          className="mt-7 inline-flex items-center gap-2 text-sm text-primary-foreground/65 transition-colors hover:text-primary-foreground"
+        >
+          <ShieldCheck className="h-4 w-4" />
+          Review academic and accreditation status before applying
+        </Link>
+
         <div className="mt-10 flex items-center justify-center gap-3">
-          <div className="h-px w-12 bg-accent/30" />
-          <p className="text-[10px] sm:text-xs text-muted-foreground font-sans tracking-[0.3em] uppercase">
-            Soli Deo Gloria
-          </p>
-          <div className="h-px w-12 bg-accent/30" />
+          <div className="h-px w-10 bg-accent/30" />
+          <p className="text-[10px] uppercase tracking-[0.3em] text-primary-foreground/45">Soli Deo Gloria</p>
+          <div className="h-px w-10 bg-accent/30" />
         </div>
       </div>
     </section>
