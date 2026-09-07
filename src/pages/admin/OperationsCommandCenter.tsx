@@ -898,62 +898,73 @@ const DrillsPanel: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Term Rollover — D3.1 RPC consumer
+// Term Rollover — canonical SUYAS academic-term consumer
 // ---------------------------------------------------------------------------
+
+type AcademicTermOption = {
+  id: string;
+  code: string | null;
+  name: string;
+  status: string;
+  starts_on: string | null;
+  ends_on: string | null;
+  academic_year_id: string;
+};
 
 type RolloverSummary = {
   correlation_id: string;
-  source_term: string;
-  target_term: string;
+  source_term_id: string;
+  target_term_id: string;
   total: number;
   cloned: number;
   skipped_existing: number;
-  only_active: boolean;
 };
 
-const useDistinctTermLabels = () =>
+const useCanonicalAcademicTerms = () =>
   useQuery({
-    queryKey: ["ops", "term_labels"],
+    queryKey: ["ops", "academic_terms"],
     refetchInterval: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("course_sections")
-        .select("term_label")
-        .order("term_label", { ascending: false })
-        .limit(500);
+      const { data, error } = await (supabase as any)
+        .from("academic_terms")
+        .select("id, code, name, status, starts_on, ends_on, academic_year_id")
+        .order("starts_on", { ascending: false })
+        .limit(100);
       if (error) throw error;
-      const set = new Set<string>();
-      for (const r of (data ?? []) as { term_label: string }[]) {
-        if (r.term_label) set.add(r.term_label);
-      }
-      return Array.from(set);
+      return (data ?? []) as AcademicTermOption[];
     },
   });
 
 const TermRolloverPanel: React.FC = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const labelsQ = useDistinctTermLabels();
-  const [source, setSource] = useState("");
-  const [target, setTarget] = useState("");
+  const termsQ = useCanonicalAcademicTerms();
+  const [sourceTermId, setSourceTermId] = useState("");
+  const [targetTermId, setTargetTermId] = useState("");
   const [onlyActive, setOnlyActive] = useState(true);
   const [summary, setSummary] = useState<RolloverSummary | null>(null);
 
-  // Preview: what's in the source, what already exists in the target.
+  const terms = termsQ.data ?? [];
+  const sourceTerm = terms.find((term) => term.id === sourceTermId);
+  const targetTerm = terms.find((term) => term.id === targetTermId);
+  const termLabel = (term?: AcademicTermOption) =>
+    term ? `${term.code ? `${term.code} · ` : ""}${term.name}` : "—";
+
+  // Preview is identifier-bound to the same canonical term UUIDs used by the RPC.
   const previewQ = useQuery({
-    queryKey: ["ops", "rollover_preview", source, target, onlyActive],
-    enabled: !!source && !!target && source !== target,
+    queryKey: ["ops", "rollover_preview", sourceTermId, targetTermId, onlyActive],
+    enabled: !!sourceTermId && !!targetTermId && sourceTermId !== targetTermId,
     queryFn: async () => {
       const [srcRes, tgtRes] = await Promise.all([
-        supabase
+        (supabase as any)
           .from("course_sections")
-          .select("id, course_code, section_code, active")
-          .eq("term_label", source)
+          .select("id, course_code, section_code, active, term_id")
+          .eq("term_id", sourceTermId)
           .limit(500),
-        supabase
+        (supabase as any)
           .from("course_sections")
-          .select("course_code, section_code")
-          .eq("term_label", target)
+          .select("course_code, section_code, term_id")
+          .eq("term_id", targetTermId)
           .limit(500),
       ]);
       if (srcRes.error) throw srcRes.error;
@@ -973,15 +984,15 @@ const TermRolloverPanel: React.FC = () => {
 
   const run = useMutation({
     mutationFn: async () => {
-      const { data, error } = await (supabase as any).rpc("rollover_term", {
-        p_source_term_label: source,
-        p_target_term_label: target,
+      const { data, error } = await (supabase as any).rpc("rollover_suyas_term", {
+        p_source_term_id: sourceTermId,
+        p_target_term_id: targetTermId,
         p_only_active: onlyActive,
       });
       if (error) throw error;
-      await auditedWrite("term.rollover_invoked", {
-        source_term: source,
-        target_term: target,
+      await auditedWrite("suyas.term_rollover_invoked", {
+        source_term_id: sourceTermId,
+        target_term_id: targetTermId,
         only_active: onlyActive,
         correlation_id: (data as any)?.correlation_id ?? null,
       });
@@ -990,7 +1001,7 @@ const TermRolloverPanel: React.FC = () => {
     onSuccess: (data) => {
       setSummary(data);
       qc.invalidateQueries({ queryKey: ["ops", "rollover_preview"] });
-      qc.invalidateQueries({ queryKey: ["ops", "term_labels"] });
+      qc.invalidateQueries({ queryKey: ["ops", "academic_terms"] });
       toast({
         title: "Rollover complete",
         description: `Cloned ${data.cloned} / skipped ${data.skipped_existing} of ${data.total}`,
@@ -1000,7 +1011,6 @@ const TermRolloverPanel: React.FC = () => {
       toast({ title: "Rollover failed", description: e.message, variant: "destructive" }),
   });
 
-  const sourceLabels = labelsQ.data ?? [];
   const willClone =
     previewQ.data?.filter((r: any) => !r.already_in_target).length ?? 0;
   const willSkip =
@@ -1011,54 +1021,72 @@ const TermRolloverPanel: React.FC = () => {
       <CardHeader>
         <CardTitle>Term Rollover</CardTitle>
         <CardDescription>
-          Bulk-clone <code>course_sections</code> from one <code>term_label</code> to
-          another via <code>rollover_term()</code>. Atomic, idempotent, audited
-          (events <code>term.rollover_started</code>, <code>section.cloned</code>,
-          <code>section.clone_skipped_existing</code>, <code>term.rolled_over</code>
-          share a correlation_id). Maintenance-mode aware; admin / superadmin /
-          registrar only.
+          Bulk-clone <code>course_sections</code> between canonical <code>academic_terms</code>{" "}
+          using <code>rollover_suyas_term(uuid, uuid, boolean)</code>. The database owns
+          academic-year lifecycle, target schedulability, idempotency, authorization and audit authority.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <Label>Source term_label</Label>
-            <Select value={source} onValueChange={setSource}>
-              <SelectTrigger><SelectValue placeholder="Pick source term…" /></SelectTrigger>
+            <Label>Source canonical term</Label>
+            <Select value={sourceTermId} onValueChange={setSourceTermId}>
+              <SelectTrigger><SelectValue placeholder="Pick source academic term…" /></SelectTrigger>
               <SelectContent>
-                {sourceLabels.map((l) => (
-                  <SelectItem key={l} value={l}>{l}</SelectItem>
+                {terms.map((term) => (
+                  <SelectItem key={term.id} value={term.id}>
+                    {termLabel(term)} · {term.status}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label>Target term_label</Label>
-            <Input
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              placeholder="e.g. FA2026 or Fall-2026"
-            />
+            <Label>Target canonical term</Label>
+            <Select value={targetTermId} onValueChange={setTargetTermId}>
+              <SelectTrigger><SelectValue placeholder="Pick target academic term…" /></SelectTrigger>
+              <SelectContent>
+                {terms
+                  .filter((term) => term.id !== sourceTermId)
+                  .map((term) => (
+                    <SelectItem
+                      key={term.id}
+                      value={term.id}
+                      disabled={term.status === "closed" || term.status === "archived"}
+                    >
+                      {termLabel(term)} · {term.status}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
             <p className="text-[10px] text-muted-foreground mt-1">
-              Free text — current contract is per <code>course_sections.term_label</code>.
-              Unifying with <code>academic_terms.code</code> is on the D4 plan.
+              Target identity is a governed <code>academic_terms.id</code>; arbitrary term labels cannot be submitted.
             </p>
           </div>
         </div>
+
+        {termsQ.error && (
+          <p className="text-sm text-destructive">
+            Canonical terms failed to load: {(termsQ.error as Error).message}
+          </p>
+        )}
 
         <div className="flex items-center gap-3">
           <Switch checked={onlyActive} onCheckedChange={setOnlyActive} />
           <span className="text-sm">
             Only active sections{" "}
             <span className="text-muted-foreground">
-              (sections with <code>active = false</code> are skipped from the source)
+              (inactive source sections are excluded)
             </span>
           </span>
         </div>
 
-        {source && target && source !== target && (
+        {sourceTermId && targetTermId && sourceTermId !== targetTermId && (
           <div className="border rounded-md p-3 text-sm">
             <div className="font-medium mb-1">Preview</div>
+            <p className="text-xs text-muted-foreground mb-2">
+              {termLabel(sourceTerm)} → {termLabel(targetTerm)}
+            </p>
             {previewQ.isLoading ? (
               <p className="text-muted-foreground">Loading preview…</p>
             ) : previewQ.error ? (
@@ -1076,7 +1104,7 @@ const TermRolloverPanel: React.FC = () => {
                 </p>
                 {willSkip > 0 && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Skipped means the target already has a section with the same
+                    Skipped means the target canonical term already has the same
                     (course_code, section_code).
                   </p>
                 )}
@@ -1087,13 +1115,19 @@ const TermRolloverPanel: React.FC = () => {
 
         <div className="flex items-center gap-3">
           <Button
-            disabled={!source || !target || source === target || run.isPending}
+            disabled={
+              termsQ.isLoading ||
+              !sourceTermId ||
+              !targetTermId ||
+              sourceTermId === targetTermId ||
+              run.isPending
+            }
             onClick={() => run.mutate()}
           >
             <Repeat className="h-4 w-4 mr-2" />
-            {run.isPending ? "Running…" : "Run rollover"}
+            {run.isPending ? "Running…" : "Run governed rollover"}
           </Button>
-          {source === target && source !== "" && (
+          {sourceTermId === targetTermId && sourceTermId !== "" && (
             <span className="text-xs text-destructive">
               Source and target must differ.
             </span>
@@ -1102,14 +1136,14 @@ const TermRolloverPanel: React.FC = () => {
 
         {summary && (
           <div className="border rounded-md p-3 text-sm space-y-1">
-            <div className="font-medium">Last result</div>
+            <div className="font-medium">Last governed result</div>
             <div>
               <Badge variant="default">{summary.cloned} cloned</Badge>{" "}
               <Badge variant="outline">{summary.skipped_existing} skipped</Badge>{" "}
               <Badge variant="secondary">{summary.total} total</Badge>
             </div>
             <div className="text-xs text-muted-foreground">
-              {summary.source_term} → {summary.target_term} ·{" "}
+              <code>{summary.source_term_id}</code> → <code>{summary.target_term_id}</code> ·{" "}
               correlation_id <code>{summary.correlation_id}</code>
             </div>
           </div>
