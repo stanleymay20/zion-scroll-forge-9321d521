@@ -164,6 +164,9 @@ jobs:
       - name: Enforce course curriculum invoker privilege fix (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113200_course_curriculum_invoker_privilege_fix.sql
 
+      - name: Enforce SUYAS academic-year authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907180000_suyas_academic_year_authority.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
@@ -184,6 +187,9 @@ jobs:
 
       - name: Run course curriculum completeness authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/course_curriculum_completeness_authority.test.sql
+
+      - name: Run SUYAS academic-year authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/suyas_academic_year_authority.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true
