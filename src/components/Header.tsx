@@ -37,7 +37,7 @@ export const Header = () => {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50">
-      <div className="hidden md:block border-b border-primary-foreground/10 bg-primary text-primary-foreground">
+      <div className="hidden border-b border-primary-foreground/10 bg-primary text-primary-foreground md:block">
         <div className="container mx-auto flex h-8 items-center justify-between px-4 text-[11px] font-medium tracking-wide sm:px-6">
           <span>Christ-centered · AI-supported · evidence-governed learning</span>
           <div className="flex items-center gap-5 text-primary-foreground/75">
@@ -83,7 +83,7 @@ export const Header = () => {
             )}
           </nav>
 
-          <div className="hidden items-center gap-2 sm:flex">
+          <div className="hidden items-center gap-2 lg:flex">
             <AuthAwareLink
               to={onboardingRoutes.catalog}
               aria-label="Explore the course catalogue"
@@ -117,7 +117,7 @@ export const Header = () => {
 
           <button
             onClick={() => setMobileMenuOpen((open) => !open)}
-            className="touch-target inline-flex items-center justify-center rounded-full p-2.5 text-foreground transition-colors hover:bg-secondary sm:hidden"
+            className="touch-target inline-flex items-center justify-center rounded-full p-2.5 text-foreground transition-colors hover:bg-secondary lg:hidden"
             aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"}
             aria-expanded={mobileMenuOpen}
           >
@@ -126,7 +126,7 @@ export const Header = () => {
         </div>
 
         <div
-          className={`overflow-hidden transition-all duration-300 sm:hidden ${
+          className={`overflow-hidden transition-all duration-300 lg:hidden ${
             mobileMenuOpen ? "max-h-[520px] border-t border-border/60 opacity-100" : "max-h-0 opacity-0"
           }`}
         >
