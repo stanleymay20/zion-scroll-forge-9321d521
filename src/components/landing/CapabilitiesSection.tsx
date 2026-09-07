@@ -13,7 +13,7 @@ const capabilities = [
   {
     icon: Bot,
     title: "AI-supported learning",
-    desc: "Use tutor conversations, guided study tools, and AI assistance alongside governed course content and human academic oversight.",
+    desc: "Use tutor conversations, guided study tools, and AI assistance alongside governed course content and academic oversight.",
     href: "/ai-tutors",
     className: "lg:col-span-2",
     tone: "primary" as const,
