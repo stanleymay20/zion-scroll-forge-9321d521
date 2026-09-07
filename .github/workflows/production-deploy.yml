@@ -184,6 +184,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828210000_launch_storage_authority_boundary.sql
       - name: Enforce academic credit truth migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907100000_scrolluniversity_credit_truth.sql
+      - name: Enforce course teaching readiness migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907101000_course_teaching_readiness_gate.sql
+      - name: Enforce module quiz attempt authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907102000_module_quiz_attempt_authority.sql
 
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
@@ -191,6 +195,10 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/storage_authority.test.sql
       - name: Run academic credit truth suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_credit_truth.test.sql
+      - name: Run course teaching readiness suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/course_teaching_readiness.test.sql
+      - name: Run module quiz attempt authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/module_quiz_attempt_authority.test.sql
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
       - name: Seed representative cohort fixtures
