@@ -197,6 +197,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907104100_module_content_state_fail_closed.sql
       - name: Enforce course curriculum completeness authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113000_course_curriculum_completeness_authority.sql
+      - name: Enforce course curriculum completeness hardening migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113100_course_curriculum_completeness_hardening.sql
 
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
