@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { AuthAwareLink } from "@/components/auth/AuthAwareLink";
 import { Link } from "react-router-dom";
-import { BookOpen, ArrowRight, GraduationCap, Sparkles, LogIn } from "lucide-react";
+import { BookOpen, ArrowRight, GraduationCap, Sparkles, LogIn, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import scrollLogo from "@/assets/scroll-university-logo-optimized.png";
 import heroBackground from "@/assets/hero-background.jpg";
@@ -11,7 +11,6 @@ export const HeroSection = () => {
   const { user } = useAuth();
   return (
     <section className="relative min-h-[100dvh] flex items-start sm:items-center justify-center px-4 pt-20 sm:pt-24 pb-16 overflow-hidden">
-      {/* Cinematic background image */}
       <img
         src={heroBackground}
         alt=""
@@ -20,11 +19,9 @@ export const HeroSection = () => {
         height={1080}
         className="absolute inset-0 w-full h-full object-cover object-center"
       />
-      {/* Legibility & brand-warmth overlays */}
       <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background/95" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,hsl(var(--background)/0.55)_65%,hsl(var(--background))_100%)]" />
 
-      {/* Ornamental dots */}
       <div
         className="absolute inset-0 opacity-[0.04] pointer-events-none"
         style={{
@@ -35,7 +32,6 @@ export const HeroSection = () => {
       <div className="absolute -bottom-40 right-0 w-[500px] h-[500px] rounded-full bg-primary/5 blur-3xl pointer-events-none" />
 
       <div className="container mx-auto text-center max-w-5xl relative z-10 pt-2 sm:pt-0">
-        {/* Crest */}
         <div className="animate-fade-up flex justify-center mb-6">
           <div className="relative">
             <div className="absolute inset-0 bg-accent/20 blur-2xl rounded-full" />
@@ -49,7 +45,6 @@ export const HeroSection = () => {
           </div>
         </div>
 
-        {/* Eyebrow */}
         <div className="animate-fade-up animate-fade-up-delay-1 mb-5 flex justify-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-card/70 backdrop-blur-sm rounded-full border border-accent/30">
             <Sparkles className="w-3.5 h-3.5 text-accent" />
@@ -59,7 +54,6 @@ export const HeroSection = () => {
           </div>
         </div>
 
-        {/* Main Heading — editorial */}
         <div className="animate-fade-up animate-fade-up-delay-2">
           <h1 className="font-serif font-bold text-primary mb-2 leading-[0.95] tracking-tight text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem]">
             The Transcendent
@@ -71,7 +65,6 @@ export const HeroSection = () => {
           </p>
         </div>
 
-        {/* Christ Lordship line — refined */}
         <div className="animate-fade-up animate-fade-up-delay-3 mb-6 sm:mb-8">
           <p className="text-base sm:text-lg font-serif italic text-primary/80 max-w-2xl mx-auto leading-relaxed">
             "Jesus Christ is Lord over every algorithm, decision, and interaction."
@@ -99,14 +92,12 @@ export const HeroSection = () => {
         </div>
 
         <p className="animate-fade-up animate-fade-up-delay-3 text-base sm:text-lg md:text-xl text-muted-foreground mb-8 sm:mb-10 font-sans max-w-2xl mx-auto leading-relaxed">
-          Where divine revelation meets advanced AI. Earn{" "}
-          <span className="text-primary font-semibold">verifiable credentials</span> across{" "}
-          <span className="text-primary font-semibold">12 Supreme Scroll Faculties</span>—from
-          Theology to Technology, Governance to the Arts.
+          Where divine revelation meets advanced AI. Explore{" "}
+          <span className="text-primary font-semibold">structured learning programmes</span> and build{" "}
+          <span className="text-primary font-semibold">verifiable learning records</span> across ScrollUniversity faculties—from Theology to Technology, Governance to the Arts.
         </p>
 
-        {/* CTAs */}
-        <div className="animate-fade-up animate-fade-up-delay-4 flex flex-col sm:flex-row gap-3 justify-center mb-10 sm:mb-14">
+        <div className="animate-fade-up animate-fade-up-delay-4 flex flex-col sm:flex-row gap-3 justify-center mb-8 sm:mb-10">
           <Link to={onboardingRoutes.signUpToApply}>
             <Button
               size="lg"
@@ -129,11 +120,20 @@ export const HeroSection = () => {
           </AuthAwareLink>
         </div>
 
-        {/* Trust strip */}
+        <div className="animate-fade-up animate-fade-up-delay-4 mb-8 flex justify-center">
+          <Link
+            to="/accreditation-status"
+            className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-4 py-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-foreground hover:border-primary/30"
+          >
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            View accreditation & academic-status transparency
+          </Link>
+        </div>
+
         <div className="animate-fade-up animate-fade-up-delay-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[11px] sm:text-xs font-sans text-muted-foreground tracking-wide uppercase">
           <span className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-success" />
-            Verifiable Certificates
+            Verifiable Learning Records
           </span>
           <span className="hidden sm:inline opacity-30">·</span>
           <span className="flex items-center gap-2">
@@ -143,7 +143,7 @@ export const HeroSection = () => {
           <span className="hidden sm:inline opacity-30">·</span>
           <span className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-info" />
-            Global Cohorts
+            Governed Academic Workflows
           </span>
           <span className="hidden sm:inline opacity-30">·</span>
           <span className="flex items-center gap-2">
