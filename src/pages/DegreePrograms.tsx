@@ -1,197 +1,248 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { PageTemplate } from "@/components/layout/PageTemplate";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, GraduationCap, BookOpen, Clock } from "lucide-react";
-import { useDegreePrograms, useEnrollInDegree } from "@/hooks/useDegreePrograms";
-import { AccreditationBadge } from "@/components/accreditation/AccreditationBadge";
-import { ProgramTruthPanel, EnrollmentGate } from "@/components/trust/ProgramTruthPanel";
+import { useMemo, useState } from "react";
+import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
-
-console.info("✝️ Degree Programs — Christ-centered education");
+import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Header";
+import { EnrollmentGate, ProgramTruthPanel } from "@/components/trust/ProgramTruthPanel";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { useDegreePrograms, useEnrollInDegree } from "@/hooks/useDegreePrograms";
+import {
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  GraduationCap,
+  Loader2,
+  ShieldCheck,
+} from "lucide-react";
 
 export default function DegreePrograms() {
-  const navigate = useNavigate();
   const { data: programs, isLoading } = useDegreePrograms();
   const enrollInDegree = useEnrollInDegree();
   const [selectedFaculty, setSelectedFaculty] = useState<string | null>(null);
+
+  const visiblePrograms = useMemo(
+    () => (selectedFaculty ? programs?.filter((program) => program.faculty === selectedFaculty) : programs) ?? [],
+    [programs, selectedFaculty]
+  );
+
+  const faculties = useMemo(
+    () => [...new Set((programs ?? []).map((program) => program.faculty).filter(Boolean))] as string[],
+    [programs]
+  );
+
+  const internallyReady = visiblePrograms.filter(
+    (program: any) => program.accreditation_status === "accreditation_ready"
+  );
+  const developing = visiblePrograms.filter(
+    (program: any) => program.accreditation_status !== "accreditation_ready"
+  );
 
   const handleEnroll = async (programId: string) => {
     await enrollInDegree.mutateAsync(programId);
   };
 
-  const filteredPrograms = selectedFaculty
-    ? programs?.filter((p) => p.faculty === selectedFaculty)
-    : programs;
-
-  const faculties = [...new Set(programs?.map((p) => p.faculty) || [])];
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  return (
-    <PageTemplate
-      title="Degree Programs"
-      description="Choose your path of Christ-centered higher education"
+  const renderProgram = (program: any, readiness: "ready" | "developing") => (
+    <article
+      key={program.id}
+      className="flex h-full flex-col rounded-[1.5rem] border border-border/60 bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md sm:p-6"
     >
-      <div className="space-y-4 md:space-y-6">
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            variant={selectedFaculty === null ? "default" : "outline"}
-            onClick={() => setSelectedFaculty(null)}
-          >
-            All Faculties
-          </Button>
-          {faculties.map((faculty) => (
-            <Button
-              key={faculty}
-              variant={selectedFaculty === faculty ? "default" : "outline"}
-              onClick={() => setSelectedFaculty(faculty)}
-            >
-              {faculty}
-            </Button>
-          ))}
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+          <GraduationCap className="h-5 w-5 text-primary" />
+        </div>
+        {readiness === "ready" ? (
+          <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/5 text-primary">
+            <CheckCircle2 className="mr-1 h-3 w-3" />
+            Internal review baseline met
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="rounded-full">Under academic development</Badge>
+        )}
+      </div>
+
+      <div className="flex-1">
+        <div className="mb-2 flex flex-wrap gap-2">
+          {program.faculty ? <Badge variant="secondary" className="rounded-full">{program.faculty.replace("Scroll ", "")}</Badge> : null}
+          {program.level ? <Badge variant="outline" className="rounded-full">{program.level}</Badge> : null}
         </div>
 
-        {(() => {
-          const ready = (filteredPrograms || []).filter(
-            (p: any) => p.accreditation_status === "accreditation_ready"
-          );
-          const pilot = (filteredPrograms || []).filter(
-            (p: any) => p.accreditation_status !== "accreditation_ready"
-          );
+        <h3 className="font-serif text-2xl font-semibold leading-tight text-foreground">{program.title}</h3>
+        {program.description ? (
+          <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">{program.description}</p>
+        ) : null}
 
-          const renderCard = (program: any) => (
-            <Card
-              key={program.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => navigate(`/degrees/${program.id}`)}
+        <div className="mt-5 grid grid-cols-2 gap-3 rounded-xl border border-border/60 bg-secondary/25 p-4 text-sm">
+          <div>
+            <p className="text-xs text-muted-foreground">Duration</p>
+            <p className="mt-1 flex items-center gap-1.5 font-medium text-foreground">
+              <Clock className="h-3.5 w-3.5 text-primary" />
+              {program.duration || "See programme details"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Internal credit record</p>
+            <p className="mt-1 flex items-center gap-1.5 font-medium text-foreground">
+              <BookOpen className="h-3.5 w-3.5 text-primary" />
+              {program.total_credits ?? "See programme details"}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5">
+          <ProgramTruthPanel programId={program.id} compact />
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-3 border-t border-border/60 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+          <Link to={`/program-verification/${program.id}`} className="font-medium text-primary hover:underline">
+            View programme verification
+          </Link>
+          <Link to="/accreditation-status" className="text-muted-foreground hover:text-foreground">
+            Accreditation status
+          </Link>
+        </div>
+
+        <div className="flex gap-2">
+          <Button asChild variant="outline" className="flex-1 rounded-full">
+            <Link to={`/degrees/${program.id}`}>Programme details</Link>
+          </Button>
+          <EnrollmentGate programId={program.id}>
+            <Button
+              className="flex-1 rounded-full"
+              disabled={program.is_enrolled || enrollInDegree.isPending}
+              onClick={() => {
+                if (!program.is_enrolled) handleEnroll(program.id);
+              }}
             >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <CardTitle className="flex items-center gap-2">
-                        <GraduationCap className="h-5 w-5 text-[hsl(var(--scroll-gold))]" />
-                        {program.title}
-                      </CardTitle>
-                      <Badge variant="secondary">{program.faculty}</Badge>
-                      <Badge variant="outline">{program.level}</Badge>
-                      <AccreditationBadge status={program.accreditation_status} />
-                    </div>
-                    <CardDescription>{program.description}</CardDescription>
-                    {program.accreditation_status &&
-                      program.accreditation_status !== "accreditation_ready" && (
-                        <p className="mt-2 text-xs italic text-muted-foreground">
-                          This program is under academic development and not yet accreditation-ready.
-                        </p>
-                      )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      Duration
-                    </span>
-                    <span className="font-medium">{program.duration}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <BookOpen className="h-4 w-4" />
-                      Credits
-                    </span>
-                    <span className="font-medium">{program.total_credits}</span>
-                  </div>
-                </div>
-                <ProgramTruthPanel programId={program.id} compact />
-                <div className="flex items-center justify-between gap-2 pt-1">
-                  <Link
-                    to={`/program-verification/${program.id}`}
-                    className="text-xs text-primary hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    View verification →
-                  </Link>
-                </div>
-                <EnrollmentGate programId={program.id}>
-                  <Button
-                    variant={program.is_enrolled ? "outline" : "default"}
-                    className="w-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!program.is_enrolled) handleEnroll(program.id);
-                    }}
-                    disabled={program.is_enrolled}
-                  >
-                    {program.is_enrolled ? "Enrolled" : "Apply / Enroll"}
-                  </Button>
-                </EnrollmentGate>
-              </CardContent>
-            </Card>
-          );
+              {program.is_enrolled ? "Enrolled" : "Apply / Enroll"}
+            </Button>
+          </EnrollmentGate>
+        </div>
+      </div>
+    </article>
+  );
 
-          if (!filteredPrograms || filteredPrograms.length === 0) {
-            return (
+  return (
+    <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Programmes | ScrollUniversity</title>
+        <meta
+          name="description"
+          content="Explore ScrollUniversity academic programmes with programme-level verification, internal readiness status, and public accreditation transparency."
+        />
+        <link rel="canonical" href="https://scrolluniversity.org/degrees" />
+      </Helmet>
+
+      <Header />
+
+      <main>
+        <section className="border-b border-border/60 bg-secondary/30 px-4 pb-14 pt-32 sm:pb-16 sm:pt-36">
+          <div className="container mx-auto max-w-7xl">
+            <div className="max-w-3xl">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-accent">Academic programmes</p>
+              <h1 className="font-serif text-4xl font-semibold leading-tight text-foreground sm:text-5xl md:text-6xl">
+                Choose a structured pathway with its status visible up front.
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+                Programme readiness, course structure and accreditation are different questions. ScrollUniversity publishes them separately so an internal academic milestone is never presented as external recognition.
+              </p>
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button asChild variant="outline" className="rounded-full bg-background/70">
+                <Link to="/catalog"><BookOpen className="mr-2 h-4 w-4" />Course catalogue</Link>
+              </Button>
+              <Button asChild variant="outline" className="rounded-full bg-background/70">
+                <Link to="/academic-trust"><ShieldCheck className="mr-2 h-4 w-4" />Academic trust</Link>
+              </Button>
+              <Button asChild variant="ghost" className="rounded-full">
+                <Link to="/accreditation-status">Accreditation status <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 py-10 sm:py-12">
+          <div className="container mx-auto max-w-7xl">
+            <div className="mb-10 flex flex-wrap gap-2">
+              <Button
+                variant={selectedFaculty === null ? "default" : "outline"}
+                className="rounded-full"
+                onClick={() => setSelectedFaculty(null)}
+              >
+                All faculties
+              </Button>
+              {faculties.map((faculty) => (
+                <Button
+                  key={faculty}
+                  variant={selectedFaculty === faculty ? "default" : "outline"}
+                  className="rounded-full"
+                  onClick={() => setSelectedFaculty(faculty)}
+                >
+                  {faculty.replace("Scroll ", "")}
+                </Button>
+              ))}
+            </div>
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-24">
+                <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
+              </div>
+            ) : visiblePrograms.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <GraduationCap className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <p className="text-muted-foreground">No degree programs available</p>
+                <CardContent className="py-14 text-center">
+                  <GraduationCap className="mx-auto h-10 w-10 text-muted-foreground/40" />
+                  <p className="mt-4 font-medium text-foreground">No programmes are published in this filter.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">No availability is being inferred beyond the current programme records.</p>
                 </CardContent>
               </Card>
-            );
-          }
-
-          return (
-            <div className="space-y-10">
-              <section>
-                <div className="mb-3">
-                  <h2 className="font-playfair text-2xl text-[hsl(var(--scroll-burgundy))]">
-                    Accreditation-Ready Programs
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Programs that meet our minimum academic baseline for external accreditation review.
-                  </p>
-                </div>
-                {ready.length === 0 ? (
-                  <p className="text-sm italic text-muted-foreground">
-                    No accreditation-ready programs in this filter yet.
-                  </p>
-                ) : (
-                  <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2">
-                    {ready.map(renderCard)}
-                  </div>
-                )}
-              </section>
-
-              {pilot.length > 0 && (
+            ) : (
+              <div className="space-y-14">
                 <section>
-                  <div className="mb-3">
-                    <h2 className="font-playfair text-2xl text-[hsl(var(--scroll-burgundy))]">
-                      Pilot Programs — Under Academic Development
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      These programs are being rebuilt against full accreditation baselines and are not yet open for external enrollment.
+                  <div className="mb-6 max-w-3xl">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Internal academic readiness</p>
+                    <h2 className="font-serif text-3xl font-semibold text-foreground">Programmes meeting ScrollUniversity's internal review baseline</h2>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                      This is an internal curriculum-readiness status. It does not mean the programme, institution or award is accredited by an external authority. External claims appear only on the public accreditation-status page when verified evidence exists.
                     </p>
                   </div>
-                  <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 opacity-90">
-                    {pilot.map(renderCard)}
-                  </div>
+
+                  {internallyReady.length === 0 ? (
+                    <p className="rounded-xl border border-border/60 bg-secondary/20 p-4 text-sm text-muted-foreground">
+                      No programmes in this filter currently meet the internal readiness baseline.
+                    </p>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {internallyReady.map((program) => renderProgram(program, "ready"))}
+                    </div>
+                  )}
                 </section>
-              )}
-            </div>
-          );
-        })()}
-      </div>
-    </PageTemplate>
+
+                {developing.length > 0 ? (
+                  <section>
+                    <div className="mb-6 max-w-3xl">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Development pipeline</p>
+                      <h2 className="font-serif text-3xl font-semibold text-foreground">Programmes still under academic development</h2>
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                        These records remain visible for transparency, but their status should not be read as external accreditation, recognition or guaranteed enrolment availability.
+                      </p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {developing.map((program) => renderProgram(program, "developing"))}
+                    </div>
+                  </section>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+
+      <Footer />
+    </div>
   );
 }
