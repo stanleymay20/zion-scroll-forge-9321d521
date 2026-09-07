@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "react-router-dom";
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Header";
 import { EnrollmentGate, ProgramTruthPanel } from "@/components/trust/ProgramTruthPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -127,7 +125,7 @@ export default function DegreePrograms() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <Helmet>
         <title>Programmes | ScrollUniversity</title>
         <meta
@@ -137,112 +135,104 @@ export default function DegreePrograms() {
         <link rel="canonical" href="https://scrolluniversity.org/degrees" />
       </Helmet>
 
-      <Header />
+      <div className="space-y-10 pb-12">
+        <section className="-mx-4 rounded-[2rem] border border-border/50 bg-secondary/30 px-5 py-10 sm:-mx-6 sm:px-8 sm:py-12">
+          <div className="max-w-3xl">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-accent">Academic programmes</p>
+            <h1 className="font-serif text-4xl font-semibold leading-tight text-foreground sm:text-5xl">
+              Choose a structured pathway with its status visible up front.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+              Programme readiness, course structure and accreditation are different questions. ScrollUniversity publishes them separately so an internal academic milestone is never presented as external recognition.
+            </p>
+          </div>
 
-      <main>
-        <section className="border-b border-border/60 bg-secondary/30 px-4 pb-14 pt-32 sm:pb-16 sm:pt-36">
-          <div className="container mx-auto max-w-7xl">
-            <div className="max-w-3xl">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-accent">Academic programmes</p>
-              <h1 className="font-serif text-4xl font-semibold leading-tight text-foreground sm:text-5xl md:text-6xl">
-                Choose a structured pathway with its status visible up front.
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Programme readiness, course structure and accreditation are different questions. ScrollUniversity publishes them separately so an internal academic milestone is never presented as external recognition.
-              </p>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild variant="outline" className="rounded-full bg-background/70">
-                <Link to="/catalog"><BookOpen className="mr-2 h-4 w-4" />Course catalogue</Link>
-              </Button>
-              <Button asChild variant="outline" className="rounded-full bg-background/70">
-                <Link to="/academic-trust"><ShieldCheck className="mr-2 h-4 w-4" />Academic trust</Link>
-              </Button>
-              <Button asChild variant="ghost" className="rounded-full">
-                <Link to="/accreditation-status">Accreditation status <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
-            </div>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button asChild variant="outline" className="rounded-full bg-background/70">
+              <Link to="/catalog"><BookOpen className="mr-2 h-4 w-4" />Course catalogue</Link>
+            </Button>
+            <Button asChild variant="outline" className="rounded-full bg-background/70">
+              <Link to="/academic-trust"><ShieldCheck className="mr-2 h-4 w-4" />Academic trust</Link>
+            </Button>
+            <Button asChild variant="ghost" className="rounded-full">
+              <Link to="/accreditation-status">Accreditation status <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
           </div>
         </section>
 
-        <section className="px-4 py-10 sm:py-12">
-          <div className="container mx-auto max-w-7xl">
-            <div className="mb-10 flex flex-wrap gap-2">
+        <section>
+          <div className="mb-10 flex flex-wrap gap-2">
+            <Button
+              variant={selectedFaculty === null ? "default" : "outline"}
+              className="rounded-full"
+              onClick={() => setSelectedFaculty(null)}
+            >
+              All faculties
+            </Button>
+            {faculties.map((faculty) => (
               <Button
-                variant={selectedFaculty === null ? "default" : "outline"}
+                key={faculty}
+                variant={selectedFaculty === faculty ? "default" : "outline"}
                 className="rounded-full"
-                onClick={() => setSelectedFaculty(null)}
+                onClick={() => setSelectedFaculty(faculty)}
               >
-                All faculties
+                {faculty.replace("Scroll ", "")}
               </Button>
-              {faculties.map((faculty) => (
-                <Button
-                  key={faculty}
-                  variant={selectedFaculty === faculty ? "default" : "outline"}
-                  className="rounded-full"
-                  onClick={() => setSelectedFaculty(faculty)}
-                >
-                  {faculty.replace("Scroll ", "")}
-                </Button>
-              ))}
-            </div>
+            ))}
+          </div>
 
-            {isLoading ? (
-              <div className="flex items-center justify-center py-24">
-                <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
-              </div>
-            ) : visiblePrograms.length === 0 ? (
-              <Card>
-                <CardContent className="py-14 text-center">
-                  <GraduationCap className="mx-auto h-10 w-10 text-muted-foreground/40" />
-                  <p className="mt-4 font-medium text-foreground">No programmes are published in this filter.</p>
-                  <p className="mt-2 text-sm text-muted-foreground">No availability is being inferred beyond the current programme records.</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-14">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
+            </div>
+          ) : visiblePrograms.length === 0 ? (
+            <Card>
+              <CardContent className="py-14 text-center">
+                <GraduationCap className="mx-auto h-10 w-10 text-muted-foreground/40" />
+                <p className="mt-4 font-medium text-foreground">No programmes are published in this filter.</p>
+                <p className="mt-2 text-sm text-muted-foreground">No availability is being inferred beyond the current programme records.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-14">
+              <section>
+                <div className="mb-6 max-w-3xl">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Internal academic readiness</p>
+                  <h2 className="font-serif text-3xl font-semibold text-foreground">Programmes meeting ScrollUniversity's internal review baseline</h2>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    This is an internal curriculum-readiness status. It does not mean the programme, institution or award is accredited by an external authority. External claims appear only on the public accreditation-status page when verified evidence exists.
+                  </p>
+                </div>
+
+                {internallyReady.length === 0 ? (
+                  <p className="rounded-xl border border-border/60 bg-secondary/20 p-4 text-sm text-muted-foreground">
+                    No programmes in this filter currently meet the internal readiness baseline.
+                  </p>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {internallyReady.map((program) => renderProgram(program, "ready"))}
+                  </div>
+                )}
+              </section>
+
+              {developing.length > 0 ? (
                 <section>
                   <div className="mb-6 max-w-3xl">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">Internal academic readiness</p>
-                    <h2 className="font-serif text-3xl font-semibold text-foreground">Programmes meeting ScrollUniversity's internal review baseline</h2>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Development pipeline</p>
+                    <h2 className="font-serif text-3xl font-semibold text-foreground">Programmes still under academic development</h2>
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      This is an internal curriculum-readiness status. It does not mean the programme, institution or award is accredited by an external authority. External claims appear only on the public accreditation-status page when verified evidence exists.
+                      These records remain visible for transparency, but their status should not be read as external accreditation, recognition or guaranteed enrolment availability.
                     </p>
                   </div>
-
-                  {internallyReady.length === 0 ? (
-                    <p className="rounded-xl border border-border/60 bg-secondary/20 p-4 text-sm text-muted-foreground">
-                      No programmes in this filter currently meet the internal readiness baseline.
-                    </p>
-                  ) : (
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {internallyReady.map((program) => renderProgram(program, "ready"))}
-                    </div>
-                  )}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {developing.map((program) => renderProgram(program, "developing"))}
+                  </div>
                 </section>
-
-                {developing.length > 0 ? (
-                  <section>
-                    <div className="mb-6 max-w-3xl">
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Development pipeline</p>
-                      <h2 className="font-serif text-3xl font-semibold text-foreground">Programmes still under academic development</h2>
-                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                        These records remain visible for transparency, but their status should not be read as external accreditation, recognition or guaranteed enrolment availability.
-                      </p>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {developing.map((program) => renderProgram(program, "developing"))}
-                    </div>
-                  </section>
-                ) : null}
-              </div>
-            )}
-          </div>
+              ) : null}
+            </div>
+          )}
         </section>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </>
   );
 }
