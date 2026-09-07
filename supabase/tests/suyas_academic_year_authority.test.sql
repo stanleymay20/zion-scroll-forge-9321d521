@@ -222,6 +222,118 @@ BEGIN
   END IF;
 END$$;
 
+-- Canonical assignment publication is single-source-of-truth and the legacy
+-- is_published alias cannot independently publish an assignment.
+DO $$
+DECLARE
+  v_has_legacy boolean;
+  v_select_policy_count int;
+  v_policy_qual text;
+  blocked boolean := false;
+  v_published boolean;
+  v_legacy boolean;
+BEGIN
+  IF to_regclass('public.assignments') IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+      FROM information_schema.columns
+     WHERE table_schema='public' AND table_name='assignments'
+       AND column_name='published' AND is_nullable='NO'
+  ) THEN
+    RAISE EXCEPTION 'FAIL: assignments.published is not mandatory canonical state';
+  END IF;
+
+  SELECT count(*), max(qual)
+    INTO v_select_policy_count, v_policy_qual
+    FROM pg_policies
+   WHERE schemaname='public'
+     AND tablename='assignments'
+     AND cmd='SELECT';
+
+  IF v_select_policy_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL: assignments has % SELECT policies; expected one canonical visibility policy', v_select_policy_count;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+     WHERE schemaname='public'
+       AND tablename='assignments'
+       AND policyname='Assignments canonical publication visibility'
+       AND cmd='SELECT'
+       AND roles::text LIKE '%authenticated%'
+  ) THEN
+    RAISE EXCEPTION 'FAIL: canonical authenticated assignment visibility policy missing';
+  END IF;
+
+  IF v_policy_qual IS NULL
+     OR lower(v_policy_qual) NOT LIKE '%published%'
+     OR lower(v_policy_qual) NOT LIKE '%enrollments%' THEN
+    RAISE EXCEPTION 'FAIL: canonical assignment visibility is not publication + enrollment aware';
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema='public' AND table_name='assignments' AND column_name='is_published'
+  ) INTO v_has_legacy;
+
+  IF v_has_legacy THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_trigger
+       WHERE tgrelid='public.assignments'::regclass
+         AND tgname='trg_z_suyas_assignment_publication_alias'
+         AND NOT tgisinternal
+    ) THEN
+      RAISE EXCEPTION 'FAIL: legacy assignment publication alias trigger missing';
+    END IF;
+
+    EXECUTE $sql$
+      INSERT INTO public.assignments (
+        id, title, description, section_id, published, is_published
+      ) VALUES (
+        '87878787-8787-8787-8787-878787878787'::uuid,
+        'SUYAS publication authority fixture',
+        'Regression fixture',
+        NULL,
+        false,
+        false
+      )
+    $sql$;
+
+    BEGIN
+      EXECUTE $sql$
+        UPDATE public.assignments
+           SET is_published = true
+         WHERE id='87878787-8787-8787-8787-878787878787'::uuid
+      $sql$;
+    EXCEPTION WHEN OTHERS THEN
+      blocked := SQLERRM LIKE 'suyas_legacy_is_published_read_only%';
+    END;
+    IF NOT blocked THEN
+      RAISE EXCEPTION 'FAIL: legacy is_published independently changed publication state';
+    END IF;
+
+    EXECUTE $sql$
+      UPDATE public.assignments
+         SET section_id='86868686-8686-8686-8686-868686868686'::uuid,
+             published=true
+       WHERE id='87878787-8787-8787-8787-878787878787'::uuid
+    $sql$;
+
+    EXECUTE $sql$
+      SELECT published, is_published
+        FROM public.assignments
+       WHERE id='87878787-8787-8787-8787-878787878787'::uuid
+    $sql$ INTO v_published, v_legacy;
+
+    IF v_published IS DISTINCT FROM true OR v_legacy IS DISTINCT FROM true THEN
+      RAISE EXCEPTION 'FAIL: canonical publication did not synchronize legacy alias';
+    END IF;
+  END IF;
+END$$;
+
 -- Lifecycle RPCs themselves must carry canonical-term checks.
 DO $$
 DECLARE def text;
