@@ -24,6 +24,11 @@ BEGIN
   END IF;
 END$$;
 
+-- Explicit CI replays this migration after the historical bootstrap. Temporarily
+-- remove our own guards so normalization remains idempotent on replay.
+DROP TRIGGER IF EXISTS trg_suyas_academic_year_state_authority ON public.academic_years;
+DROP TRIGGER IF EXISTS trg_suyas_academic_term_year_integrity ON public.academic_terms;
+
 -- Keep the historical date aliases coherent before deriving cycles.
 UPDATE public.academic_terms
    SET starts_on = COALESCE(starts_on, start_date),
@@ -103,16 +108,15 @@ UPDATE public.academic_years ay
 
 -- Backfill each canonical term to the smallest academic-year envelope containing it.
 UPDATE public.academic_terms t
-   SET academic_year_id = candidate.id,
+   SET academic_year_id = (
+         SELECT ay.id
+           FROM public.academic_years ay
+          WHERE COALESCE(t.starts_on, t.start_date) >= ay.start_date
+            AND COALESCE(t.ends_on, t.end_date) <= ay.end_date
+          ORDER BY (ay.end_date - ay.start_date) ASC, ay.start_date DESC
+          LIMIT 1
+       ),
        updated_at = now()
-  FROM LATERAL (
-    SELECT ay.id
-      FROM public.academic_years ay
-     WHERE COALESCE(t.starts_on, t.start_date) >= ay.start_date
-       AND COALESCE(t.ends_on, t.end_date) <= ay.end_date
-     ORDER BY (ay.end_date - ay.start_date) ASC, ay.start_date DESC
-     LIMIT 1
-  ) candidate
  WHERE t.academic_year_id IS NULL;
 
 DO $$
@@ -128,7 +132,7 @@ ALTER TABLE public.academic_terms
 CREATE INDEX IF NOT EXISTS academic_terms_academic_year_idx
   ON public.academic_terms(academic_year_id, starts_on, ends_on);
 
--- 2) Normalize stale lifecycle state once, before installing state guards.
+-- 2) Normalize stale lifecycle state once, before reinstalling state guards.
 UPDATE public.academic_years
    SET is_active = false,
        status = CASE
@@ -213,7 +217,6 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_suyas_academic_term_year_integrity ON public.academic_terms;
 CREATE TRIGGER trg_suyas_academic_term_year_integrity
 BEFORE INSERT OR UPDATE OF academic_year_id, starts_on, ends_on, start_date, end_date, status
 ON public.academic_terms
@@ -246,7 +249,6 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_suyas_academic_year_state_authority ON public.academic_years;
 CREATE TRIGGER trg_suyas_academic_year_state_authority
 BEFORE INSERT OR UPDATE OF is_active, status
 ON public.academic_years
@@ -490,7 +492,7 @@ BEGIN
   SELECT * INTO v_source FROM public.course_sections WHERE id = p_source_section_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'source_section_not_found'; END IF;
 
-  SELECT t.*, y.status
+  SELECT t, y.status
     INTO v_target, v_year_status
     FROM public.academic_terms t
     JOIN public.academic_years y ON y.id = t.academic_year_id
