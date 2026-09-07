@@ -76,12 +76,12 @@ export const FacultiesSection = () => {
             return (
               <AuthAwareLink
                 key={faculty.id}
-                to={`/courses?faculty=${encodeURIComponent(faculty.name)}`}
+                to={`/catalog?faculty=${encodeURIComponent(faculty.name)}`}
                 className="animate-fade-up group block"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
                 <article className="flex h-full min-h-[220px] flex-col rounded-[1.4rem] border border-border/60 bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-lg sm:p-6">
-                  <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/8 transition-colors group-hover:bg-primary/12">
+                  <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 transition-colors group-hover:bg-primary/15">
                     <Icon className="h-5 w-5 text-primary" />
                   </div>
                   <div className="mt-auto">
@@ -103,7 +103,7 @@ export const FacultiesSection = () => {
         </div>
 
         <div className="mt-10 flex justify-center sm:mt-12">
-          <AuthAwareLink to="/courses">
+          <AuthAwareLink to="/catalog">
             <Button size="lg" variant="outline" className="rounded-full border-primary/20 px-6 hover:border-primary/40 hover:bg-primary/5">
               <School className="mr-2 h-4 w-4" />
               Browse the full course catalogue
