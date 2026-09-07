@@ -29,15 +29,10 @@ BEGIN
     RAISE EXCEPTION 'same_term';
   END IF;
 
-  SELECT count(*), min(id)
-    INTO v_source_matches, v_source_id
+  SELECT count(*)
+    INTO v_source_matches
     FROM public.academic_terms
    WHERE lower(code) = v_source OR lower(name) = v_source;
-
-  SELECT count(*), min(id)
-    INTO v_target_matches, v_target_id
-    FROM public.academic_terms
-   WHERE lower(code) = v_target OR lower(name) = v_target;
 
   IF v_source_matches = 0 THEN
     RAISE EXCEPTION 'source_canonical_suyas_term_not_found';
@@ -45,11 +40,28 @@ BEGIN
     RAISE EXCEPTION 'source_canonical_suyas_term_ambiguous';
   END IF;
 
+  SELECT id
+    INTO v_source_id
+    FROM public.academic_terms
+   WHERE lower(code) = v_source OR lower(name) = v_source
+   LIMIT 1;
+
+  SELECT count(*)
+    INTO v_target_matches
+    FROM public.academic_terms
+   WHERE lower(code) = v_target OR lower(name) = v_target;
+
   IF v_target_matches = 0 THEN
     RAISE EXCEPTION 'target_canonical_suyas_term_not_found';
   ELSIF v_target_matches > 1 THEN
     RAISE EXCEPTION 'target_canonical_suyas_term_ambiguous';
   END IF;
+
+  SELECT id
+    INTO v_target_id
+    FROM public.academic_terms
+   WHERE lower(code) = v_target OR lower(name) = v_target
+   LIMIT 1;
 
   RETURN public.rollover_suyas_term(v_source_id, v_target_id, p_only_active);
 END;
