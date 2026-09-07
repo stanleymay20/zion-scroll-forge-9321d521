@@ -1,0 +1,129 @@
+\set ON_ERROR_STOP on
+
+DO $$
+DECLARE
+  v_def text;
+  v_policy text;
+  v_missing jsonb;
+  v_trigger_count integer;
+BEGIN
+  -- The known 2026 title-templated CLO backfill is scaffold, not substantive
+  -- human/course-specific outcome evidence.
+  IF NOT public.is_generated_course_outcome_scaffold(
+    'Algorithms',
+    'Explain the foundational concepts, frameworks, and decision context of Algorithms with academic precision and Biblical worldview alignment.'
+  ) THEN
+    RAISE EXCEPTION 'Known generic CLO scaffold was not detected';
+  END IF;
+
+  IF public.is_generated_course_outcome_scaffold(
+    'Algorithms',
+    'Analyze the asymptotic complexity of comparison-based sorting algorithms and justify an implementation choice for a constrained system.'
+  ) THEN
+    RAISE EXCEPTION 'Substantive course-specific CLO was incorrectly classified as scaffold';
+  END IF;
+
+  v_missing := public.course_curriculum_completeness(gen_random_uuid());
+  IF v_missing->>'state' <> 'not_found'
+     OR COALESCE((v_missing->>'complete')::boolean, true) THEN
+    RAISE EXCEPTION 'Missing-course curriculum completeness must fail closed: %', v_missing;
+  END IF;
+
+  SELECT pg_get_functiondef('public.can_author_course_curriculum(uuid,uuid)'::regprocedure)
+  INTO v_def;
+  IF position('faculty_teaching_assignments' in v_def) = 0
+     OR position('state::text = ''active''' in v_def) = 0
+     OR position('admin' in v_def) = 0
+     OR position('superadmin' in v_def) = 0 THEN
+    RAISE EXCEPTION 'Course author helper is not scoped to active assignments/admin authority';
+  END IF;
+
+  SELECT string_agg(COALESCE(qual, '') || ' ' || COALESCE(with_check, ''), E'\n')
+  INTO v_policy
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename = 'course_learning_outcomes'
+    AND cmd IN ('ALL', 'INSERT', 'UPDATE', 'DELETE');
+
+  IF COALESCE(position('can_current_user_author_course_curriculum' in v_policy), 0) = 0 THEN
+    RAISE EXCEPTION 'CLO writes are not course-scoped';
+  END IF;
+
+  SELECT string_agg(COALESCE(qual, '') || ' ' || COALESCE(with_check, ''), E'\n')
+  INTO v_policy
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename = 'courses'
+    AND cmd IN ('ALL', 'INSERT', 'UPDATE', 'DELETE');
+
+  IF COALESCE(position('can_current_user_author_course_curriculum' in v_policy), 0) = 0
+     OR COALESCE(position('can_current_user_administer_course_curriculum' in v_policy), 0) = 0 THEN
+    RAISE EXCEPTION 'Course DML policies do not enforce scoped author/admin authority';
+  END IF;
+
+  IF has_table_privilege('authenticated', 'public.faculty_curriculum_reviews', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.faculty_curriculum_reviews', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.faculty_curriculum_reviews', 'DELETE') THEN
+    RAISE EXCEPTION 'Authenticated users must not mutate faculty curriculum review rows directly';
+  END IF;
+
+  SELECT pg_get_functiondef('public.record_faculty_review(uuid,text,text)'::regprocedure)
+  INTO v_def;
+  IF position('can_author_course_curriculum' in v_def) = 0
+     OR position('independent_course_review_required' in v_def) = 0
+     OR position('faculty_review' in v_def) = 0 THEN
+    RAISE EXCEPTION 'Faculty review RPC is missing assignment/independence/state authority';
+  END IF;
+
+  SELECT pg_get_functiondef('public.approve_course_curriculum(uuid)'::regprocedure)
+  INTO v_def;
+  IF position('can_administer_course_curriculum' in v_def) = 0
+     OR position('course_curriculum_completeness_gate_failed' in v_def) = 0
+     OR position('curriculum_status = ''approved''' in v_def) = 0 THEN
+    RAISE EXCEPTION 'Course approval RPC is not fail-closed institutional authority';
+  END IF;
+
+  SELECT pg_get_functiondef('public.course_curriculum_completeness(uuid)'::regprocedure)
+  INTO v_def;
+  IF position('is_generated_course_outcome_scaffold' in v_def) = 0
+     OR position('insufficient_substantive_learning_outcomes' in v_def) = 0
+     OR position('insufficient_required_readings' in v_def) = 0
+     OR position('insufficient_course_assessment_evidence' in v_def) = 0
+     OR position('independent_course_review_missing_or_stale' in v_def) = 0 THEN
+    RAISE EXCEPTION 'Course completeness function is missing required evidence blockers';
+  END IF;
+
+  SELECT pg_get_functiondef('public.course_teaching_readiness(uuid)'::regprocedure)
+  INTO v_def;
+  IF position('course_curriculum_completeness' in v_def) = 0
+     OR position('course_curriculum_evidence_incomplete' in v_def) = 0
+     OR position('content_review_state = ''published''' in v_def) = 0 THEN
+    RAISE EXCEPTION 'Teaching readiness must require both course evidence and published module authority';
+  END IF;
+
+  SELECT count(*)
+  INTO v_trigger_count
+  FROM pg_trigger t
+  JOIN pg_class c ON c.oid = t.tgrelid
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND NOT t.tgisinternal
+    AND (
+      (c.relname = 'courses' AND t.tgname = 'course_curriculum_state_authority')
+      OR (c.relname = 'course_learning_outcomes' AND t.tgname = 'course_learning_outcomes_invalidate_course_review')
+      OR (c.relname = 'course_evidence_requirements' AND t.tgname = 'course_evidence_invalidate_course_review')
+    );
+
+  IF v_trigger_count <> 3 THEN
+    RAISE EXCEPTION 'Expected three course curriculum invalidation/authority triggers; found %', v_trigger_count;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_views
+    WHERE schemaname = 'public'
+      AND viewname = 'v_course_curriculum_completeness'
+  ) THEN
+    RAISE EXCEPTION 'Course curriculum completeness operational view is missing';
+  END IF;
+END $$;
