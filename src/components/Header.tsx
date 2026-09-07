@@ -44,7 +44,7 @@ export const Header = () => {
             <Link className="transition-colors hover:text-primary-foreground" to="/accreditation-status">
               Academic status
             </Link>
-            <Link className="transition-colors hover:text-primary-foreground" to="/governance-transparency">
+            <Link className="transition-colors hover:text-primary-foreground" to="/governance">
               Governance
             </Link>
           </div>
