@@ -122,7 +122,7 @@ export const HeroSection = () => {
                   ScrollUniversity digital campus
                 </p>
                 <h2 className="max-w-lg font-serif text-2xl font-semibold leading-tight sm:text-3xl">
-                  Serious learning, supported by AI and governed by human academic review.
+                  Serious learning, supported by AI and governed by independent academic review.
                 </h2>
               </div>
             </div>
@@ -137,7 +137,7 @@ export const HeroSection = () => {
                 <Bot className="h-4 w-4 text-primary" />
               </div>
               <p className="text-sm font-semibold text-foreground">AI-supported study</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Tutor tools that support, not replace, academic judgment.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Tutor tools that support, not replace, governed academic judgment.</p>
             </AuthAwareLink>
 
             <AuthAwareLink
