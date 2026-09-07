@@ -16,7 +16,7 @@ import heroBackground from "@/assets/hero-background.jpg";
 import { onboardingRoutes } from "@/lib/onboardingRoutes";
 
 const proofPoints = [
-  "Reviewed learning content",
+  "Governed content-review controls",
   "AI used as learning support",
   "Public academic-status pages",
 ];
