@@ -65,8 +65,8 @@ export const JourneySection = () => {
                 style={{ animationDelay: `${index * 0.06}s` }}
               >
                 <div className="mb-8 flex items-center justify-between">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/8">
-                    <Icon className="h-4.5 w-4.5 text-primary" />
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10">
+                    <Icon className="h-5 w-5 text-primary" />
                   </span>
                   <span className="text-xs font-semibold tracking-[0.18em] text-muted-foreground/60">
                     {String(index + 1).padStart(2, "0")}
