@@ -61,7 +61,10 @@ resource_stats AS (
 ),
 section_stats AS (
   SELECT
-    count(*) FILTER (WHERE COALESCE(cs.active, false) AND cs.section_status <> 'cancelled')::int AS scheduled_sections,
+    count(*) FILTER (
+      WHERE COALESCE(cs.active, false)
+        AND COALESCE(cs.section_status, 'open') <> 'cancelled'
+    )::int AS scheduled_sections,
     count(*) FILTER (
       WHERE COALESCE(cs.active, false)
         AND cs.section_status = 'open'
@@ -164,8 +167,9 @@ CROSS JOIN LATERAL public.course_teaching_readiness(c.id) readiness;
 
 GRANT SELECT ON public.v_course_teaching_readiness TO anon, authenticated;
 
--- Preserve the original operational metrics while adding evidence-based catalogue
--- readiness counts to the existing admin dashboard contract.
+-- Preserve the original dashboard column names for frontend compatibility, but
+-- derive scheduling coverage from the canonical registrar course_sections model.
+-- Legacy live_sessions is deliberately not required by this truth boundary.
 CREATE OR REPLACE VIEW public.v_learning_readiness
 WITH (security_invoker = true)
 AS
@@ -176,8 +180,16 @@ SELECT
   (SELECT count(*) FROM public.course_modules WHERE quality_verified = true) AS modules_verified,
   (SELECT count(*) FROM public.ai_tutors) AS tutors_total,
   (SELECT count(*) FROM public.ai_tutors WHERE faculty_id IS NOT NULL) AS tutors_with_faculty,
-  (SELECT count(DISTINCT course_id) FROM public.live_sessions WHERE scheduled_start > now()) AS courses_with_upcoming_sessions,
-  (SELECT count(*) FROM public.live_sessions WHERE scheduled_start > now()) AS upcoming_sessions,
+  (SELECT count(DISTINCT course_id)
+     FROM public.course_sections
+    WHERE course_id IS NOT NULL
+      AND COALESCE(active, false)
+      AND COALESCE(section_status, 'open') <> 'cancelled') AS courses_with_upcoming_sessions,
+  (SELECT count(*)
+     FROM public.course_sections
+    WHERE course_id IS NOT NULL
+      AND COALESCE(active, false)
+      AND COALESCE(section_status, 'open') <> 'cancelled') AS upcoming_sessions,
   (SELECT count(*) FROM public.assessment_question_pools) AS quiz_pools,
   (SELECT count(*) FROM public.assignments) AS assignments_total,
   (SELECT count(*) FROM public.quizzes) AS quizzes_total,
