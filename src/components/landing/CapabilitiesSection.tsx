@@ -4,9 +4,9 @@ import {
   Bot,
   BookOpenCheck,
   Heart,
+  QrCode,
   ShieldCheck,
   Users,
-  Verification,
 } from "lucide-react";
 
 const capabilities = [
@@ -35,7 +35,7 @@ const capabilities = [
     tone: "primary" as const,
   },
   {
-    icon: Verification,
+    icon: QrCode,
     title: "Credential verification",
     desc: "Public verification tooling makes it possible to check issued credential records when those records exist.",
     href: "/verify",
