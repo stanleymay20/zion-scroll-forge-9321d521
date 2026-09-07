@@ -39,6 +39,16 @@ BEGIN
     RAISE EXCEPTION 'Course author helper is not scoped to active assignments/admin authority';
   END IF;
 
+  IF has_function_privilege('authenticated', 'public.can_author_course_curriculum(uuid,uuid)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.can_administer_course_curriculum(uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Internal curriculum authority helpers must remain non-executable by authenticated';
+  END IF;
+
+  IF NOT has_function_privilege('authenticated', 'public.can_current_user_author_course_curriculum(uuid)', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.can_current_user_administer_course_curriculum()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Authenticated-safe current-user curriculum authority wrappers are not executable';
+  END IF;
+
   SELECT p.prosecdef
   INTO v_security_definer
   FROM pg_proc p
@@ -51,8 +61,15 @@ BEGIN
   SELECT pg_get_functiondef('public.enforce_course_curriculum_state_authority()'::regprocedure)
   INTO v_def;
   IF position('direct_course_review_state_change_forbidden' in v_def) = 0
-     OR position('course_review_projection_is_guarded' in v_def) = 0 THEN
-    RAISE EXCEPTION 'Course state authority trigger is missing direct-state forgery blockers';
+     OR position('course_review_projection_is_guarded' in v_def) = 0
+     OR position('public.can_current_user_author_course_curriculum' in v_def) = 0
+     OR position('public.can_current_user_administer_course_curriculum' in v_def) = 0 THEN
+    RAISE EXCEPTION 'Course state authority trigger is missing current-user wrapper or direct-state forgery blockers';
+  END IF;
+
+  IF position('public.can_author_course_curriculum(' in v_def) > 0
+     OR position('public.can_administer_course_curriculum(' in v_def) > 0 THEN
+    RAISE EXCEPTION 'SECURITY INVOKER trigger must not call restricted internal authority helpers directly';
   END IF;
 
   SELECT string_agg(COALESCE(qual, '') || ' ' || COALESCE(with_check, ''), E'\n')
@@ -147,3 +164,20 @@ BEGIN
     RAISE EXCEPTION 'Course curriculum completeness operational view is missing';
   END IF;
 END $$;
+
+-- Execute the public authority wrappers under the same database role used by a
+-- browser Supabase session. This specifically catches privilege-chain failures
+-- that function-definition introspection alone cannot detect.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SELECT set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000123","role":"authenticated"}',
+  true
+);
+DO $$
+BEGIN
+  PERFORM public.can_current_user_administer_course_curriculum();
+  PERFORM public.can_current_user_author_course_curriculum(gen_random_uuid());
+END $$;
+ROLLBACK;
