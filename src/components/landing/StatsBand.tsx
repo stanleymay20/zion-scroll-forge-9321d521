@@ -1,36 +1,60 @@
-const stats = [
-  { value: "12", label: "Supreme Faculties" },
-  { value: "100+", label: "Living Courses" },
-  { value: "9", label: "Degree Tiers" },
-  { value: "∞", label: "Kingdom Impact" },
+import { AuthAwareLink } from "@/components/auth/AuthAwareLink";
+import { BookOpen, GraduationCap, ShieldCheck, UserRound } from "lucide-react";
+
+const pathways = [
+  {
+    icon: GraduationCap,
+    eyebrow: "Prospective students",
+    title: "Explore programmes",
+    href: "/degrees",
+  },
+  {
+    icon: BookOpen,
+    eyebrow: "Find your subject",
+    title: "Browse the catalogue",
+    href: "/catalog",
+  },
+  {
+    icon: ShieldCheck,
+    eyebrow: "Review the evidence",
+    title: "Academic trust & status",
+    href: "/academic-trust",
+  },
+  {
+    icon: UserRound,
+    eyebrow: "Already enrolled",
+    title: "Student dashboard",
+    href: "/student/dashboard",
+  },
 ];
 
 export const StatsBand = () => {
   return (
-    <section className="py-12 sm:py-16 px-4 bg-primary text-primary-foreground relative overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--accent)) 1px, transparent 0)`,
-          backgroundSize: "32px 32px",
-        }}
-      />
-      <div className="container mx-auto max-w-5xl relative">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
-          {stats.map((s, i) => (
-            <div
-              key={s.label}
-              className="animate-fade-up text-center"
-              style={{ animationDelay: `${i * 0.06}s` }}
-            >
-              <div className="font-serif font-bold text-4xl sm:text-5xl md:text-6xl bg-gradient-to-b from-accent to-[hsl(42_70%_55%)] bg-clip-text text-transparent leading-none mb-2">
-                {s.value}
-              </div>
-              <div className="text-[11px] sm:text-xs font-sans font-semibold tracking-[0.2em] uppercase text-primary-foreground/70">
-                {s.label}
-              </div>
-            </div>
-          ))}
+    <section className="border-y border-border/60 bg-primary px-4 py-4 text-primary-foreground sm:py-5">
+      <div className="container mx-auto max-w-7xl">
+        <div className="grid gap-px overflow-hidden rounded-2xl border border-primary-foreground/10 bg-primary-foreground/10 sm:grid-cols-2 lg:grid-cols-4">
+          {pathways.map((pathway) => {
+            const Icon = pathway.icon;
+            return (
+              <AuthAwareLink
+                key={pathway.title}
+                to={pathway.href}
+                className="group flex items-center gap-4 bg-primary px-5 py-4 transition-colors hover:bg-primary-foreground/[0.06] sm:px-6"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-foreground/10">
+                  <Icon className="h-5 w-5 text-accent" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/55">
+                    {pathway.eyebrow}
+                  </span>
+                  <span className="mt-0.5 block truncate text-sm font-semibold text-primary-foreground transition-transform group-hover:translate-x-0.5">
+                    {pathway.title}
+                  </span>
+                </span>
+              </AuthAwareLink>
+            );
+          })}
         </div>
       </div>
     </section>
