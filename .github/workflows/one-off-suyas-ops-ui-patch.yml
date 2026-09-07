@@ -1,0 +1,306 @@
+name: One-off SUYAS Operations UI patch
+
+on:
+  push:
+    branches:
+      - repair/scrolluniversity-suyas-academic-year-authority
+
+permissions:
+  contents: write
+
+jobs:
+  patch-operations-rollover:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/scrolluniversity-suyas-academic-year-authority
+
+      - name: Replace legacy free-text rollover consumer
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/pages/admin/OperationsCommandCenter.tsx")
+          text = path.read_text()
+          start_marker = "// ---------------------------------------------------------------------------\n// Term Rollover — D3.1 RPC consumer\n// ---------------------------------------------------------------------------"
+          end_marker = "const RUNBOOK_REPO_BASE ="
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+
+          replacement = r'''// ---------------------------------------------------------------------------
+          // Term Rollover — canonical SUYAS academic-term consumer
+          // ---------------------------------------------------------------------------
+
+          type AcademicTermOption = {
+            id: string;
+            code: string | null;
+            name: string;
+            status: string;
+            starts_on: string | null;
+            ends_on: string | null;
+            academic_year_id: string;
+          };
+
+          type RolloverSummary = {
+            correlation_id: string;
+            source_term_id: string;
+            target_term_id: string;
+            total: number;
+            cloned: number;
+            skipped_existing: number;
+          };
+
+          const useCanonicalAcademicTerms = () =>
+            useQuery({
+              queryKey: ["ops", "academic_terms"],
+              refetchInterval: 60_000,
+              queryFn: async () => {
+                const { data, error } = await (supabase as any)
+                  .from("academic_terms")
+                  .select("id, code, name, status, starts_on, ends_on, academic_year_id")
+                  .order("starts_on", { ascending: false })
+                  .limit(100);
+                if (error) throw error;
+                return (data ?? []) as AcademicTermOption[];
+              },
+            });
+
+          const TermRolloverPanel: React.FC = () => {
+            const qc = useQueryClient();
+            const { toast } = useToast();
+            const termsQ = useCanonicalAcademicTerms();
+            const [sourceTermId, setSourceTermId] = useState("");
+            const [targetTermId, setTargetTermId] = useState("");
+            const [onlyActive, setOnlyActive] = useState(true);
+            const [summary, setSummary] = useState<RolloverSummary | null>(null);
+
+            const terms = termsQ.data ?? [];
+            const sourceTerm = terms.find((term) => term.id === sourceTermId);
+            const targetTerm = terms.find((term) => term.id === targetTermId);
+            const termLabel = (term?: AcademicTermOption) =>
+              term ? `${term.code ? `${term.code} · ` : ""}${term.name}` : "—";
+
+            // Preview is identifier-bound to the same canonical term UUIDs used by the RPC.
+            const previewQ = useQuery({
+              queryKey: ["ops", "rollover_preview", sourceTermId, targetTermId, onlyActive],
+              enabled: !!sourceTermId && !!targetTermId && sourceTermId !== targetTermId,
+              queryFn: async () => {
+                const [srcRes, tgtRes] = await Promise.all([
+                  (supabase as any)
+                    .from("course_sections")
+                    .select("id, course_code, section_code, active, term_id")
+                    .eq("term_id", sourceTermId)
+                    .limit(500),
+                  (supabase as any)
+                    .from("course_sections")
+                    .select("course_code, section_code, term_id")
+                    .eq("term_id", targetTermId)
+                    .limit(500),
+                ]);
+                if (srcRes.error) throw srcRes.error;
+                if (tgtRes.error) throw tgtRes.error;
+                const tgtKeys = new Set(
+                  (tgtRes.data ?? []).map((r: any) => `${r.course_code}|${r.section_code}`)
+                );
+                const filtered = (srcRes.data ?? []).filter(
+                  (r: any) => !onlyActive || r.active === true
+                );
+                return filtered.map((r: any) => ({
+                  ...r,
+                  already_in_target: tgtKeys.has(`${r.course_code}|${r.section_code}`),
+                }));
+              },
+            });
+
+            const run = useMutation({
+              mutationFn: async () => {
+                const { data, error } = await (supabase as any).rpc("rollover_suyas_term", {
+                  p_source_term_id: sourceTermId,
+                  p_target_term_id: targetTermId,
+                  p_only_active: onlyActive,
+                });
+                if (error) throw error;
+                await auditedWrite("suyas.term_rollover_invoked", {
+                  source_term_id: sourceTermId,
+                  target_term_id: targetTermId,
+                  only_active: onlyActive,
+                  correlation_id: (data as any)?.correlation_id ?? null,
+                });
+                return data as RolloverSummary;
+              },
+              onSuccess: (data) => {
+                setSummary(data);
+                qc.invalidateQueries({ queryKey: ["ops", "rollover_preview"] });
+                qc.invalidateQueries({ queryKey: ["ops", "academic_terms"] });
+                toast({
+                  title: "Rollover complete",
+                  description: `Cloned ${data.cloned} / skipped ${data.skipped_existing} of ${data.total}`,
+                });
+              },
+              onError: (e: any) =>
+                toast({ title: "Rollover failed", description: e.message, variant: "destructive" }),
+            });
+
+            const willClone =
+              previewQ.data?.filter((r: any) => !r.already_in_target).length ?? 0;
+            const willSkip =
+              previewQ.data?.filter((r: any) => r.already_in_target).length ?? 0;
+
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Term Rollover</CardTitle>
+                  <CardDescription>
+                    Bulk-clone <code>course_sections</code> between canonical <code>academic_terms</code>{" "}
+                    using <code>rollover_suyas_term(uuid, uuid, boolean)</code>. The database owns
+                    academic-year lifecycle, target schedulability, idempotency, authorization and audit authority.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label>Source canonical term</Label>
+                      <Select value={sourceTermId} onValueChange={setSourceTermId}>
+                        <SelectTrigger><SelectValue placeholder="Pick source academic term…" /></SelectTrigger>
+                        <SelectContent>
+                          {terms.map((term) => (
+                            <SelectItem key={term.id} value={term.id}>
+                              {termLabel(term)} · {term.status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Target canonical term</Label>
+                      <Select value={targetTermId} onValueChange={setTargetTermId}>
+                        <SelectTrigger><SelectValue placeholder="Pick target academic term…" /></SelectTrigger>
+                        <SelectContent>
+                          {terms
+                            .filter((term) => term.id !== sourceTermId)
+                            .map((term) => (
+                              <SelectItem
+                                key={term.id}
+                                value={term.id}
+                                disabled={term.status === "closed" || term.status === "archived"}
+                              >
+                                {termLabel(term)} · {term.status}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Target identity is a governed <code>academic_terms.id</code>; arbitrary term labels cannot be submitted.
+                      </p>
+                    </div>
+                  </div>
+
+                  {termsQ.error && (
+                    <p className="text-sm text-destructive">
+                      Canonical terms failed to load: {(termsQ.error as Error).message}
+                    </p>
+                  )}
+
+                  <div className="flex items-center gap-3">
+                    <Switch checked={onlyActive} onCheckedChange={setOnlyActive} />
+                    <span className="text-sm">
+                      Only active sections{" "}
+                      <span className="text-muted-foreground">
+                        (inactive source sections are excluded)
+                      </span>
+                    </span>
+                  </div>
+
+                  {sourceTermId && targetTermId && sourceTermId !== targetTermId && (
+                    <div className="border rounded-md p-3 text-sm">
+                      <div className="font-medium mb-1">Preview</div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {termLabel(sourceTerm)} → {termLabel(targetTerm)}
+                      </p>
+                      {previewQ.isLoading ? (
+                        <p className="text-muted-foreground">Loading preview…</p>
+                      ) : previewQ.error ? (
+                        <p className="text-destructive">
+                          Preview failed: {(previewQ.error as Error).message}
+                        </p>
+                      ) : (
+                        <>
+                          <p>
+                            Source has{" "}
+                            <Badge variant="secondary">{previewQ.data?.length ?? 0}</Badge>{" "}
+                            candidate section(s). Will clone{" "}
+                            <Badge variant="default">{willClone}</Badge> and skip{" "}
+                            <Badge variant="outline">{willSkip}</Badge> already in target.
+                          </p>
+                          {willSkip > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Skipped means the target canonical term already has the same
+                              (course_code, section_code).
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3">
+                    <Button
+                      disabled={
+                        termsQ.isLoading ||
+                        !sourceTermId ||
+                        !targetTermId ||
+                        sourceTermId === targetTermId ||
+                        run.isPending
+                      }
+                      onClick={() => run.mutate()}
+                    >
+                      <Repeat className="h-4 w-4 mr-2" />
+                      {run.isPending ? "Running…" : "Run governed rollover"}
+                    </Button>
+                    {sourceTermId === targetTermId && sourceTermId !== "" && (
+                      <span className="text-xs text-destructive">
+                        Source and target must differ.
+                      </span>
+                    )}
+                  </div>
+
+                  {summary && (
+                    <div className="border rounded-md p-3 text-sm space-y-1">
+                      <div className="font-medium">Last governed result</div>
+                      <div>
+                        <Badge variant="default">{summary.cloned} cloned</Badge>{" "}
+                        <Badge variant="outline">{summary.skipped_existing} skipped</Badge>{" "}
+                        <Badge variant="secondary">{summary.total} total</Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <code>{summary.source_term_id}</code> → <code>{summary.target_term_id}</code> ·{" "}
+                        correlation_id <code>{summary.correlation_id}</code>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          };
+
+          '''
+
+          patched = text[:start] + replacement + text[end:]
+          path.write_text(patched)
+          PY
+
+      - name: Commit canonical-term consumer
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/admin/OperationsCommandCenter.tsx
+          if git diff --cached --quiet; then
+            echo "No UI patch required"
+            exit 0
+          fi
+          git commit -m "fix: use canonical SUYAS terms in operations rollover"
+          git push origin HEAD:repair/scrolluniversity-suyas-academic-year-authority
