@@ -492,12 +492,19 @@ BEGIN
   SELECT * INTO v_source FROM public.course_sections WHERE id = p_source_section_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'source_section_not_found'; END IF;
 
-  SELECT t, y.status
-    INTO v_target, v_year_status
+  SELECT t.*
+    INTO v_target
     FROM public.academic_terms t
     JOIN public.academic_years y ON y.id = t.academic_year_id
    WHERE t.id = p_target_term_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'target_suyas_term_not_found'; END IF;
+
+  SELECT y.status
+    INTO v_year_status
+    FROM public.academic_years y
+   WHERE y.id = v_target.academic_year_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'target_suyas_academic_year_not_found'; END IF;
+
   IF v_target.status::text IN ('closed','archived') OR v_year_status = 'archived' THEN
     RAISE EXCEPTION 'target_suyas_term_not_schedulable';
   END IF;
