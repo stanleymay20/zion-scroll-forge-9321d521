@@ -156,5 +156,42 @@ ALTER TABLE public.academic_terms
   ALTER COLUMN created_at SET NOT NULL,
   ALTER COLUMN updated_at SET NOT NULL;
 
+-- The repository contains historical assignment schemas that use is_published,
+-- while current faculty/governance code uses published and section_id. Reconcile
+-- that vocabulary before the authority migration installs its fail-closed trigger.
+-- Existing canonical values win; the legacy flag is used only to fill a missing
+-- canonical publication state.
+DO $$
+DECLARE
+  v_has_legacy_is_published boolean;
+BEGIN
+  IF to_regclass('public.assignments') IS NOT NULL THEN
+    ALTER TABLE public.assignments
+      ADD COLUMN IF NOT EXISTS section_id uuid,
+      ADD COLUMN IF NOT EXISTS published boolean;
+
+    SELECT EXISTS (
+      SELECT 1
+        FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'assignments'
+         AND column_name = 'is_published'
+    ) INTO v_has_legacy_is_published;
+
+    IF v_has_legacy_is_published THEN
+      EXECUTE 'UPDATE public.assignments
+                  SET published = COALESCE(published, is_published, false)
+                WHERE published IS NULL';
+    ELSE
+      UPDATE public.assignments
+         SET published = false
+       WHERE published IS NULL;
+    END IF;
+
+    ALTER TABLE public.assignments
+      ALTER COLUMN published SET DEFAULT false;
+  END IF;
+END$$;
+
 COMMENT ON TABLE public.academic_terms IS
   'Canonical SUYAS operational term table. The subsequent authority migration attaches every row to academic_years.';
