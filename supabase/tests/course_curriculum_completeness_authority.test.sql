@@ -6,6 +6,7 @@ DECLARE
   v_policy text;
   v_missing jsonb;
   v_trigger_count integer;
+  v_security_definer boolean;
 BEGIN
   -- The known 2026 title-templated CLO backfill is scaffold, not substantive
   -- human/course-specific outcome evidence.
@@ -36,6 +37,22 @@ BEGIN
      OR position('admin' in v_def) = 0
      OR position('superadmin' in v_def) = 0 THEN
     RAISE EXCEPTION 'Course author helper is not scoped to active assignments/admin authority';
+  END IF;
+
+  SELECT p.prosecdef
+  INTO v_security_definer
+  FROM pg_proc p
+  WHERE p.oid = 'public.enforce_course_curriculum_state_authority()'::regprocedure;
+
+  IF COALESCE(v_security_definer, true) THEN
+    RAISE EXCEPTION 'Course state authority trigger must run as SECURITY INVOKER so current_user reflects the caller';
+  END IF;
+
+  SELECT pg_get_functiondef('public.enforce_course_curriculum_state_authority()'::regprocedure)
+  INTO v_def;
+  IF position('direct_course_review_state_change_forbidden' in v_def) = 0
+     OR position('course_review_projection_is_guarded' in v_def) = 0 THEN
+    RAISE EXCEPTION 'Course state authority trigger is missing direct-state forgery blockers';
   END IF;
 
   SELECT string_agg(COALESCE(qual, '') || ' ' || COALESCE(with_check, ''), E'\n')
@@ -71,26 +88,29 @@ BEGIN
   INTO v_def;
   IF position('can_author_course_curriculum' in v_def) = 0
      OR position('independent_course_review_required' in v_def) = 0
-     OR position('faculty_review' in v_def) = 0 THEN
-    RAISE EXCEPTION 'Faculty review RPC is missing assignment/independence/state authority';
+     OR position('faculty_review' in v_def) = 0
+     OR position('v_prior_internal' in v_def) = 0 THEN
+    RAISE EXCEPTION 'Faculty review RPC is missing assignment/independence/state/flag authority';
   END IF;
 
   SELECT pg_get_functiondef('public.approve_course_curriculum(uuid)'::regprocedure)
   INTO v_def;
   IF position('can_administer_course_curriculum' in v_def) = 0
      OR position('course_curriculum_completeness_gate_failed' in v_def) = 0
-     OR position('curriculum_status = ''approved''' in v_def) = 0 THEN
+     OR position('curriculum_status = ''approved''' in v_def) = 0
+     OR position('v_prior_internal' in v_def) = 0 THEN
     RAISE EXCEPTION 'Course approval RPC is not fail-closed institutional authority';
   END IF;
 
   SELECT pg_get_functiondef('public.course_curriculum_completeness(uuid)'::regprocedure)
   INTO v_def;
   IF position('is_generated_course_outcome_scaffold' in v_def) = 0
+     OR position('count(clo.id)' in lower(v_def)) = 0
      OR position('insufficient_substantive_learning_outcomes' in v_def) = 0
      OR position('insufficient_required_readings' in v_def) = 0
      OR position('insufficient_course_assessment_evidence' in v_def) = 0
      OR position('independent_course_review_missing_or_stale' in v_def) = 0 THEN
-    RAISE EXCEPTION 'Course completeness function is missing required evidence blockers';
+    RAISE EXCEPTION 'Course completeness function is missing required zero-safe evidence blockers';
   END IF;
 
   SELECT pg_get_functiondef('public.course_teaching_readiness(uuid)'::regprocedure)
