@@ -19,6 +19,13 @@ jobs:
     name: Browser E2E
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Public smoke tests must not depend on production credentials. The
+      # frontend Supabase client requires non-empty Vite values at module load;
+      # use inert CI-only values so React can boot while all network writes stay
+      # disconnected from live ScrollUniversity data.
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: e2e-public-placeholder-key
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
