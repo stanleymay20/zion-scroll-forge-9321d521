@@ -137,11 +137,17 @@ jobs:
       - name: Enforce launch storage authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260828210000_launch_storage_authority_boundary.sql
 
+      - name: Enforce academic credit truth migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907100000_scrolluniversity_credit_truth.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
       - name: Run storage authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/storage_authority.test.sql
+
+      - name: Run academic credit truth suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_credit_truth.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true
