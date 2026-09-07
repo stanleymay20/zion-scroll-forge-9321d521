@@ -1,11 +1,28 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { AuthAwareLink } from "@/components/auth/AuthAwareLink";
-import { Menu, X, BookOpen, GraduationCap, Heart, Shield, LayoutDashboard } from "lucide-react";
-import { useState, useEffect } from "react";
+import {
+  BookOpen,
+  GraduationCap,
+  LayoutDashboard,
+  Menu,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Logo } from "@/components/brand/Logo";
 import { onboardingRoutes } from "@/lib/onboardingRoutes";
+
+const navLinks = [
+  { label: "Study", href: onboardingRoutes.catalog, isRoute: true, icon: BookOpen },
+  { label: "Programmes", href: "/degrees", isRoute: true, icon: GraduationCap },
+  { label: "Faculties", href: "#faculties", icon: GraduationCap },
+  { label: "Experience", href: "#experience", icon: Sparkles },
+  { label: "Trust", href: "/academic-trust", isRoute: true, icon: ShieldCheck },
+];
 
 export const Header = () => {
   const { user } = useAuth();
@@ -13,102 +30,114 @@ export const Header = () => {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => setScrolled(window.scrollY > 16);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const navLinks = [
-    { label: "Faculties", href: "#faculties", icon: GraduationCap },
-    { label: "Courses", href: "/courses", isRoute: true, icon: BookOpen },
-    { label: "Degrees", href: "/degrees", isRoute: true, icon: Shield },
-    { label: "Prayer", href: "#prayer", icon: Heart },
-  ];
-
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-background/95 backdrop-blur-lg shadow-sm border-b border-border/50"
-          : "bg-transparent"
-      }`}
-    >
-      <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Logo size="md" to="/" glow={!scrolled} />
-
-
-        {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-1">
-          {navLinks.map((link) =>
-            link.isRoute ? (
-              <AuthAwareLink
-                key={link.label}
-                to={link.href}
-                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-primary/5"
-              >
-                {link.label}
-              </AuthAwareLink>
-            ) : (
-              <a
-                key={link.label}
-                href={link.href}
-                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-primary/5"
-              >
-                {link.label}
-              </a>
-            )
-          )}
-        </nav>
-
-        {/* Desktop Auth */}
-        <div className="hidden sm:flex items-center gap-3">
-          {user ? (
-            <Link to={onboardingRoutes.studentDashboard}>
-              <Button size="sm" className="font-sans text-sm bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
-                <LayoutDashboard className="h-4 w-4 mr-2" />
-                Go to Dashboard
-              </Button>
+    <header className="fixed inset-x-0 top-0 z-50">
+      <div className="hidden md:block border-b border-primary-foreground/10 bg-primary text-primary-foreground">
+        <div className="container mx-auto flex h-8 items-center justify-between px-4 text-[11px] font-medium tracking-wide sm:px-6">
+          <span>Christ-centered · AI-supported · evidence-governed learning</span>
+          <div className="flex items-center gap-5 text-primary-foreground/75">
+            <Link className="transition-colors hover:text-primary-foreground" to="/accreditation-status">
+              Academic status
             </Link>
-          ) : (
-            <>
-              <Link to={onboardingRoutes.signIn}>
-                <Button variant="ghost" size="sm" className="font-sans text-sm">
-                  Sign In
-                </Button>
-              </Link>
-              <Link to={onboardingRoutes.signUpToApply}>
-                <Button size="sm" className="font-sans text-sm bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
-                  Get Started
-                </Button>
-              </Link>
-            </>
-          )}
+            <Link className="transition-colors hover:text-primary-foreground" to="/governance-transparency">
+              Governance
+            </Link>
+          </div>
         </div>
-
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="sm:hidden p-2.5 text-foreground hover:bg-accent/50 rounded-lg transition-colors touch-target"
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
       </div>
 
-      {/* Mobile Menu — slide down */}
       <div
-        className={`sm:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-          mobileMenuOpen ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"
+        className={`transition-all duration-300 ${
+          scrolled || mobileMenuOpen
+            ? "border-b border-border/70 bg-background/95 shadow-sm backdrop-blur-xl"
+            : "border-b border-transparent bg-background/80 backdrop-blur-md"
         }`}
       >
-        <div className="bg-background/98 backdrop-blur-lg border-t border-border/50">
-          <nav className="container mx-auto px-4 py-4 space-y-1">
+        <div className="container mx-auto flex h-[68px] items-center justify-between px-4 sm:px-6">
+          <Logo size="md" to="/" glow={false} />
+
+          <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
+            {navLinks.map((link) =>
+              link.isRoute ? (
+                <AuthAwareLink
+                  key={link.label}
+                  to={link.href}
+                  className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  {link.label}
+                </AuthAwareLink>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="rounded-full px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  {link.label}
+                </a>
+              ),
+            )}
+          </nav>
+
+          <div className="hidden items-center gap-2 sm:flex">
+            <AuthAwareLink
+              to={onboardingRoutes.catalog}
+              aria-label="Explore the course catalogue"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <Search className="h-4 w-4" />
+            </AuthAwareLink>
+
+            {user ? (
+              <Link to={onboardingRoutes.studentDashboard}>
+                <Button size="sm" className="rounded-full px-4 shadow-sm">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to={onboardingRoutes.signIn}>
+                  <Button variant="ghost" size="sm" className="rounded-full px-4">
+                    Sign in
+                  </Button>
+                </Link>
+                <Link to={onboardingRoutes.signUpToApply}>
+                  <Button size="sm" className="rounded-full px-5 shadow-sm">
+                    Apply
+                  </Button>
+                </Link>
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            className="touch-target inline-flex items-center justify-center rounded-full p-2.5 text-foreground transition-colors hover:bg-secondary sm:hidden"
+            aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+
+        <div
+          className={`overflow-hidden transition-all duration-300 sm:hidden ${
+            mobileMenuOpen ? "max-h-[520px] border-t border-border/60 opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <nav className="container mx-auto space-y-1 px-4 py-4" aria-label="Mobile navigation">
             {navLinks.map((link) => {
-              const className = "flex items-center gap-3 text-sm font-medium text-muted-foreground hover:text-primary py-3 px-3 rounded-lg hover:bg-primary/5 transition-colors touch-target";
+              const Icon = link.icon;
+              const className =
+                "touch-target flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground";
               const content = (
                 <>
-                  <link.icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4 text-primary" />
                   {link.label}
                 </>
               );
@@ -117,8 +146,8 @@ export const Header = () => {
                 <AuthAwareLink
                   key={link.label}
                   to={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
                   className={className}
+                  onClick={() => setMobileMenuOpen(false)}
                 >
                   {content}
                 </AuthAwareLink>
@@ -126,32 +155,35 @@ export const Header = () => {
                 <a
                   key={link.label}
                   href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
                   className={className}
+                  onClick={() => setMobileMenuOpen(false)}
                 >
                   {content}
                 </a>
               );
             })}
-            <div className="flex gap-2 pt-3 mt-2 border-t border-border/50">
+
+            <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-4">
               {user ? (
-                <Link to={onboardingRoutes.studentDashboard} className="flex-1" onClick={() => setMobileMenuOpen(false)}>
-                  <Button size="sm" className="w-full font-sans">
-                    <LayoutDashboard className="h-4 w-4 mr-2" />
-                    Dashboard
+                <Link
+                  to={onboardingRoutes.studentDashboard}
+                  className="col-span-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Button className="w-full rounded-xl">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Go to dashboard
                   </Button>
                 </Link>
               ) : (
                 <>
-                  <Link to={onboardingRoutes.signIn} className="flex-1" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="outline" size="sm" className="w-full font-sans">
-                      Sign In
+                  <Link to={onboardingRoutes.signIn} onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="outline" className="w-full rounded-xl">
+                      Sign in
                     </Button>
                   </Link>
-                  <Link to={onboardingRoutes.signUpToApply} className="flex-1" onClick={() => setMobileMenuOpen(false)}>
-                    <Button size="sm" className="w-full font-sans">
-                      Get Started
-                    </Button>
+                  <Link to={onboardingRoutes.signUpToApply} onClick={() => setMobileMenuOpen(false)}>
+                    <Button className="w-full rounded-xl">Apply</Button>
                   </Link>
                 </>
               )}
