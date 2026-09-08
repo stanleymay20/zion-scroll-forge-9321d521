@@ -1,201 +1,55 @@
-# Phase D — Pilot Readiness & University Operations (v4 — FINAL)
+# Migration Parity Recovery — Repo `main` vs Lovable Cloud
 
-## Guiding rule
-**Academic engine is frozen.** Only defect fixes touch enrollment, GPA, standing, degree audit, graduation, CLO/PLO mastery, or grade lifecycle.
+Forensic analysis only. No schema, data, or gate changes are proposed in this document; it defines the safe method and the order of work for a later approved sprint.
 
----
+## What the evidence shows
 
-## D0 — Architecture Governance (Continuous)
+Verified read-only against the live Cloud database and the repository working tree:
 
-Not a sprint. A gate every sprint must clear. Artifacts live under `/docs/governance/`.
+- Cloud ledger `supabase_migrations.schema_migrations`: 193 rows, first `20251006060308`, last `20260725124701`, zero rows at or after `20260726`.
+- Repository: 241 migration files; 34 files sort after the ledger's last version.
+- Object probes confirm the gap is **real, not cosmetic**. Absent from Cloud: `academic_workload_benchmarks`, `course_teaching_readiness`, `content_quality_reviews`, `module_content_versions`, `course_curriculum_completeness`, `verified_learning_rewards`, `stripe_webhook_events`, `v_course_teaching_readiness`, `v_course_curriculum_completeness`.
+- Some objects named in the same window **do** exist (`assert_not_maintenance`, `ops_log_write`, `workload_propose_assignment`, `workload_submit_proposals`, `record_skill_evidence`, `recompute_student_skill_mastery`, `quiz_submissions`, `academic_terms`, `academic_years`, `v_learning_readiness`). So the window is partially applied: some SQL reached Cloud through chat migrations recorded under different version numbers, while the file that also contains it never ran as a file.
 
-Every sprint must produce/pass:
-1. **ADR** for any new subsystem — `/docs/adr/NNNN-title.md` (Context · Decision · Consequences · Alternatives).
-2. **Dependency impact review** — new/changed packages, license check, supply-chain note.
-3. **Data model review** — no duplicate entities; new tables justified against the existing schema (252 tables — additions require explicit ADR).
-4. **API contract review** — every new RPC/edge function documented with input/output, error codes, and KPI envelope version (if applicable).
-5. **Security review** — RLS + GRANT on every public table; secret usage audit; `security--run_security_scan` clean of new highs.
-6. **Performance budget review** — slow-query check; p95 budgets for new RPCs; no >100ms regressions on hot paths.
-7. **Documentation update** — runbook, persona docs, API ref.
-8. **Migration replay check** — clean replay + snapshot replay (full version in D9.75).
+Conclusion: filename timestamps are not a reliable applied/pending signal for this project. Pending status must be decided per object, not per filename.
 
-`/docs/governance/sprint-log.md` records each sprint's gate outcome.
+## Answers to the three questions
 
----
+**1. Can a normal Lovable build/chat execute existing repo migration files and record them correctly?**
 
-## Sprint Exit Checklist (applied identically to every sprint)
+Yes, with one caveat. The migration tool is the only supported write path to this database; there is no `supabase db push` and no automatic replay of `supabase/migrations/*.sql` on Cloud. Passing a repository file's SQL **byte-for-byte** to the migration tool executes it and appends a ledger row, so history is preserved and auditable. The caveat: the tool assigns its own version timestamp at execution time, so the ledger version will not equal the filename timestamp. That drift is expected and correct — the ledger records *when this database actually ran it*. We will not rename files or write ledger rows to hide it.
 
-```text
-□ Migrations applied
-□ Types regenerated
-□ Typecheck clean
-□ SQL regression suite passes        (academic_spine)
-□ Lifecycle behavior suite passes    (lifecycle_behavior)
-□ Lifecycle invariants pass          (lifecycle_invariants)
-□ Executive scope isolation passes
-□ UI smoke verified                  (Playwright, top routes)
-□ RLS verified                       (security--get_scan_results delta = 0 new)
-□ Performance regression checked     (slow_queries + p95 budgets)
-□ Documentation updated
-□ ADR recorded (if applicable)
-□ D0 governance gate signed
-□ Readiness delta published          (/docs/governance/sprint-log.md)
-```
+**2. Which migrations are historical/bootstrap-only rather than pending?**
 
-Any unchecked item blocks sprint close.
+Treat as historical (do not re-run) any file whose entire effect is already present in Cloud, and any file that is a bootstrap of an object that later migrations already superseded. From the probe, the whole D3.5/D3.6 defect-close pair and the skill-evidence and calendar-substrate files fall largely in this bucket, while the Aug 23–Sep 8 authority/governance chain (`credit_truth`, `teaching_readiness_gate`, the `module_content_*` chain, the `course_curriculum_completeness` chain, `suyas_academic_year_authority`, `canonical_student_lifecycle_authority`, `verified_learning_reward_boundary`, `financial_authority_boundary`) is genuinely pending. Also historical-only: pure data-backfill files (`backfill_top_university_learning_standards`) — these must be re-evaluated against current data before any replay, because replaying a backfill against a live corpus can overwrite authored content. Backfills are quarantined, not auto-applied.
 
----
+**3. How do we verify exact post-deployment parity?**
 
-## Architectural invariants (apply to every sprint)
-- **Single KPI source** — `vw_kpi_*` views → `kpi_service` edge function → every dashboard.
-- **Versioned KPI envelope** from day one:
-  ```json
-  { "version": "v1", "generated_at": "...", "scope": "...", "metrics": { ... } }
-  ```
-  `KPI_CONTRACT_VERSION` constant; bump on breaking change; previous version retained one sprint.
-- **Append-only or audit-triggered** operational tables.
-- **Every new public table** ships GRANT + RLS + policies in the same migration.
-- **Feature flags + maintenance mode** via `launch_settings` + `assert_not_maintenance()`.
-- **Correlation IDs** through every edge function → `ops_log`.
+Parity is asserted on the *schema and authority surface*, never on ledger version equality (which cannot match, see above). Gate on: object-existence probe, function signature and `prosecdef`/`search_path` probe, RLS-enabled and policy-count probe per touched table, the database linter, and the existing `supabase/tests/*.test.sql` regression suites plus the CI SQL replay workflow.
 
----
+## Method (proposed sprint, to run after approval)
 
-## Sprints
+**M0 — Freeze and snapshot.** Announce a maintenance window per `docs/runbooks/maintenance-window.md`. Capture a full pre-state inventory (tables, views, functions with signatures, policies, triggers, grants) as a committed baseline artifact.
 
-### D1 — Operations Foundation
-`maintenance_mode`, `assert_not_maintenance()`. Tables: `background_job_runs`, `queue_health_snapshots`, `release_events`, `backup_verifications`, `restore_drills`, `incident_log`, `ops_log` (correlation_id, trace_id, span_id, fingerprint). KPI views: enrollment, retention, completion, graduation_pipeline, faculty_utilization, course_fill, outcome_mastery, accreditation_readiness, financial_health, system_health, ai_review_backlog. `kpi_service` edge function returning the versioned envelope.
+**M1 — Per-file triage.** For each of the 34 files, classify as `already-applied`, `pending`, `partially-applied`, or `data-backfill/quarantined`, using object probes and body comparison (`pg_get_functiondef` vs file text) rather than filename order. Record the verdict table in `docs/governance/`.
 
-### D2 — Administrator Operations
-`/admin/ops` shell: Incidents · Maintenance · Jobs · Queues · Migrations · Releases · Backups · Restores · Runbooks (`/docs/runbooks/*`).
+**M2 — Idempotency review.** Every file marked pending is read line by line before execution. Anything that would fail or destroy state on a partially-applied database (bare `CREATE TABLE`, `CREATE POLICY` without a drop, `ALTER TYPE ... ADD VALUE`, unguarded `UPDATE`) is wrapped defensively. Where a wrap changes the SQL text, the applied variant is committed as a **new, forward-only** migration file that cites the original — the original file is never edited, and the ledger is never hand-edited.
 
-### D3 — Faculty Operations completion
-Office hours editor + booking, bulk grading grid, `clone_section_for_term` + `rollover_term` RPCs, workload planner, faculty analytics.
+**M3 — Ordered application in dependency batches.** Apply through the migration tool, one batch per approval, in this order: (a) financial/credit truth substrate, (b) teaching-readiness and module-content authority chain, (c) course-curriculum completeness chain, (d) SUYAS academic-year authority and rollover compatibility, (e) canonical student lifecycle authority. Each batch stops on first failure; no batch proceeds while the prior batch's verification is red.
 
-### D4 — Registrar Operations completion
-`plan_sections_for_term` wizard, capacity/waitlist UI, timetable conflict resolver, registration analytics.
+**M4 — Verification after each batch.** Re-run the object/function/RLS probes, the linter, and the relevant SQL regression suites. Confirm every new public table has GRANTs, RLS enabled, and at least one policy. Confirm no policy was dropped without replacement and no `SECURITY DEFINER` function lost its pinned `search_path`.
 
-### D4.5 — Platform Core
-Reusable services consumed by everything downstream:
-- Feature flag SDK (`useFlag` + `flag_enabled(key, scope)`)
-- Configuration service (`app_config` + `get_config(key)`)
-- Secrets validation edge function → `ops_log`
-- Health-check framework (`health_check_registry` + `/healthz`)
-- Background job orchestration (`job_queue` + `claim/complete/fail`, retry + DLQ)
-- Central notification service (`notify(channel, template, payload, recipient)`)
-- File storage abstraction (`storage_service.upload/sign/delete` with policy enforcement)
+**M5 — Release gates.** Run the full CI suite against the exact SHA, then exit maintenance mode and log a release entry in the operations command center.
 
-### D5A — Student Accounts
-`invoice_line_items`, `payment_attempts`, `ledger_entries` (immutable), extend `financial_holds`. RPCs: `generate_term_invoices`, `apply_payment`, `recompute_account_balance`. Wire financial holds into `evaluate_graduation_candidate`. Bursar console + student account statement.
+## Guardrails (non-negotiable)
 
-### D5B — Stripe & Reconciliation
-`refund_workflow_states`, `stripe_reconciliation_runs`, `settlement_reports`. RPCs: `request_refund`, `reconcile_stripe_batch`. Stripe webhook with idempotency + D4.5 replay; settlement export.
+- No manual writes to `supabase_migrations.schema_migrations`; no renaming or backdating of historical files.
+- No new database, no remix, no destructive replay of data backfills.
+- No RLS disabled, no policy weakened, no security definer left unpinned, no CI gate skipped or set to `continue-on-error` to get green.
+- Every executed statement lands through the migration tool so it is recorded and auditable.
 
-### D6 — Executive Portal expansion
-Persona dashboards (VC, Registrar, Dean, HoD, QA) consuming `kpi_service` with persona scope. Operational alerts panel from `incident_log`.
+## Technical notes
 
-### D7 — Observability (expanded)
-Correlation IDs + replay IDs in every edge function. Error fingerprinting. `/admin/observability` panels: slow RPCs, cron, notifications, AI, DB health, queue health, workers, SLO/SLA dashboards with breach evaluator cron, audit timeline viewer, dashboard usage analytics, frontend web-vitals (LCP/INP/CLS) → `vw_kpi_frontend_perf`, edge-function latency histograms, DB connection-pool health, cache hit/miss ratio scaffolding.
-
-### D8 — Documentation
-`/docs/admin/`, `/docs/faculty/`, `/docs/registrar/`, `/docs/student/`, auto-generated API ref from RPC catalog, `architecture/`, `deployment.md`, `disaster-recovery.md`, `operational-handbook.md`, governance index. Public `/docs/*` route.
-
-### D9 — Production Hardening
-Security re-scan + fix, slow-query index audit, axe accessibility sweep (top 20 routes), i18n scaffolding, browser/mobile Playwright matrix, backup+restore drill into `restore_drills`, feature-flag + secrets audit.
-
-### D9.5 — Data Governance & Compliance
-FERPA + GDPR audits. `data_retention_policies` + cron evictor. `pii_inventory` + scanner. `data_classification` taxonomy. `consent_events` ledger. `request_data_export` + `request_data_deletion` RPCs with admin queue. Audit retention verification cron. AI governance report generator (consumes `ai_output_log`, `human_review_requests`). Record retention schedule.
-
-### D9.75 — Migration Certification
-Block release until all four pass; results recorded in `migration_certifications`.
-1. **Clean replay** — scratch Postgres, apply all migrations, capture checksum.
-2. **Snapshot replay** — restore latest production snapshot, apply pending migrations, run regression + lifecycle suites.
-3. **Rollback strategy** — compensating-migration playbook for each destructive change, recorded under `/docs/runbooks/rollback-*.md`.
-4. **Schema checksum validation** — `pg_dump --schema-only | sha256` of clean replay vs snapshot replay must match `supabase/migrations/.schema-checksum`.
-
-### D10 — Pilot Telemetry + Certification
-
-**Pilot Telemetry** (instrument before certifying) into `vw_kpi_pilot_telemetry`:
-*Operational:* login success, registration completion, avg enrollment time, faculty grading turnaround, registrar processing time, notification delivery success, AI response latency, system uptime, page performance, support ticket volume.
-*Institutional:* course completion rate, advisor response time, registration abandonment, avg degree-audit runtime, graduation-evaluation runtime, payment success rate (post-D5B).
-
-**Certification runs:** 100- and 1,000-student cohort simulations through finance + notifications + KPIs + governance + manual persona walkthroughs (faculty, registrar, executive, bursar).
-
-**Reports** under `/docs/certification/`: Pilot Certification · Production Readiness · Operational Readiness · Security Readiness · Performance · Accreditation Readiness · Compliance Readiness · Migration Certification · Deployment Checklist · Go/No-Go.
-
-#### Evidence-based pilot recommendation rubric
-
-```text
-READY_PILOT — requires ALL:
-  □ All 10 Go/No-Go domains PASS
-  □ 100-student simulation PASS (0 exceptions, 0 integrity violations)
-  □ 1,000-student simulation PASS (0 exceptions, 0 integrity violations)
-  □ Zero critical security findings (security--get_scan_results)
-  □ Zero data integrity violations (lifecycle_invariants)
-  □ Zero unresolved Sev-1 bugs
-
-READY_LIMITED_PRODUCTION — requires READY_PILOT plus:
-  □ Finance (D5A + D5B) complete and reconciled
-  □ Operational documentation complete (D8 + runbooks)
-  □ Monitoring operational (D7 SLO dashboards green for 7 days)
-
-NEEDS_STABILIZATION — any READY_PILOT criterion fails but no Sev-1 open
-NOT_READY                — any Sev-1 open or integrity violation present
-```
-
-### D11 — Stabilization Freeze
-Codebase frozen. Allowed: bug fixes · performance · documentation · pilot support. No new features until first live pilot completes.
-
-### D12 — Pilot Review *(post-pilot)*
-Under `/docs/post-pilot/`: lessons learned · production incidents (from `incident_log`) · user feedback · feature requests · technical debt introduced · Phase E roadmap reprioritization.
-
----
-
-## Go/No-Go gate (objective)
-
-| Domain | Verdict |
-|---|---|
-| Academic Engine | PASS / FAIL |
-| Registrar | PASS / FAIL |
-| Finance | PASS / FAIL |
-| Security | PASS / FAIL |
-| Performance | PASS / FAIL |
-| Observability | PASS / FAIL |
-| Documentation | PASS / FAIL |
-| Operations | PASS / FAIL |
-| Compliance | PASS / FAIL |
-| Migration | PASS / FAIL |
-
-Any single FAIL blocks `READY_PILOT`.
-
----
-
-## Flow
-
-```text
-D0 governance gate ── runs every sprint ──► sprint exit checklist ──► /docs/governance/sprint-log.md
-
-KPI
-  vw_kpi_*  ──►  kpi_service (v1 envelope)  ──►  dashboards
-                          │
-                          ▼
-                       ops_log ──► alert evaluator ──► incident_log ──► /admin/ops
-
-Platform Core (D4.5)
-  flags · config · secrets · health · jobs · notify · storage
-        │
-        ▼  consumed by D5A/D5B/D6/D7/D8/D9.5/D10
-
-Finance
-  generate_term_invoices ─► invoices + line_items
-  apply_payment ─► ledger_entries (immutable)
-  reconcile_stripe_batch ─► settlement_reports
-  financial_holds ─► graduation gate
-```
-
-## Out of scope
-New programs/CLOs/course content · avatar pipeline changes · landing redesign · full i18n translations.
-
-## Cadence
-One sprint per turn. Each turn ends with the Sprint Exit Checklist filled in plus a readiness delta. After D10 I deliver the Go/No-Go scorecard with the evidence-based pilot recommendation; D11 begins immediately; D12 runs after the live pilot.
-
-**Approve to begin Sprint D1 — Operations Foundation.**
+- Ledger/filename divergence is permanent for this project and should be documented once in `docs/governance/` so future audits do not read it as corruption.
+- The CI SQL replay workflow builds from files, so it will exercise the full 241-file chain on an empty database while Cloud runs the reconciled subset. Both must stay green; if a file is quarantined as backfill-only on Cloud, CI must still replay it cleanly, which is the reason quarantined files stay in the repo untouched.
+- Recommended immediate read-only deliverable before any write: the M1 verdict table for all 34 files, so the pending set is agreed before a single statement executes.
