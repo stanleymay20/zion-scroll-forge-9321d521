@@ -1,11 +1,16 @@
 name: Production Deployment
 
-# Per-push production quality gate. Lovable may publish from main, so this
-# workflow must fail closed on security, academic-authority, financial-authority,
-# signup-provisioning, skill-evidence authority, role authority, maintenance,
-# storage authority, operational invariants, content authority, curriculum
-# completeness authority, SUYAS academic-year authority, type-check, build,
-# and browser E2E regressions before a SHA is treated as release-ready.
+# Per-push repository production-candidate quality gate. Lovable may publish from
+# main, so this workflow must fail closed on security, academic-authority,
+# financial-authority, signup-provisioning, skill-evidence authority, role
+# authority, maintenance, storage authority, operational invariants, content
+# authority, curriculum completeness authority, SUYAS academic-year authority,
+# type-check, build, and browser E2E regressions before a SHA is treated as a
+# repository release candidate.
+#
+# IMPORTANT: this workflow validates against ephemeral/disconnected test systems.
+# It does NOT prove that the live ScrollUniversity Supabase project has repository
+# migration parity, and its success must never be used as production-DB evidence.
 # Historical Supabase migrations still contain bootstrap drift; those are logged
 # advisory while current launch boundaries are replayed blocking.
 
@@ -298,7 +303,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # Keep release-gate smoke tests disconnected from live data while
+      # Keep release-gate browser tests disconnected from live data while
       # satisfying the frontend client's required runtime configuration.
       VITE_SUPABASE_URL: https://example.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: e2e-public-placeholder-key
@@ -339,12 +344,12 @@ jobs:
           retention-days: 14
 
   release-ready:
-    name: Release Ready
+    name: Repository Release Candidate Ready
     runs-on: ubuntu-latest
     needs: [security-scan, backend-tests, frontend-tests, browser-e2e]
     if: ${{ always() }}
     steps:
-      - name: Require every production gate
+      - name: Require every repository production-candidate gate
         env:
           SECURITY_RESULT: ${{ needs.security-scan.result }}
           BACKEND_RESULT: ${{ needs.backend-tests.result }}
@@ -359,4 +364,13 @@ jobs:
           test "$BACKEND_RESULT" = "success"
           test "$FRONTEND_RESULT" = "success"
           test "$E2E_RESULT" = "success"
-          echo "Release-ready gate passed for $GITHUB_SHA"
+          echo "Repository release-candidate gate passed for $GITHUB_SHA"
+          echo "::notice::Repository candidate passed. Live production migration parity is NOT verified by this workflow."
+          {
+            echo "## Repository release candidate"
+            echo ""
+            echo "- Security, backend SQL, frontend type/build, and browser E2E gates passed for \`$GITHUB_SHA\`."
+            echo "- Live ScrollUniversity Supabase migration parity: **NOT VERIFIED by this workflow**."
+            echo "- Expected production Supabase project ref: \`klbtvdqfsctrfdkilrmx\`."
+            echo "- GA/production certification remains blocked until live migration history and runtime checks are independently verified."
+          } >> "$GITHUB_STEP_SUMMARY"
