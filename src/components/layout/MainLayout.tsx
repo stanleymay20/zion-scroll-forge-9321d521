@@ -5,17 +5,17 @@ import { Breadcrumbs } from "./Breadcrumbs";
 import { BackButton } from "./BackButton";
 import { AppCommandPalette } from "./AppCommandPalette";
 import { InstitutionGuard } from "@/components/InstitutionGuard";
+import { PRE_INSTITUTION_ROUTES } from "@/lib/studentLifecycle";
 
 export const MainLayout = () => {
   const { pathname } = useLocation();
   const showBack = pathname !== "/dashboard" && pathname !== "/";
-  const allowWithoutInstitution = ["/apply", "/orientation", "/matriculation"].some(
+  const allowWithoutInstitution = PRE_INSTITUTION_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   ) || /^\/courses\/[^/]+(?:\/.*)?$/.test(pathname);
 
   const content = (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Skip to content for keyboard / screen-reader users */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-3 focus:py-2 focus:rounded-md focus:bg-primary focus:text-primary-foreground focus:text-sm"

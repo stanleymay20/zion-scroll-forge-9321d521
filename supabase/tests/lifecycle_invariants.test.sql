@@ -191,6 +191,70 @@ EXCEPTION WHEN OTHERS THEN
   PERFORM pg_temp.inv_skip(8, 'user_roles fk [' || SQLERRM || ']');
 END $$;
 
+-- ── 9. Legacy course enrollments are compatibility/read evidence only ─────
+DO $$
+DECLARE v bigint := 0;
+BEGIN
+  IF has_table_privilege('authenticated', 'public.enrollments', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.enrollments', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.enrollments', 'DELETE') THEN
+    v := 1;
+  END IF;
+  PERFORM pg_temp.inv(9, 'legacy enrollments are browser read-only', v);
+END $$;
+
+-- ── 10. Historical registration RPC cannot bypass registrar authority ─────
+DO $$
+DECLARE v bigint := 0; p regprocedure;
+BEGIN
+  p := to_regprocedure('public.request_section_enrollment(uuid)');
+  IF p IS NOT NULL AND has_function_privilege('authenticated', p, 'EXECUTE') THEN
+    v := 1;
+  END IF;
+  PERFORM pg_temp.inv(10, 'legacy request_section_enrollment is not browser executable', v);
+END $$;
+
+-- ── 11. Lifecycle RPC carries the canonical authority marker ───────────────
+DO $$
+DECLARE v bigint := 1; p regprocedure; marker text;
+BEGIN
+  p := to_regprocedure('public.transition_student_status(uuid,text,text)');
+  IF p IS NOT NULL THEN marker := obj_description(p::oid, 'pg_proc'); END IF;
+  IF COALESCE(marker,'') LIKE 'CANONICAL_LIFECYCLE_AUTHORITY_20260908:%' THEN
+    v := 0;
+  END IF;
+  PERFORM pg_temp.inv(11, 'transition_student_status has canonical lifecycle authority marker', v);
+END $$;
+
+-- ── 12. Matriculation is dedicated-RPC governed ────────────────────────────
+DO $$
+DECLARE v bigint := 0; p regprocedure;
+BEGIN
+  p := to_regprocedure('public.complete_student_matriculation(text,text)');
+  IF p IS NULL THEN
+    v := v + 1;
+  ELSIF NOT has_function_privilege('authenticated', p, 'EXECUTE') THEN
+    v := v + 1;
+  END IF;
+  IF has_table_privilege('authenticated', 'public.matriculation_records', 'INSERT') THEN
+    v := v + 1;
+  END IF;
+  PERFORM pg_temp.inv(12, 'matriculation uses dedicated RPC authority', v);
+END $$;
+
+-- ── 13. Course-access authority recognises governed section enrollment ─────
+DO $$
+DECLARE v bigint := 1; p regprocedure; def text;
+BEGIN
+  p := to_regprocedure('public.can_access_course(uuid,uuid)');
+  IF p IS NOT NULL THEN def := pg_get_functiondef(p); END IF;
+  IF COALESCE(def,'') ILIKE '%section_enrollments%'
+     AND COALESCE(def,'') ILIKE '%course_sections%' THEN
+    v := 0;
+  END IF;
+  PERFORM pg_temp.inv(13, 'course access recognizes governed section enrollment', v);
+END $$;
+
 -- ── Summary ────────────────────────────────────────────────────────────────
 DO $$
 DECLARE
