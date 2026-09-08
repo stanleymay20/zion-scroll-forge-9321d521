@@ -63,7 +63,7 @@ describe("canonical student lifecycle", () => {
   it("keeps status-only redirects centralized", () => {
     expect(getLifecycleStatusFallbackRoute("applicant")).toBe("/apply");
     expect(getLifecycleStatusFallbackRoute("admitted")).toBe("/orientation");
-    expect(getLifecycleStatusFallbackRoute("enrolled")).toBe("/orientation");
+    expect(getLifecycleStatusFallbackRoute("enrolled")).toBe("/register");
     expect(getLifecycleStatusFallbackRoute("graduated")).toBe("/student/graduation");
     expect(getLifecycleStatusFallbackRoute("alumni")).toBe("/alumni");
   });
