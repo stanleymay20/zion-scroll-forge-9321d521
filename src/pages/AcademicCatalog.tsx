@@ -18,6 +18,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getAcademicCourseProfile } from "@/lib/academicRigor";
 import {
+  courseLevelRank,
+  formatCourseLevel,
+  groupCourseFamilies,
+  type CourseFamily,
+} from "@/lib/courseCatalogFamilies";
+import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
@@ -38,6 +44,7 @@ type Course = {
   description: string | null;
   faculty: string | null;
   faculty_id: string | null;
+  institution_id: string | null;
   level: string | null;
   visibility: string | null;
   credit_hours: number | null;
@@ -45,6 +52,8 @@ type Course = {
   duration: string | null;
   career_track: string[] | null;
   thumbnail_url: string | null;
+  curriculum_status: string | null;
+  created_at: string | null;
 };
 
 type DegreeProgram = {
@@ -58,12 +67,7 @@ type DegreeProgramCourse = {
   course_id: string;
 };
 
-const LEVEL_ORDER = ["foundation", "intermediate", "advanced", "capstone"];
-
-const levelRank = (level: string) => {
-  const index = LEVEL_ORDER.indexOf(level.toLowerCase());
-  return index === -1 ? LEVEL_ORDER.length : index;
-};
+const PAGE_SIZE = 1000;
 
 function computeAccessState(course: Course, enrolledIds: Set<string>, signedIn: boolean): AccessState {
   if (enrolledIds.has(course.id)) return "enrolled";
@@ -102,17 +106,61 @@ function AccessBadge({ state }: { state: AccessState }) {
   );
 }
 
-function CourseCard({
-  course,
-  state,
-  programName,
+async function loadAllCourses() {
+  const rows: Course[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("courses")
+      .select(
+        "id,title,description,faculty,faculty_id,institution_id,level,visibility,credit_hours,estimated_duration_hours,duration,career_track,thumbnail_url,curriculum_status,created_at"
+      )
+      .order("title")
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) return { data: [] as Course[], error };
+
+    const page = (data as Course[]) ?? [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return { data: rows, error: null };
+  }
+}
+
+async function loadAllProgramLinks() {
+  const rows: DegreeProgramCourse[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("degree_program_courses" as any)
+      .select("degree_program_id,course_id")
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) return { data: [] as DegreeProgramCourse[], error };
+
+    const page = (data as unknown as DegreeProgramCourse[]) ?? [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return { data: rows, error: null };
+  }
+}
+
+function CourseFamilyCard({
+  family,
+  enrolledIds,
+  signedIn,
+  programNameById,
 }: {
-  course: Course;
-  state: AccessState;
-  programName?: string;
+  family: CourseFamily<Course>;
+  enrolledIds: Set<string>;
+  signedIn: boolean;
+  programNameById?: Map<string, string>;
 }) {
-  const profile = getAcademicCourseProfile(course);
-  const destination = state === "enrolled" ? `/courses/${course.id}/learn` : `/courses/${course.id}`;
+  const enrolledVariant = family.variants.find((course) => enrolledIds.has(course.id));
+  const representative = enrolledVariant ?? family.representative;
+  const state = computeAccessState(representative, enrolledIds, signedIn);
+  const profile = getAcademicCourseProfile(representative);
+  const programName = family.variants
+    .map((variant) => programNameById?.get(variant.id))
+    .find(Boolean);
 
   return (
     <article className="flex h-full flex-col rounded-[1.4rem] border border-border/60 bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md sm:p-6">
@@ -125,13 +173,47 @@ function CourseCard({
 
       <div className="flex-1">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          {course.faculty ? <span>{course.faculty.replace("Scroll ", "")}</span> : null}
-          {course.level ? <Badge variant="secondary" className="rounded-full text-[10px]">{course.level}</Badge> : null}
+          {family.faculty ? <span>{family.faculty.replace("Scroll ", "")}</span> : null}
+          {family.variants.length === 1 && representative.level ? (
+            <Badge variant="secondary" className="rounded-full text-[10px]">
+              {formatCourseLevel(representative.level)}
+            </Badge>
+          ) : null}
         </div>
 
-        <h3 className="font-serif text-xl font-semibold leading-snug text-foreground">{course.title}</h3>
-        {course.description ? (
-          <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">{course.description}</p>
+        <h3 className="font-serif text-xl font-semibold leading-snug text-foreground">{family.title}</h3>
+        {representative.description ? (
+          <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">{representative.description}</p>
+        ) : null}
+
+        {family.variants.length > 1 ? (
+          <div className="mt-4">
+            <p className="text-xs font-medium text-foreground">
+              {family.variants.length} academic level variants
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {family.variants.map((variant) => {
+                const variantState = computeAccessState(variant, enrolledIds, signedIn);
+                const destination = variantState === "enrolled"
+                  ? `/courses/${variant.id}/learn`
+                  : `/course/${variant.id}/preview`;
+
+                return (
+                  <Button
+                    asChild
+                    key={variant.id}
+                    variant={variantState === "enrolled" ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 rounded-full px-2.5 text-[11px]"
+                  >
+                    <Link to={destination}>
+                      {formatCourseLevel(variant.level)}{variantState === "enrolled" ? " · Continue" : ""}
+                    </Link>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
         ) : null}
 
         {programName ? (
@@ -151,16 +233,18 @@ function CourseCard({
         </div>
       </div>
 
-      <div className="mt-5 flex gap-2 border-t border-border/60 pt-4">
-        <Button asChild size="sm" variant="outline" className="flex-1 rounded-full">
-          <Link to={`/course/${course.id}/preview`}>Preview</Link>
-        </Button>
-        <Button asChild size="sm" className="flex-1 rounded-full">
-          <Link to={destination}>
-            {state === "enrolled" ? "Continue" : "Course details"}
-          </Link>
-        </Button>
-      </div>
+      {family.variants.length === 1 ? (
+        <div className="mt-5 flex gap-2 border-t border-border/60 pt-4">
+          <Button asChild size="sm" variant="outline" className="flex-1 rounded-full">
+            <Link to={`/course/${representative.id}/preview`}>Preview</Link>
+          </Button>
+          <Button asChild size="sm" className="flex-1 rounded-full">
+            <Link to={state === "enrolled" ? `/courses/${representative.id}/learn` : `/course/${representative.id}/preview`}>
+              {state === "enrolled" ? "Continue" : "Course details"}
+            </Link>
+          </Button>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -178,23 +262,26 @@ function CourseGroup({
   signedIn: boolean;
   programNameById?: Map<string, string>;
 }) {
-  if (courses.length === 0) return null;
+  const families = groupCourseFamilies(courses);
+  if (families.length === 0) return null;
 
   return (
     <section className="space-y-4">
       <div className="flex items-end justify-between gap-4 border-b border-border/60 pb-3">
         <h2 className="font-serif text-2xl font-semibold text-foreground">{title}</h2>
         <span className="text-xs text-muted-foreground">
-          {courses.length} {courses.length === 1 ? "course" : "courses"}
+          {families.length} {families.length === 1 ? "course" : "courses"}
+          {courses.length !== families.length ? ` · ${courses.length} level variants` : ""}
         </span>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {courses.map((course) => (
-          <CourseCard
-            key={course.id}
-            course={course}
-            state={computeAccessState(course, enrolledIds, signedIn)}
-            programName={programNameById?.get(course.id)}
+        {families.map((family) => (
+          <CourseFamilyCard
+            key={family.key}
+            family={family}
+            enrolledIds={enrolledIds}
+            signedIn={signedIn}
+            programNameById={programNameById}
           />
         ))}
       </div>
@@ -230,28 +317,23 @@ export default function AcademicCatalog() {
       setLoading(true);
       setLoadError(false);
 
-      const [{ data: courseRows, error: courseError }, { data: programRows }, { data: linkRows }] = await Promise.all([
-        supabase
-          .from("courses")
-          .select(
-            "id,title,description,faculty,faculty_id,level,visibility,credit_hours,estimated_duration_hours,duration,career_track,thumbnail_url"
-          )
-          .order("title"),
+      const [courseResult, { data: programRows }, linkResult] = await Promise.all([
+        loadAllCourses(),
         supabase.from("degree_programs").select("id,title,faculty"),
-        supabase.from("degree_program_courses" as any).select("degree_program_id,course_id"),
+        loadAllProgramLinks(),
       ]);
 
       if (cancelled) return;
 
-      if (courseError) {
+      if (courseResult.error) {
         setLoadError(true);
         setCourses([]);
       } else {
-        setCourses((courseRows as Course[]) ?? []);
+        setCourses(courseResult.data);
       }
 
       setPrograms((programRows as DegreeProgram[]) ?? []);
-      setProgramLinks((linkRows as unknown as DegreeProgramCourse[]) ?? []);
+      setProgramLinks(linkResult.error ? [] : linkResult.data);
 
       if (user) {
         const { data: enrollments } = await supabase
@@ -276,12 +358,13 @@ export default function AcademicCatalog() {
   }, [user?.id]);
 
   const facultyOptions = useMemo(
-    () => Array.from(new Set(courses.map((course) => course.faculty).filter(Boolean))) as string[],
+    () => (Array.from(new Set(courses.map((course) => course.faculty).filter(Boolean))) as string[]).sort(),
     [courses]
   );
 
   const levelOptions = useMemo(
-    () => Array.from(new Set(courses.map((course) => course.level).filter(Boolean))) as string[],
+    () => (Array.from(new Set(courses.map((course) => course.level).filter(Boolean))) as string[])
+      .sort((a, b) => courseLevelRank(a) - courseLevelRank(b) || a.localeCompare(b)),
     [courses]
   );
 
@@ -321,6 +404,8 @@ export default function AcademicCatalog() {
     });
   }, [accessFilter, courses, enrolledIds, facultyFilter, levelFilter, query, signedIn]);
 
+  const filteredFamilies = useMemo(() => groupCourseFamilies(filteredCourses), [filteredCourses]);
+
   const byFaculty = useMemo(() => {
     const groups = new Map<string, Course[]>();
     filteredCourses.forEach((course) => {
@@ -336,7 +421,7 @@ export default function AcademicCatalog() {
       const key = course.level || "Unspecified level";
       groups.set(key, [...(groups.get(key) ?? []), course]);
     });
-    return Array.from(groups.entries()).sort(([a], [b]) => levelRank(a) - levelRank(b));
+    return Array.from(groups.entries()).sort(([a], [b]) => courseLevelRank(a) - courseLevelRank(b) || a.localeCompare(b));
   }, [filteredCourses]);
 
   const byTrack = useMemo(() => {
@@ -399,7 +484,7 @@ export default function AcademicCatalog() {
               Find a course by subject, programme, level or direction.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              This catalogue is drawn from current course records. Course availability, programme status and accreditation claims are disclosed separately so learners can distinguish what exists from what is formally recognized.
+              This catalogue groups level variants of the same academic subject into one course family. Course availability, programme status and accreditation claims are disclosed separately so learners can distinguish what exists from what is formally recognized.
             </p>
           </div>
 
@@ -454,7 +539,7 @@ export default function AcademicCatalog() {
                 <SelectContent>
                   <SelectItem value="all">All levels</SelectItem>
                   {levelOptions.map((level) => (
-                    <SelectItem key={level} value={level}>{level}</SelectItem>
+                    <SelectItem key={level} value={level}>{formatCourseLevel(level)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -473,7 +558,11 @@ export default function AcademicCatalog() {
             </div>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4 text-sm text-muted-foreground">
-              <span>{loading ? "Loading catalogue…" : `${filteredCourses.length} matching ${filteredCourses.length === 1 ? "course" : "courses"}`}</span>
+              <span>
+                {loading
+                  ? "Loading catalogue…"
+                  : `${filteredFamilies.length} matching ${filteredFamilies.length === 1 ? "course family" : "course families"}${filteredCourses.length !== filteredFamilies.length ? ` · ${filteredCourses.length} academic variants` : ""}`}
+              </span>
               {(query || facultyFilter !== "all" || levelFilter !== "all" || accessFilter !== "all") ? (
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="rounded-full">Clear filters</Button>
               ) : null}
@@ -493,7 +582,7 @@ export default function AcademicCatalog() {
                 <Skeleton key={index} className="h-[330px] rounded-[1.4rem]" />
               ))}
             </div>
-          ) : filteredCourses.length === 0 ? (
+          ) : filteredFamilies.length === 0 ? (
             <Card className="mt-8">
               <CardContent className="py-12 text-center">
                 <Layers3 className="mx-auto h-10 w-10 text-muted-foreground/40" />
@@ -541,7 +630,7 @@ export default function AcademicCatalog() {
                 {byLevel.map(([level, groupedCourses]) => (
                   <CourseGroup
                     key={level}
-                    title={level}
+                    title={formatCourseLevel(level)}
                     courses={groupedCourses}
                     enrolledIds={enrolledIds}
                     signedIn={signedIn}
