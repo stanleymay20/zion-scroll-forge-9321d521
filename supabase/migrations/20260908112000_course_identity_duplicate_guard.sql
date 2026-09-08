@@ -1,6 +1,14 @@
 -- Prevent new duplicate course identities without deleting or rewriting any
 -- existing academic records. Existing legacy duplicates remain intact for a
 -- separately audited consolidation pass.
+--
+-- The historical migration chain can leave a vanilla CI bootstrap without
+-- institution_id even though the live Lovable Cloud schema has it. Reconcile
+-- only the nullable identity columns this guard requires; do not backfill,
+-- delete, merge, or otherwise reinterpret academic records here.
+ALTER TABLE public.courses
+  ADD COLUMN IF NOT EXISTS institution_id uuid,
+  ADD COLUMN IF NOT EXISTS faculty_id uuid;
 
 CREATE OR REPLACE FUNCTION public.normalize_course_identity_text(p_value text)
 RETURNS text
