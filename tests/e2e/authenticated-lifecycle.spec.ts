@@ -128,7 +128,10 @@ async function mockSupabase(page: Page, state: LifecycleState) {
 
     if (isHead) {
       const count = exactCount ?? rows.length;
-      return route.fulfill({ status: 200, headers: countHeaders(count), body: '' });
+      // A HEAD response must not include a response body. Supplying one causes
+      // Chromium to abort the intercepted request, which hides PostgREST's
+      // Content-Range count from supabase-js and creates a false zero count.
+      return route.fulfill({ status: 200, headers: countHeaders(count) });
     }
 
     const body = wantsObject ? JSON.stringify(rows[0] ?? null) : JSON.stringify(rows);
