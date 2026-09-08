@@ -26,6 +26,8 @@ const Index = () => {
         <meta property="og:type" content="website" />
         <meta name="theme-color" content="#5C1F2A" />
         <link rel="canonical" href="https://scrolluniversity.org/" />
+        <link rel="preconnect" href="https://images.pexels.com" />
+        <link rel="dns-prefetch" href="https://images.pexels.com" />
       </Helmet>
 
       <Header />

@@ -2,6 +2,9 @@ import { Button } from "@/components/ui/button";
 import { AuthAwareLink } from "@/components/auth/AuthAwareLink";
 import { ArrowRight, BookOpen, Heart, MessageCircleHeart, NotebookPen, Users } from "lucide-react";
 
+const formationImage =
+  "https://images.pexels.com/photos/32922453/pexels-photo-32922453.jpeg?auto=compress&cs=tinysrgb&w=1200";
+
 const formationPaths = [
   {
     icon: NotebookPen,
@@ -60,6 +63,24 @@ export const PrayerSection = () => {
                 </AuthAwareLink>
               </Button>
             </div>
+
+            <figure className="mt-8 overflow-hidden rounded-[1.5rem] border border-border/60 bg-card shadow-sm">
+              <div className="relative aspect-[16/9] overflow-hidden">
+                <img
+                  src={formationImage}
+                  alt="An open Bible beside a laptop"
+                  width={1200}
+                  height={1800}
+                  className="absolute inset-0 h-full w-full object-cover object-[50%_70%]"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-primary/20 via-transparent to-transparent" />
+              </div>
+              <figcaption className="border-t border-border/60 px-5 py-4 text-sm leading-6 text-muted-foreground">
+                Scripture, reflection, and digital study are presented as parts of one learning rhythm.
+              </figcaption>
+            </figure>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
