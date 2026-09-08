@@ -9,6 +9,9 @@ import {
   Users,
 } from "lucide-react";
 
+const guidedLearningImage =
+  "https://images.pexels.com/photos/4308095/pexels-photo-4308095.jpeg?auto=compress&cs=tinysrgb&w=1400";
+
 const capabilities = [
   {
     icon: Bot,
@@ -75,6 +78,37 @@ export const CapabilitiesSection = () => {
           <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base lg:justify-self-end">
             ScrollUniversity combines digital learning tools with academic governance, visible trust controls, and Christ-centered formation. The interface is designed to help students know what to do next and understand what evidence supports their progress.
           </p>
+        </div>
+
+        <div className="mb-6 overflow-hidden rounded-[1.6rem] border border-border/60 bg-card shadow-sm lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="relative min-h-[260px] overflow-hidden sm:min-h-[320px] lg:min-h-[360px]">
+            <img
+              src={guidedLearningImage}
+              alt="Two people working together with a laptop and notebook"
+              width={1400}
+              height={933}
+              className="absolute inset-0 h-full w-full object-cover object-center"
+              loading="lazy"
+              decoding="async"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-primary/35 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-primary/10" />
+          </div>
+          <div className="flex flex-col justify-center p-6 sm:p-8 lg:p-10">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Guided academic support</p>
+            <h3 className="mb-4 max-w-lg font-serif text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+              Digital learning should still feel human.
+            </h3>
+            <p className="mb-6 max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
+              The platform supports faculty interaction, office hours, advising, peer study, and collaborative learning alongside AI-supported study tools. AI assists the learning process; it does not replace governed academic judgment or human guidance.
+            </p>
+            <AuthAwareLink
+              to="/office-hours"
+              className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/75"
+            >
+              Explore academic support
+              <ArrowUpRight className="h-4 w-4" />
+            </AuthAwareLink>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
