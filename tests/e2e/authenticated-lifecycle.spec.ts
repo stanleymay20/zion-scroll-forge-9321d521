@@ -37,13 +37,6 @@ const session = {
   user,
 };
 
-function countHeaders(count: number) {
-  return {
-    'content-range': count === 0 ? '*/0' : `0-${Math.max(0, count - 1)}/${count}`,
-    'content-type': 'application/json',
-  };
-}
-
 async function installSession(page: Page) {
   await page.addInitScript(
     ({ key, value }) => localStorage.setItem(key, value),
@@ -52,91 +45,93 @@ async function installSession(page: Page) {
 }
 
 async function mockSupabase(page: Page, state: LifecycleState) {
-  await page.route('https://example.supabase.co/**', async (route) => {
-    const request = route.request();
-    const url = new URL(request.url());
+  await page.addInitScript(
+    ({ state, user, session, userId, institutionId }) => {
+      const originalFetch = window.fetch.bind(window);
+      const json = (value: unknown, init: ResponseInit = {}) => new Response(JSON.stringify(value), {
+        status: 200,
+        ...init,
+        headers: { 'content-type': 'application/json', ...(init.headers || {}) },
+      });
+      const countHeaders = (count: number) => ({
+        'content-range': count === 0 ? '*/0' : `0-${Math.max(0, count - 1)}/${count}`,
+        'content-type': 'application/json',
+      });
 
-    if (url.pathname === '/auth/v1/token') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(session) });
-    }
+      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const request = input instanceof Request ? input : new Request(input, init);
+        const url = new URL(request.url);
+        if (url.origin !== 'https://example.supabase.co') return originalFetch(input, init);
 
-    if (url.pathname === '/auth/v1/user') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(user) });
-    }
+        if (url.pathname === '/auth/v1/token') return json(session);
+        if (url.pathname === '/auth/v1/user') return json(user);
+        if (!url.pathname.startsWith('/rest/v1/')) return json({});
 
-    if (!url.pathname.startsWith('/rest/v1/')) {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
-    }
+        const resource = decodeURIComponent(url.pathname.slice('/rest/v1/'.length));
+        if (resource.startsWith('rpc/')) return json([]);
 
-    const resource = decodeURIComponent(url.pathname.slice('/rest/v1/'.length));
-    if (resource.startsWith('rpc/')) {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
-    }
+        const wantsObject = (request.headers.get('accept') || '').includes('application/vnd.pgrst.object+json');
+        let rows: any[] = [];
+        let exactCount: number | null = null;
 
-    const isHead = request.method() === 'HEAD';
-    const accept = request.headers()['accept'] || '';
-    const wantsObject = accept.includes('application/vnd.pgrst.object+json');
+        switch (resource) {
+          case 'profiles':
+            rows = [{
+              id: userId,
+              lifecycle_status: state.status,
+              current_institution_id: institutionId,
+              full_name: 'Lifecycle E2E Student',
+              email: user.email,
+            }];
+            break;
+          case 'orientation_progress':
+            exactCount = state.orientationSteps;
+            rows = Array.from({ length: state.orientationSteps }, (_, index) => ({ step: index + 1 }));
+            break;
+          case 'matriculation_records':
+            rows = state.matriculated ? [{ user_id: userId }] : [];
+            break;
+          case 'student_learning_profiles':
+            rows = state.learningProfileComplete
+              ? [{ id: '33333333-3333-4333-8333-333333333333', user_id: userId }]
+              : [];
+            break;
+          case 'section_enrollments':
+            exactCount = state.enrollmentCount;
+            rows = [];
+            break;
+          case 'institution_members':
+            rows = [{
+              id: '44444444-4444-4444-8444-444444444444',
+              institution_id: institutionId,
+              user_id: userId,
+              role: 'student',
+              status: 'active',
+            }];
+            break;
+          case 'institutions':
+            rows = [{
+              id: institutionId,
+              name: 'ScrollUniversity',
+              slug: 'scrolluniversity',
+              short_name: 'SU',
+              is_active: true,
+            }];
+            break;
+          default:
+            rows = [];
+        }
 
-    let rows: any[] = [];
-    let exactCount: number | null = null;
+        if (request.method === 'HEAD') {
+          const count = exactCount ?? rows.length;
+          return new Response(null, { status: 200, headers: countHeaders(count) });
+        }
 
-    switch (resource) {
-      case 'profiles':
-        rows = [{
-          id: USER_ID,
-          lifecycle_status: state.status,
-          current_institution_id: INSTITUTION_ID,
-          full_name: 'Lifecycle E2E Student',
-          email: user.email,
-        }];
-        break;
-      case 'orientation_progress':
-        exactCount = state.orientationSteps;
-        rows = Array.from({ length: state.orientationSteps }, (_, index) => ({ step: index + 1 }));
-        break;
-      case 'matriculation_records':
-        rows = state.matriculated ? [{ user_id: USER_ID }] : [];
-        break;
-      case 'student_learning_profiles':
-        rows = state.learningProfileComplete ? [{ id: '33333333-3333-4333-8333-333333333333', user_id: USER_ID }] : [];
-        break;
-      case 'section_enrollments':
-        exactCount = state.enrollmentCount;
-        rows = [];
-        break;
-      case 'institution_members':
-        rows = [{
-          id: '44444444-4444-4444-8444-444444444444',
-          institution_id: INSTITUTION_ID,
-          user_id: USER_ID,
-          role: 'student',
-          status: 'active',
-        }];
-        break;
-      case 'institutions':
-        rows = [{
-          id: INSTITUTION_ID,
-          name: 'ScrollUniversity',
-          slug: 'scrolluniversity',
-          short_name: 'SU',
-          is_active: true,
-        }];
-        break;
-      default:
-        rows = [];
-    }
-
-    if (isHead) {
-      const count = exactCount ?? rows.length;
-      // A HEAD response must not include a response body. Supplying one causes
-      // Chromium to abort the intercepted request, which hides PostgREST's
-      // Content-Range count from supabase-js and creates a false zero count.
-      return route.fulfill({ status: 200, headers: countHeaders(count) });
-    }
-
-    const body = wantsObject ? JSON.stringify(rows[0] ?? null) : JSON.stringify(rows);
-    return route.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body });
-  });
+        return json(wantsObject ? (rows[0] ?? null) : rows);
+      };
+    },
+    { state, user, session, userId: USER_ID, institutionId: INSTITUTION_ID },
+  );
 }
 
 const cases: Array<{ name: string; state: LifecycleState; expectedPath: string }> = [
