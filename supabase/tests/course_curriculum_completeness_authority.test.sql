@@ -1,4 +1,5 @@
 \set ON_ERROR_STOP on
+\ir ../migrations/20260908112000_course_identity_duplicate_guard.sql
 
 DO $$
 DECLARE
@@ -181,3 +182,48 @@ BEGIN
   PERFORM public.can_current_user_author_course_curriculum(gen_random_uuid());
 END $$;
 ROLLBACK;
+
+-- Course identity duplicate protection is part of the same blocking academic
+-- authority boundary. It must preserve legacy rows while preventing new
+-- same-institution/same-faculty/same-title/same-level identities.
+DO $$
+DECLARE
+  v_def text;
+  v_trigger_count integer;
+  v_marker text;
+BEGIN
+  SELECT count(*)
+  INTO v_trigger_count
+  FROM pg_trigger t
+  JOIN pg_class c ON c.oid = t.tgrelid
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'courses'
+    AND t.tgname = 'course_identity_duplicate_guard'
+    AND NOT t.tgisinternal;
+
+  IF v_trigger_count <> 1 THEN
+    RAISE EXCEPTION 'Expected one course identity duplicate guard trigger; found %', v_trigger_count;
+  END IF;
+
+  SELECT pg_get_functiondef('public.find_course_identity_conflict(uuid,uuid,uuid,text,text,text)'::regprocedure)
+  INTO v_def;
+  IF position('institution_id IS NOT DISTINCT FROM p_institution_id' in v_def) = 0
+     OR position('normalize_course_identity_text(c.title)' in v_def) = 0
+     OR position('normalize_course_identity_text(c.level)' in v_def) = 0
+     OR position('c.faculty_id = p_faculty_id' in v_def) = 0
+     OR position('normalize_course_identity_text(c.faculty)' in v_def) = 0 THEN
+    RAISE EXCEPTION 'Course identity conflict function is missing institution/faculty/title/level authority';
+  END IF;
+
+  IF has_function_privilege('authenticated', 'public.find_course_identity_conflict(uuid,uuid,uuid,text,text,text)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.prevent_duplicate_course_identity()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Authenticated browser sessions must not execute internal course identity guard functions directly';
+  END IF;
+
+  SELECT obj_description('public.prevent_duplicate_course_identity()'::regprocedure::oid, 'pg_proc')
+  INTO v_marker;
+  IF COALESCE(v_marker, '') NOT LIKE 'COURSE_IDENTITY_DUPLICATE_GUARD_20260908:%' THEN
+    RAISE EXCEPTION 'Course identity duplicate guard authority marker is missing';
+  END IF;
+END $$;
