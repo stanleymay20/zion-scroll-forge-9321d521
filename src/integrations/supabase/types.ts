@@ -18069,6 +18069,7 @@ export type Database = {
         Args: { _course_id: string; _user_id: string }
         Returns: Json
       }
+      can_attest_skill_for: { Args: { _student: string }; Returns: boolean }
       cancel_loan: {
         Args: { _loan_id: string; _reason: string }
         Returns: {
