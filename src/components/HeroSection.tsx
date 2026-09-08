@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import scrollLogo from "@/assets/scroll-university-logo-optimized.png";
-import heroBackground from "@/assets/hero-background.jpg";
 import { onboardingRoutes } from "@/lib/onboardingRoutes";
+
+const heroBackground =
+  "https://images.pexels.com/photos/6457572/pexels-photo-6457572.jpeg?auto=compress&cs=tinysrgb&w=1600";
 
 const proofPoints = [
   "Governed content-review controls",
@@ -105,18 +107,17 @@ export const HeroSection = () => {
 
         <div className="animate-fade-up animate-fade-up-delay-2 relative mx-auto w-full max-w-2xl lg:max-w-none">
           <div className="rounded-[2rem] border border-border/60 bg-card/70 p-2 shadow-[0_24px_80px_-32px_hsl(var(--primary)/0.28)] backdrop-blur-sm">
-            <div className="relative aspect-[5/4] overflow-hidden rounded-[1.6rem] bg-primary">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-[1.6rem] bg-primary">
               <img
                 src={heroBackground}
-                alt=""
-                aria-hidden="true"
-                width={1920}
-                height={1080}
-                className="absolute inset-0 h-full w-full object-cover"
+                alt="A diverse group collaborating around a laptop"
+                width={1600}
+                height={1066}
+                className="absolute inset-0 h-full w-full object-cover object-center"
                 loading="eager"
                 decoding="async"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/35 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-6 text-primary-foreground sm:p-8">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary-foreground/65">
                   ScrollUniversity digital campus
