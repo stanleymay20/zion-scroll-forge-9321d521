@@ -259,6 +259,9 @@ jobs:
       - name: Run Degree RPC execution suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/degree_rpc_execution_authority.test.sql
 
+      - name: Run positive academic authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_positive_authority.test.sql
+
       - name: Run Academic private RPC suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_private_rpc_authority.test.sql
 
