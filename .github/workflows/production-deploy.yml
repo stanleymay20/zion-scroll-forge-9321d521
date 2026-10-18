@@ -223,6 +223,9 @@ jobs:
       - name: Enforce Academic private RPC migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261018030500_academic_gpa_standing_transcript_authority.sql
 
+      - name: Enforce verified graduation evidence freeze (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261018061000_graduation_evidence_fail_closed.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
       - name: Run storage authority suite (BLOCKING)
@@ -279,6 +282,9 @@ jobs:
 
       - name: Run Academic private RPC suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_private_rpc_authority.test.sql
+
+      - name: Run graduation evidence fail-closed suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/graduation_evidence_fail_closed.test.sql
 
       - name: Run launch role authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_role_authority.test.sql
