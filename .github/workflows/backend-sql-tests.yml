@@ -171,6 +171,15 @@ jobs:
       - name: Enforce course curriculum invoker privilege fix (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113200_course_curriculum_invoker_privilege_fix.sql
 
+      - name: Enforce Degree audit ledger migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261018020500_degree_audit_ledger_insert_authority.sql
+
+      - name: Enforce Degree RPC execution migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261018024000_degree_rpc_execution_authority.sql
+
+      - name: Enforce Academic private RPC migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261018030500_academic_gpa_standing_transcript_authority.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
@@ -243,6 +252,15 @@ jobs:
 
       - name: Run launch financial authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_financial_authority.test.sql
+
+      - name: Run Degree audit ledger suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/degree_audit_ledger_authority.test.sql
+
+      - name: Run Degree RPC execution suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/degree_rpc_execution_authority.test.sql
+
+      - name: Run Academic private RPC suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_private_rpc_authority.test.sql
 
       - name: Run launch role authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_role_authority.test.sql

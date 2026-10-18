@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Header } from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,101 +31,88 @@ import {
 
 console.info("✝️ Trust Center — Building credibility through transparency");
 
-// Legal entity information
+// Prelaunch trust disclosures: identity, accreditation and regulatory claims
+// must never be inferred from brand language or placeholder metadata.
+// Replace only after documentary legal review, not from an AI-generated claim.
 const legalEntity = {
-  name: "Scroll University Foundation",
-  type: "Educational Non-Profit Organization",
-  registration: "Registered in the State of Delaware, USA",
-  registrationNumber: "EIN: Pending",
-  address: "1234 Kingdom Way, Suite 100, Atlanta, GA 30301",
-  established: "2024",
-  mission: "To provide Christ-centered, kingdom-focused education accessible to believers worldwide through innovative technology and spiritual formation."
+  name: "ScrollUniversity",
+  type: "Digital learning platform — institutional details under verification",
+  registration: "No independently verified registration record published",
+  registrationNumber: "Not verified for publication",
+  address: "No verified registered address published",
+  established: "Not independently verified",
+  mission: "To make Christ-centered learning accessible through rigorous teaching, accountable AI assistance, and spiritual formation."
 };
 
-// Faculty/Leadership
+// Do not invent faculty names, degrees, appointments or advisory boards.
 const leadership = [
   {
-    name: "Dr. Stanley Mayega",
-    title: "Founder & Chancellor",
-    credentials: "Ph.D. Theology, M.Div.",
-    linkedIn: "https://linkedin.com/in/stanleymayega",
-    bio: "Visionary leader with 20+ years in Christian education and ministry."
-  },
-  {
-    name: "Academic Advisory Council",
-    title: "Governance Body",
-    credentials: "Multi-disciplinary Board",
-    linkedIn: null,
-    bio: "Oversees curriculum quality, academic standards, and institutional integrity."
+    name: "Leadership verification pending",
+    title: "Public governance directory",
+    credentials: "No independently verified credentials published",
+    linkedIn: null as string | null,
+    bio: "Identities, appointments and academic qualifications will appear only after documentary verification."
   }
 ];
 
-// Accreditation status
+// Only the evidence-backed accreditation-status page can establish recognition.
 const accreditationStatus = {
-  current: "Pre-Accreditation Phase",
+  current: "External accreditation not verified",
   targetBodies: [
-    "Association for Biblical Higher Education (ABHE)",
-    "Transnational Association of Christian Colleges and Schools (TRACS)"
+    "No accreditor application or formal relationship has been verified for publication."
   ],
   timeline: [
-    { phase: "Foundation & Curriculum Development", status: "completed", date: "2024" },
-    { phase: "Self-Study Preparation", status: "in-progress", date: "2025" },
-    { phase: "Candidacy Application", status: "planned", date: "2026" },
-    { phase: "Full Accreditation Review", status: "planned", date: "2027-2028" }
+    { phase: "Publish independently verifiable recognition evidence", status: "planned", date: "Not scheduled" }
   ]
 };
 
-// What we offer vs. what we don't
 const offerings = {
   whatWeOffer: [
-    "Certificates of Completion for all courses",
-    "Digital credentials via blockchain (ScrollBadge NFTs)",
-    "Comprehensive spiritual formation curriculum",
-    "AI-powered personalized learning",
-    "Global community of Christian learners",
-    "Project-based portfolio building",
-    "Mentorship from experienced believers"
+    "Course catalogue previews and structured learning interfaces",
+    "AI-supported study tools subject to academic and technical verification",
+    "Christ-centered educational vision and spiritual-formation resources",
+    "Public disclosures separating internal readiness from external accreditation"
   ],
   whatWeDontOffer: [
-    "State-recognized degrees (in progress)",
-    "Visa sponsorship for international students",
-    "Credit transfer to accredited institutions (yet)",
-    "Government financial aid eligibility (yet)",
-    "Professional licensure preparation (varies by field)"
+    "Externally accredited or state-recognized degrees have not been verified for offer",
+    "Visa sponsorship or guaranteed credit transfer",
+    "Government financial aid eligibility",
+    "Online tuition checkout while financial release gates remain closed",
+    "Guaranteed professional licensure or course enrollment"
   ]
 };
 
-// Student protection policies
+// Do not represent an unpublished policy as a legally operative refund promise.
 const policies = [
   {
-    title: "Refund Policy",
+    title: "Refund and payment terms",
     icon: Scale,
-    summary: "Full refund within 14 days of enrollment. Pro-rated refunds available up to 30 days.",
-    link: "/policies/refunds"
+    summary: "Paid enrollment is not yet enabled. Specific refund terms must be published before accepting payment.",
+    link: null as string | null
   },
   {
-    title: "Complaints & Appeals",
+    title: "Complaints and appeals",
     icon: FileCheck,
-    summary: "Clear process for academic appeals and grievance resolution within 30 business days.",
-    link: "/policies/appeals"
+    summary: "A complete grievance and academic appeals procedure requires formal review before commercial admission.",
+    link: null as string | null
   },
   {
-    title: "Data Privacy",
+    title: "Data privacy",
     icon: Lock,
-    summary: "GDPR-compliant data handling. Your information is never sold to third parties.",
-    link: "/policies/privacy"
+    summary: "Read the currently published privacy statement. Independent compliance validation remains necessary.",
+    link: "/privacy" as string | null
   },
   {
-    title: "Academic Integrity",
+    title: "Academic integrity",
     icon: BookOpen,
-    summary: "Strict plagiarism policies with AI-powered detection. Fair process for violations.",
-    link: "/policies/academic-integrity"
+    summary: "Review existing academic-integrity information. Procedural safeguards remain part of GA acceptance.",
+    link: "/academic-integrity" as string | null
   },
   {
-    title: "Transcript Requests",
+    title: "Transcript and record requests",
     icon: GraduationCap,
-    summary: "Official transcripts available within 5 business days. Digital and physical options.",
-    link: "/policies/transcripts"
+    summary: "Official service timelines and transcript-request terms have not been independently verified.",
+    link: null as string | null
   }
 ];
 
@@ -228,9 +216,9 @@ export default function TrustCenter() {
                     </Badge>
                   </div>
                   <p className="text-muted-foreground">
-                    Scroll University is currently in the pre-accreditation phase. This means our certificates 
-                    are valuable for personal and professional development, but are not yet recognized by 
-                    traditional accrediting bodies or government agencies.
+                    External accreditation or degree-awarding recognition has not been established by
+                    verified evidence presented on this page. Do not interpret programme names,
+                    internal academic status, or certificates as proof of government recognition.
                   </p>
                 </CardContent>
               </Card>
@@ -239,7 +227,7 @@ export default function TrustCenter() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Target className="h-5 w-5" />
-                    Accreditation Roadmap
+                    Evidence publication plan
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -276,7 +264,7 @@ export default function TrustCenter() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Target Accrediting Bodies</CardTitle>
+                  <CardTitle>Accreditation and accreditor disclosure</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
@@ -334,9 +322,13 @@ export default function TrustCenter() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-sm text-muted-foreground">{policy.summary}</p>
-                    <Button variant="outline" size="sm" className="w-full">
-                      Read Full Policy
-                    </Button>
+                    {policy.link ? (
+                      <Button variant="outline" size="sm" className="w-full" asChild>
+                        <Link to={policy.link}>View published information</Link>
+                      </Button>
+                    ) : (
+                      <Badge variant="secondary">Detailed policy pending publication</Badge>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -353,7 +345,7 @@ export default function TrustCenter() {
                     What We Offer
                   </CardTitle>
                   <CardDescription>
-                    These are the verified benefits of Scroll University
+                    Current public-facing capabilities; availability is not proof of academic approval
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -410,11 +402,11 @@ export default function TrustCenter() {
             accreditation status, or policies, please reach out.
           </p>
           <div className="flex justify-center gap-4">
-            <Button>
-              Contact Us
+            <Button disabled>
+              Verified contact details pending
             </Button>
-            <Button variant="outline">
-              View Sample Courses
+            <Button variant="outline" asChild>
+              <Link to="/catalog">View Course Catalogue</Link>
             </Button>
           </div>
         </div>
