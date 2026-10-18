@@ -3,6 +3,23 @@
 \set ON_ERROR_STOP on
 BEGIN;
 
+-- Tolerant historical bootstrap may not have materialized the 2026 academic
+-- graduation tables. Build minimum tracking tables inside this ROLLBACK-only
+-- transaction when absent; they are not a substitute for populated staging.
+-- The no-write assertion executes against the actual table when present.
+DO $schema_fixture$
+BEGIN
+  IF to_regclass('public.graduation_candidates') IS NULL THEN
+    CREATE TABLE public.graduation_candidates(user_id uuid);
+    RAISE NOTICE 'CI-only schema fixture: graduation_candidates missing in bootstrap';
+  END IF;
+  IF to_regclass('public.graduation_eligibility_checks') IS NULL THEN
+    CREATE TABLE public.graduation_eligibility_checks(user_id uuid);
+    RAISE NOTICE 'CI-only schema fixture: graduation_eligibility_checks missing in bootstrap';
+  END IF;
+END
+$schema_fixture$;
+
 DO $guard$
 DECLARE
   v_fn regprocedure := to_regprocedure('public.evaluate_graduation_candidate(uuid)');
