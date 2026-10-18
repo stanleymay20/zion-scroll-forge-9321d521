@@ -171,6 +171,9 @@ jobs:
       - name: Enforce course curriculum invoker privilege fix (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113200_course_curriculum_invoker_privilege_fix.sql
 
+      - name: Enforce academic private RPC authority (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261018030500_academic_gpa_standing_transcript_authority.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
@@ -243,6 +246,9 @@ jobs:
 
       - name: Run launch financial authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_financial_authority.test.sql
+
+      - name: Run academic private RPC regression suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_private_rpc_authority.test.sql
 
       - name: Run launch role authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_role_authority.test.sql
