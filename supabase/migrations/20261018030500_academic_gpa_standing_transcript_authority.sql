@@ -89,7 +89,7 @@ BEGIN
     'withdrawals', v_withdrawals,
     'incomplete', v_incomplete
   );
-END $function$
+END $function$;
 
 -- Runtime-preserved function: evaluate_academic_standing(uuid,uuid)
 CREATE OR REPLACE FUNCTION public.evaluate_academic_standing(_student_id uuid, _term_id uuid)
@@ -159,7 +159,7 @@ BEGIN
   END IF;
 
   RETURN v_standing;
-END $function$
+END $function$;
 
 -- Runtime-preserved function: generate_transcript(uuid)
 CREATE OR REPLACE FUNCTION public.generate_transcript(_student_id uuid)
@@ -237,7 +237,7 @@ BEGIN
     'cumulative', v_cum,
     'terms', COALESCE(v_terms,'[]'::jsonb)
   );
-END $function$
+END $function$;
 
 -- Anonymous callers have no legitimate reason to execute these RPCs.
 REVOKE ALL ON FUNCTION public.compute_student_gpa(uuid,uuid) FROM PUBLIC,anon;
