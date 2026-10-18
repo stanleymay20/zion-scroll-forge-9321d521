@@ -3,6 +3,32 @@
 \set ON_ERROR_STOP on
 BEGIN;
 
+-- The tolerant historical Postgres bootstrap leaves the deprecated
+-- user_roles_role_check (which excludes registrar). Read-only production
+-- inspection confirmed the active Lovable Cloud user_roles table has NO
+-- such check. Reconcile only inside this transaction and roll back at EOF.
+-- We are NOT loosening an authorization test, production schema or RLS.
+DO $schema_fidelity$
+DECLARE
+  v_legacy text;
+BEGIN
+  SELECT pg_get_constraintdef(oid) INTO v_legacy
+    FROM pg_constraint
+   WHERE conrelid='public.user_roles'::regclass
+     AND conname='user_roles_role_check'
+     AND contype='c';
+  IF v_legacy IS NOT NULL THEN
+    IF v_legacy NOT LIKE '%student%'
+       OR v_legacy NOT LIKE '%faculty%'
+       OR v_legacy NOT LIKE '%admin%' THEN
+      RAISE EXCEPTION 'Unexpected role check: manual reconciliation required (%).',v_legacy;
+    END IF;
+    ALTER TABLE public.user_roles DROP CONSTRAINT user_roles_role_check;
+    RAISE NOTICE 'CI fixture only: quarantined obsolete role CHECK inside rolled-back transaction';
+  END IF;
+END
+$schema_fidelity$;
+
 DO $test$
 DECLARE
   v_student uuid := gen_random_uuid();
