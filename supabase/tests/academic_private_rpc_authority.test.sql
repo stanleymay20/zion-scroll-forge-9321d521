@@ -73,7 +73,8 @@ BEGIN
     RAISE EXCEPTION 'P0: cross-student transcript generation was not denied';
   END IF;
 
-  PERFORM set_config('request.jwt.claims','',true);
+  -- Valid anonymous JWT shape; never set an empty string, which is invalid JSON.
+  PERFORM set_config('request.jwt.claims',json_build_object('role','anon')::text,true);
   v_forbidden := false;
   BEGIN
     PERFORM public.generate_transcript(v_target);
