@@ -29,3 +29,6 @@ Date: 2026-10-18 | Status: source remediation candidate only (NOT deployed)
 5. Stage all approved source PRs with exact-head green CI; never replay migrations blindly.
 
 **Commercial release decision: NO-GO for degree programmes.**
+
+## CI bootstrap fidelity limitation
+The repository's tolerant historical-migration bootstrap may omit `graduation_candidates` and `graduation_eligibility_checks`. The blocking regression creates **minimal synthetic tables only inside its BEGIN/ROLLBACK transaction when absent**, allowing its actual no-write assertion to run rather than silently skipping. A passing result proves the function denies calls without writing to that test tracking schema; it does **not** prove the complete production graduation schema, and should not be treated as an end-to-end degree issuance test. A populated staging schema test with full real constraints remains mandatory.
