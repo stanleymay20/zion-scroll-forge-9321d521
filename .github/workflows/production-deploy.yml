@@ -214,6 +214,8 @@ jobs:
       - name: Enforce course curriculum invoker privilege fix (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113200_course_curriculum_invoker_privilege_fix.sql
 
+      - name: Enforce degree audit ledger authority migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261018020500_degree_audit_ledger_insert_authority.sql
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
       - name: Run storage authority suite (BLOCKING)
@@ -259,6 +261,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_academic_authority.test.sql
       - name: Run launch financial authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_financial_authority.test.sql
+      - name: Run degree audit ledger authority suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/degree_audit_ledger_authority.test.sql
       - name: Run launch role authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/launch_role_authority.test.sql
 
