@@ -49,19 +49,29 @@ DO $$ DECLARE v_ok boolean; BEGIN
 END$$;
 
 -- =====================================================================
--- TEST 2: Course is in pending_authorship (not approved)
+-- TEST 2: Course is pre-approval (pending_authorship or authored, never
+-- in a review/approved state — students must not see it until the full
+-- governance lifecycle runs).
+--
+-- The CT1a migration inserts curriculum_status='pending_authorship'
+-- but mark_course_curriculum_changed() (fired by the CLO / module /
+-- assessment / assignment inserts under the same migration) legitimately
+-- promotes it to 'authored' once the structural scaffold lands. Both
+-- values are acceptable here; approval or review states must never
+-- appear from a scaffold insert alone.
 -- =====================================================================
 DO $$ DECLARE v_ok boolean; v_status text; BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                   WHERE table_schema='public' AND table_name='courses'
                     AND column_name='curriculum_status') THEN
-    PERFORM pg_temp.record(2,'Golden Path curriculum_status pending (SKIPPED: column absent)', true, '');
+    PERFORM pg_temp.record(2,'Golden Path curriculum_status pre-approval (SKIPPED: column absent)', true, '');
     RETURN;
   END IF;
   SELECT curriculum_status INTO v_status
     FROM public.courses WHERE id='66666666-c771-0001-0000-000000000001'::uuid;
-  v_ok := v_status = 'pending_authorship';
-  PERFORM pg_temp.record(2,'Golden Path curriculum_status = pending_authorship', v_ok,
+  v_ok := v_status IN ('pending_authorship', 'authored')
+          AND v_status NOT IN ('faculty_review', 'accreditation_review', 'approved');
+  PERFORM pg_temp.record(2,'Golden Path curriculum_status is pre-approval', v_ok,
                          COALESCE(v_status, '(null)'));
 END$$;
 
