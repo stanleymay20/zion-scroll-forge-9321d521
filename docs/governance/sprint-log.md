@@ -1070,5 +1070,13 @@ Both workflows apply `20261107140000_sprint_ct1a_golden_path_scaffold.sql` as BL
 
 Only after all seven of those steps does the Golden Path become genuinely teaching-ready. The engineering is done; curriculum is the work.
 
+### Post-ship fixes (CT1a landed green on commit 5d484a7)
+Three CI-driven corrections before the full suite went green:
+1. **3d6ff08 — defensive `ALTER TABLE courses` for `syllabus` + `faculty_author_id`.** The `enforce_course_curriculum_state_authority` trigger reads `NEW.syllabus`; those columns are declared in `20251217/20251218` complete-schema-sync migrations as part of `CREATE TABLE IF NOT EXISTS courses`, which is a no-op in CI where an earlier migration already created the table without them.
+2. **f3aa403 — defensive `ALTER TABLE course_modules` for `review_state_updated_at`.** The `vw_course_authoring_readiness` view references this column, which is set in production by PR #2's state-transition triggers but absent from CI's fresh bootstrap.
+3. **5d484a7 — test 2 accepts `authored` as a pre-approval state.** The CT1a migration's own CLO/module/assessment/assignment inserts fire `mark_course_curriculum_changed()`, which legitimately promotes the course to `curriculum_status = 'authored'`. The semantic the test protects — students must not see the course until governance approval — is `NOT IN ('faculty_review','accreditation_review','approved')`.
+
+Backend SQL Test Suite run 242: success. Production Deployment run 340: success.
+
 ### Next
 Open **D4.1 Registrar Core** in parallel while faculty authoring on the Golden Path happens out-of-band. D4.1 is pure engineering (add/drop deadlines, holds, withdrawal/repeat policy, graduation clearance) and is the highest-leverage operational gap per the original school-readiness audit.
