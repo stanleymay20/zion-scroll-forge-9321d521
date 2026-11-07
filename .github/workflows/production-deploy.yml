@@ -219,6 +219,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113100_course_curriculum_completeness_hardening.sql
       - name: Enforce course curriculum invoker privilege fix (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113200_course_curriculum_invoker_privilege_fix.sql
+      - name: Enforce D4.1a registrar core reconciliation (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107150000_sprint_d4_1a_registrar_core_reconciliation.sql
 
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
@@ -240,6 +242,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/golden_path_scaffold.test.sql
       - name: Run course curriculum completeness authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/course_curriculum_completeness_authority.test.sql
+      - name: Run D4.1a registrar core readiness suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/registrar_core_readiness.test.sql
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
       - name: Seed representative cohort fixtures

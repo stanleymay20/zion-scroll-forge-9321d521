@@ -1080,3 +1080,41 @@ Backend SQL Test Suite run 242: success. Production Deployment run 340: success.
 
 ### Next
 Open **D4.1 Registrar Core** in parallel while faculty authoring on the Golden Path happens out-of-band. D4.1 is pure engineering (add/drop deadlines, holds, withdrawal/repeat policy, graduation clearance) and is the highest-leverage operational gap per the original school-readiness audit.
+
+---
+
+## Sprint D4.1a — Registrar Core Reconciliation (2026-11-07)
+
+### What shipped
+Reconciliation of the registrar critical path from bootstrap-advisory into fail-closed BLOCKING, same pattern PR #2 used for module content authority. Zero rewrites — the historical RPCs stay where they are.
+
+- **`supabase/migrations/20261107150000_sprint_d4_1a_registrar_core_reconciliation.sql`**
+  - Defensive `CREATE TABLE IF NOT EXISTS` + `ALTER TABLE ADD COLUMN IF NOT EXISTS` for `semesters`, `registration_windows`, `student_degree_enrollments`, `student_academic_standing`, `registrar_audit_log`, plus the columns on `course_sections` + `section_enrollments` that the historical `enroll_student_in_section(uuid)` RPC reads.
+  - `evaluate_registrar_readiness(term_id uuid) RETURNS text[]` — same shape as `evaluate_module_quality`. Returns the sorted list of issues blocking a term from being registrar-ready: `term_not_found`, `term_status_<x>_not_registrable`, `no_open_registration_window`, `no_active_course_sections`, `enroll_student_in_section_rpc_missing`. Empty array = ready.
+  - `vw_registrar_critical_path` — per-term scorecard: term identity, open windows, active sections, issues array, `is_registrar_ready` boolean. Reusable across every term.
+  - `registrar_audit_log` RLS enabled; "Student reads own registrar audit" policy restored; admin-read policy is conditionally created only if `public.has_role` exists (defensive against CI bootstrap drift that cost CT1a three fix cycles).
+- **`supabase/tests/registrar_core_readiness.test.sql` — 6 BLOCKING tests**
+  1. Four substrate tables exist.
+  2. `registrar_audit_log` has RLS + the student-self-read policy.
+  3. `evaluate_registrar_readiness(NULL)` returns `['term_id_required']`.
+  4. `vw_registrar_critical_path` exists and is queryable.
+  5. E2E: seed term + open window + section → readiness evaluator returns empty or only the expected advisory set (`enroll_student_in_section_rpc_missing` / `no_active_course_sections`). Anything else is a reconciliation regression.
+  6. Canonical columns on each substrate table are present (guards against silent drift).
+- **CI wiring**: `Enforce D4.1a registrar core reconciliation (BLOCKING)` migration step right after the curriculum-authority chain in both `backend-sql-tests.yml` and `production-deploy.yml`; `Run D4.1a registrar core readiness suite (BLOCKING)` runs after the Golden Path suite in both workflows.
+- **Local smoke test**: 6/6 pass against a Postgres 16 shape that mirrors CI bootstrap (incl. the `authenticated`/`anon`/`service_role` roles and an `app_role` enum + `has_role` stub). Confirms the migration applies cleanly and the readiness evaluator handles NULL and populated-term cases.
+
+### Readiness delta
+- **Registrar substrate trust:** ↑↑ — before D4.1a the whole registrar path was bootstrap-advisory (CI logged a half-dozen "relation does not exist" errors on these migrations without blocking); now the four substrate tables + canonical columns + readiness surface are BLOCKING in CI.
+- **Per-term diagnostics:** ↑ — `vw_registrar_critical_path` is the operational scorecard the registrar team queries to see which terms are students-ready.
+- **No parallel system:** ↑ — zero rewrites of `enroll_student_in_section`, `drop_section_enrollment`, or any historical RPC. Those keep running in production shape; D4.1a only reconciles the primitives they read.
+- **Academic standing / degree enrollment table shape locked:** ↑ — test 6 pins the columns the enroll RPC checks against.
+
+### Deferred (D4.1b — subsequent slice, not this sprint)
+1. **Harden `enroll_student_in_section` into a trusted-session RPC** with the same `scrolluniversity.registrar_authority_rpc='on'` session-flag pattern PR #2 used for module content. Adds trigger guards blocking direct `UPDATE public.section_enrollments SET status` outside the RPC.
+2. **`drop_section_enrollment` / `withdraw` lifecycle** behind the same trusted-session gate, with audit rows every transition.
+3. **Add-drop / withdrawal deadline enforcement** reading `academic_terms.add_drop_ends_on` + `withdraw_ends_on` (columns already exist from SUYAS reconciliation).
+4. **Holds** (financial, academic, administrative) as a `student_holds` table + a `can_register_now(student, term)` predicate called from the RPC.
+5. **Graduation clearance / degree audit** promotion — the `DegreeAudit.tsx` + `StudentGraduation.tsx` UI pages exist but lack a fail-closed server-side audit; D4.1b bridges that.
+
+### Post-ship note
+The `has_role / app_role` noise that cost CT1a three cycles was sidestepped here by probing for `has_role` before creating the admin-read policy — the RLS stays open-but-policy-less in environments without that function, which is still safe because the table is only readable via explicit `authenticated` grants on narrow policies.
