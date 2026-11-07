@@ -207,6 +207,9 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907104000_module_content_authority_hardening.sql
       - name: Enforce module content state fail-closed migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907104100_module_content_state_fail_closed.sql
+
+      - name: Enforce content authority deltas migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107120000_sprint_ct2_1_content_authority_deltas.sql
       - name: Enforce course curriculum completeness authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113000_course_curriculum_completeness_authority.sql
       - name: Enforce course curriculum completeness hardening migration (BLOCKING)
