@@ -1,36 +1,26 @@
 -- =====================================================================
--- Sprint CT2.1 — Content-authority deltas on top of PR #2 (abcfb59)
+-- Sprint CT2.1 — Content-authority deltas on top of PR #2
 -- =====================================================================
--- The module content-authority system landed in PR #2 (migrations
--- 20260907102500 / 20260907103000 / 20260907104000 / 20260907104100)
--- and is the authoritative shape — do not add parallel tables or
--- parallel state machines.
+-- Two additive gaps on top of PR #2's authoritative shape:
 --
--- This migration only closes two gaps surfaced by a delta audit of
--- that landed work vs. the CT2 sprint plan:
+--   1. Student-visibility RLS on course_modules did not fold in
+--      content_review_state + quality_verified for enrolled students.
+--      Tighten so only 'published' + quality-verified modules reach
+--      them. Admin/superadmin and teaching faculty keep full visibility.
 --
---   1. Student-visibility RLS on course_modules did not fold in the
---      new content_review_state. The existing "Course modules
---      readable only by enrolled course members" policy passes
---      draft/retired/faculty_reviewed modules through to enrolled
---      students as well, even though the readiness gate assumed
---      modules would only reach a classroom at content_review_state
---      = 'published'. This migration tightens the enrolled-student
---      branch to require 'published'; admin/superadmin and teaching
---      faculty retain full visibility so authoring + review still
---      work.
+--   2. review_module_content + publish_module_content did not call
+--      assert_not_maintenance(). Add it so content publication honors
+--      the maintenance window like every other D-sprint mutation RPC.
 --
---   2. review_module_content and publish_module_content did not
---      call assert_not_maintenance(). Every other D-sprint mutation
---      RPC does, and the operational pattern is that content
---      publication must freeze during a maintenance window just
---      like grading and rollover. This migration wraps both RPCs
---      with the maintenance gate, preserving all other behavior.
---
--- No new tables, no new states, no parallel authority system.
+-- CRITICAL: the RPC bodies here must be based on the hardening
+-- migration (20260907104000), NOT the original (20260907103000).
+-- The hardening migration added invalid_quality_score, faculty_
+-- review_required, module_version_id, trusted-RPC session flag.
+-- PR #2's test suite verifies those tokens exist, so the body copied
+-- here preserves them verbatim and adds ONLY assert_not_maintenance.
 -- =====================================================================
 
--- ---------- 0. Substrate shims (identical pattern to prior sprints)
+-- ---------- 0. Substrate shims ---------------------------------------
 DO $shim$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
@@ -44,9 +34,6 @@ DO $shim$ BEGIN
 END$shim$;
 
 -- ---------- 1. Student-visibility RLS gate on course_modules ---------
--- Keep the existing policy name and overall shape; narrow the enrolled
--- branch so students only see modules that have cleared the full
--- independent-review + quality-verified publication pathway.
 DROP POLICY IF EXISTS "Course modules readable only by enrolled course members"
   ON public.course_modules;
 
@@ -55,20 +42,17 @@ ON public.course_modules
 FOR SELECT
 TO authenticated
 USING (
-  -- Admin/superadmin see everything regardless of state so they can
-  -- drive authoring and publication from the Content Review Queue.
+  -- Admin/superadmin see everything regardless of state.
   public.has_role(auth.uid(), 'admin'::public.app_role)
   OR public.has_role(auth.uid(), 'superadmin'::public.app_role)
-  -- Teaching faculty assigned to the course see everything so they
-  -- can draft and iterate before submitting for review.
+  -- Teaching-assigned faculty see everything so authoring+review work.
   OR EXISTS (
     SELECT 1
     FROM public.teaching_assignments t
     WHERE t.course_id = course_modules.course_id
       AND t.faculty_user_id = auth.uid()
   )
-  -- Enrolled students only see modules that have been independently
-  -- reviewed AND passed the quality gate via publish_module_content.
+  -- Enrolled students only see published + quality-verified modules.
   OR (
     content_review_state = 'published'
     AND COALESCE(quality_verified, false)
@@ -87,8 +71,8 @@ COMMENT ON POLICY "Course modules readable only by enrolled course members"
   'AND quality_verified = true. Admin, superadmin and teaching-assigned faculty retain '
   'full visibility so authoring and the independent-review path still work.';
 
--- ---------- 2. Maintenance-mode gate on review_module_content --------
--- Replace with the same body, prefixed by assert_not_maintenance.
+-- ---------- 2. review_module_content: body of 20260907104000
+--             PLUS assert_not_maintenance() after the auth check.
 CREATE OR REPLACE FUNCTION public.review_module_content(
   p_module_id uuid,
   p_decision text,
@@ -110,12 +94,15 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'authentication_required';
   END IF;
 
-  -- CT2.1: content publication pathway honours the maintenance window
-  -- just like every other D-sprint mutation RPC.
+  -- CT2.1: content publication honours the maintenance window.
   PERFORM public.assert_not_maintenance();
 
   IF p_decision NOT IN ('approve','reject','revision_needed') THEN
     RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'invalid_review_decision';
+  END IF;
+
+  IF p_quality_score IS NOT NULL AND (p_quality_score < 0 OR p_quality_score > 10) THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'invalid_quality_score';
   END IF;
 
   IF NOT public.can_author_module_content(v_actor, p_module_id) THEN
@@ -148,19 +135,30 @@ BEGIN
   END;
 
   INSERT INTO public.content_quality_reviews (
-    content_id, content_type, reviewer_id, review_type, quality_score,
-    feedback, status, reviewed_at, module_version_id, reviewed_revision
+    content_id,
+    content_type,
+    reviewer_id,
+    review_type,
+    quality_score,
+    feedback,
+    status,
+    reviewed_at,
+    module_version_id,
+    reviewed_revision
   ) VALUES (
-    p_module_id, 'module', v_actor, 'expert_review', p_quality_score,
-    p_feedback, v_status, now(), v_version_id, v_module.content_revision
+    p_module_id,
+    'module',
+    v_actor,
+    'expert_review',
+    p_quality_score,
+    p_feedback,
+    v_status,
+    now(),
+    v_version_id,
+    v_module.content_revision
   );
 
-  -- The trusted-RPC session flag allows the content-authority field guard
-  -- trigger (added by 20260907104000) to accept this UPDATE of the
-  -- otherwise-protected review-state fields. Keep this call signature
-  -- byte-identical with what landed in PR #2.
   PERFORM set_config('scrolluniversity.content_authority_rpc', 'on', true);
-
   UPDATE public.course_modules
   SET content_review_state = CASE
         WHEN p_decision = 'approve' THEN 'faculty_reviewed'
@@ -170,7 +168,6 @@ BEGIN
       content_reviewed_at = CASE WHEN p_decision = 'approve' THEN now() ELSE NULL END,
       quality_verified = false
   WHERE id = p_module_id;
-
   PERFORM set_config('scrolluniversity.content_authority_rpc', 'off', true);
 
   RETURN jsonb_build_object(
@@ -182,7 +179,8 @@ BEGIN
 END;
 $$;
 
--- ---------- 3. Maintenance-mode gate on publish_module_content -------
+-- ---------- 3. publish_module_content: body of 20260907104000
+--             PLUS assert_not_maintenance() after the auth check.
 CREATE OR REPLACE FUNCTION public.publish_module_content(p_module_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -200,7 +198,7 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE = '42501', MESSAGE = 'module_publish_forbidden';
   END IF;
 
-  -- CT2.1: publication must freeze during a maintenance window.
+  -- CT2.1: publication freezes during a maintenance window.
   PERFORM public.assert_not_maintenance();
 
   SELECT id, content_revision, content_changed_by, content_review_state
@@ -211,6 +209,10 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'module_not_found';
+  END IF;
+
+  IF v_module.content_review_state <> 'faculty_reviewed' THEN
+    RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'faculty_review_required';
   END IF;
 
   SELECT id INTO v_version_id
@@ -228,13 +230,12 @@ BEGIN
     WHERE qr.module_version_id = v_version_id
       AND qr.content_type = 'module'
       AND qr.status = 'approved'
-      AND (v_module.content_changed_by IS NULL OR qr.reviewer_id IS DISTINCT FROM v_module.content_changed_by)
+      AND (v_module.content_changed_by IS NULL
+           OR qr.reviewer_id IS DISTINCT FROM v_module.content_changed_by)
   ) INTO v_has_independent_approval;
 
   IF NOT v_has_independent_approval THEN
-    RAISE EXCEPTION USING
-      ERRCODE = '23514',
-      MESSAGE = 'independent_module_review_required';
+    RAISE EXCEPTION USING ERRCODE = '23514', MESSAGE = 'independent_module_review_required';
   END IF;
 
   IF to_regprocedure('public.evaluate_module_quality(uuid)') IS NULL THEN
@@ -250,7 +251,6 @@ BEGIN
   END IF;
 
   PERFORM set_config('scrolluniversity.content_authority_rpc', 'on', true);
-
   UPDATE public.course_modules
   SET content_review_state = 'published',
       content_reviewed_by = v_actor,
@@ -258,7 +258,6 @@ BEGIN
       quality_issues = v_issues,
       quality_verified = true
   WHERE id = p_module_id;
-
   PERFORM set_config('scrolluniversity.content_authority_rpc', 'off', true);
 
   RETURN jsonb_build_object(
@@ -270,15 +269,22 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.review_module_content(uuid, text, text, numeric) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.publish_module_content(uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.review_module_content(uuid, text, text, numeric)
+  FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.publish_module_content(uuid)
+  FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.review_module_content(uuid, text, text, numeric)
+  TO authenticated;
+GRANT EXECUTE ON FUNCTION public.publish_module_content(uuid)
+  TO authenticated;
 
 COMMENT ON FUNCTION public.review_module_content(uuid, text, text, numeric) IS
-  'CT2.1: maintenance-gated review action on top of PR #2. Appends an '
-  'expert_review row to content_quality_reviews; on approve, module advances '
-  'to faculty_reviewed. Rejection or revision_needed resets to draft.';
+  'CT2.1: maintenance-gated review on top of PR #2 hardening '
+  '(20260907104000). Preserves all PR #2 invariants: invalid_quality_score, '
+  'module_version_id, trusted-RPC session flag.';
 
 COMMENT ON FUNCTION public.publish_module_content(uuid) IS
-  'CT2.1: maintenance-gated publish action on top of PR #2. Requires an '
-  'approved review by a reviewer OTHER THAN the content author plus a clean '
-  'evaluate_module_quality() pass. Admin/superadmin only.';
+  'CT2.1: maintenance-gated publish on top of PR #2 hardening '
+  '(20260907104000). Preserves all PR #2 invariants: faculty_review_required, '
+  'independent_module_review_required, evaluate_module_quality, '
+  'trusted-RPC session flag.';
