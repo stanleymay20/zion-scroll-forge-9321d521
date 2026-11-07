@@ -34,6 +34,19 @@
 -- that ships with this migration.
 -- =====================================================================
 
+-- ---------- 0. Defensive schema drift reconciliation -----------------
+-- The curriculum-completeness authority trigger
+-- (enforce_course_curriculum_state_authority, from 20260907113x)
+-- references NEW.syllabus on public.courses. The courses table is
+-- defined with a syllabus column in complete_schema_sync + production
+-- schema migrations, but those are bootstrap-advisory in CI, so a
+-- fresh CI DB may not have the column. Add it defensively (idempotent)
+-- before any INSERT that would fire the dependency-change trigger
+-- chain on courses.
+ALTER TABLE public.courses
+  ADD COLUMN IF NOT EXISTS syllabus text,
+  ADD COLUMN IF NOT EXISTS faculty_author_id uuid;
+
 -- ---------- Golden Path identifiers (deterministic) ------------------
 -- UUIDs are stable so the test suite + UI can address the scaffold.
 -- Prefix '66666666-c771-...' is reserved for CT1 Golden Path rows.
