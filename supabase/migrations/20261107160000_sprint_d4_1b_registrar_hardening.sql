@@ -232,6 +232,12 @@ END$$;
 -- Deadline-aware: before add_drop_ends_on → clean drop (status='dropped');
 -- before withdraw_ends_on → withdrawal (status='withdrawn');
 -- else → raises drop_deadline_passed.
+-- Historical migration 20260520051627 defined this with parameter name
+-- '_enrollment_id'. Drop all overloads so the CREATE OR REPLACE below
+-- is free to use '_section_id' with new deadline-aware semantics.
+DROP FUNCTION IF EXISTS public.drop_section_enrollment(uuid, text);
+DROP FUNCTION IF EXISTS public.drop_section_enrollment(uuid);
+
 CREATE OR REPLACE FUNCTION public.drop_section_enrollment(
   _section_id uuid,
   _reason text DEFAULT NULL
