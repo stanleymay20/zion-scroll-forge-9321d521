@@ -165,6 +165,9 @@ jobs:
       - name: Enforce content authority deltas migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107120000_sprint_ct2_1_content_authority_deltas.sql
 
+      - name: Enforce Golden Path scaffold migration (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107140000_sprint_ct1a_golden_path_scaffold.sql
+
       - name: Enforce course curriculum completeness authority migration (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260907113000_course_curriculum_completeness_authority.sql
 
@@ -194,6 +197,9 @@ jobs:
 
       - name: Run content authority deltas suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/content_authority_deltas.test.sql
+
+      - name: Run Golden Path scaffold suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/golden_path_scaffold.test.sql
 
       - name: Run course curriculum completeness authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/course_curriculum_completeness_authority.test.sql

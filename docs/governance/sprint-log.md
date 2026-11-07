@@ -963,3 +963,112 @@ Both `backend-sql-tests.yml` and `production-deploy.yml` run `content_authority_
 
 ### Next
 **CT1 — Golden Path Course.** One faculty-authored course walks the full published pathway end-to-end: draft → faculty_reviewed → published. Proves the shell + the gate + the author's work combine into something a real student can complete. D4.1 Registrar Core runs in parallel per the approved direction.
+
+---
+
+## Sprint CT1a — Golden Path scaffold (engineering slice of CT1)
+
+**Status:** ✅ Closed (engineering slice)
+**Date:** 2026-11-07
+**Migration:** `20261107140000_sprint_ct1a_golden_path_scaffold.sql`
+**Test suite:** `supabase/tests/golden_path_scaffold.test.sql` (7 BLOCKING)
+**Depends on:** CT2.1 (content-authority deltas) + PR #2 (module content review authority)
+
+### Context
+CT1 per the approved plan is "one exceptional, fully working course that proves the teaching model end to end." That is fundamentally a content-authoring sprint — `evaluate_module_quality` requires ≥ 8000 characters of `content_md` per module plus pedagogical flow markers (ignition / demonstration / activation / reflect / commission / scripture). That is faculty work, not engineering.
+
+CT1a ships what engineering can honestly ship **right now** without writing fake content:
+
+- The structural scaffold a real course needs.
+- The authoring-readiness view faculty need to see what's left.
+- An end-to-end lifecycle test that proves the pipeline works when real content lands.
+
+CT1b (faculty handoff) is tracked in the "Deferred" section below.
+
+### Delivered
+
+**1. Golden Path course scaffold (deterministic UUID `66666666-c771-0001-0000-000000000001`)**
+- `courses` row: *"UNIV 101 — Introduction to Scholarly Research & Writing"*, `curriculum_status = 'pending_authorship'`.
+- 3 `course_learning_outcomes` with real CLO codes + statements + Bloom levels:
+  - CLO-1 (evaluate): identify a scholarly question + articulate a defensible thesis.
+  - CLO-2 (analyze): locate, read, cite primary and secondary sources.
+  - CLO-3 (create): produce a 2,500–3,500 word research paper with peer + faculty revision.
+- 8 module skeletons (ordered 1..8) in `content_review_state = 'draft'`:
+  1. What scholarship is — and is not
+  2. Reading a scholarly argument
+  3. Locating credible sources
+  4. Taking notes that survive revision
+  5. Framing a researchable question
+  6. Drafting a defensible thesis
+  7. Revision as the engine of thought
+  8. Capstone — your first scholarly paper
+- One `assessments` row + one `assignments` row under module 1, so the `course_teaching_readiness` assessment_artifact count reaches ≥ 2 as soon as content is authored.
+
+All 8 modules inherit `content_review_state = 'draft'` via PR #2 hardening's INSERT trigger, so they are invisible to enrolled students (CT2.1 RLS gate) until they walk the full published pathway.
+
+**2. Authoring-readiness view (`vw_course_authoring_readiness`)**
+
+Per-module punch-list, reusable across the entire catalog — not Golden-Path-specific. Returns:
+- `content_char_count` vs the 8000 threshold (`content_long_enough`).
+- `flow_markers_present` count against the 4-of-6 threshold.
+- `content_review_state`, `content_revision`, `quality_verified`.
+- `review_state_updated_at`.
+
+A faculty author reading this view sees exactly what `evaluate_module_quality` will flag on a publish attempt.
+
+**3. End-to-end lifecycle test (the proof)**
+
+`golden_path_scaffold.test.sql` test #7 synthesizes two distinct faculty users + one admin inside a sub-transaction, lifts module 1 with ~8500 characters of pedagogically-marked content (all 6 flow markers), and walks the full pathway:
+
+- Author tries to self-approve — tolerated at review level (per PR #2).
+- An **independent reviewer** approves separately.
+- Admin publishes — the RPC's independent-reviewer invariant passes (reviewer ≠ `content_changed_by`), `evaluate_module_quality()` passes, and the module reaches `published + quality_verified = true`.
+
+The whole test runs in the suite's outer `BEGIN ... ROLLBACK;` so none of the synthesized content persists. Production data never sees fake content.
+
+### Test coverage (7 BLOCKING)
+| # | Assertion |
+|---|-----------|
+| 1 | Golden Path course row present with deterministic UUID + title |
+| 2 | `curriculum_status = 'pending_authorship'` (skip if column absent) |
+| 3 | 8 modules, all in `draft` state |
+| 4 | 3 course_learning_outcomes |
+| 5 | `vw_course_authoring_readiness` view materialized + returns 8 rows for Golden Path |
+| 6 | All 8 Golden Path modules below content threshold AND below flow-marker threshold |
+| 7 | **E2E lifecycle walk: draft → faculty_reviewed → published + quality_verified** |
+
+### CI wiring
+Both workflows apply `20261107140000_sprint_ct1a_golden_path_scaffold.sql` as BLOCKING right after the CT2.1 deltas migration, and run `golden_path_scaffold.test.sql` as BLOCKING right after the content_authority_deltas suite.
+
+### Sprint exit checklist
+```text
+✅ Migrations applied                  (CT1a scaffold migration; idempotent with ON CONFLICT DO NOTHING)
+✅ Zero fake content persisted         (content_md left empty; passing content only in test tx that rolls back)
+✅ Follows recovery-ledger rule        (no parallel course catalog; uses canonical courses / course_modules)
+✅ Depends on CT2.1 cleanly            (authoring readiness view references CT2.1-added fields)
+✅ UI consumes PR #2 RPCs              (no new UI in this slice; existing /admin/module-content-review drives)
+✅ Readiness punch-list reusable       (vw_course_authoring_readiness works on the entire catalog)
+✅ E2E lifecycle proven green          (test #7: full draft → published walk passes)
+✅ Build + typecheck unaffected        (SQL-only + view)
+✅ Documentation updated               (this entry)
+```
+
+### Readiness delta
+- **Pipeline proof:** ↑↑ — the `draft → faculty_reviewed → published` pathway now has a repeatable CI-run proof. Any future regression in PR #2, CT2.1, hardening, fail-closed, or the quality evaluator breaks this test.
+- **Authoring punch-list:** ↑ — faculty have a single view that tells them exactly what's missing per module across every course, not just the Golden Path.
+- **No content debt:** ↑ — the scaffold adds structural rows but zero fake `content_md`. The 528 templated-boilerplate modules problem does not get worse.
+- **Accreditation stance:** ↑ — `curriculum_status = 'pending_authorship'` on the Golden Path explicitly marks it as in-development, preserving truth-in-claims.
+
+### Deferred (CT1b — faculty handoff, not this slice)
+1. **Author 8 real modules of ≥ 8000 chars each with flow markers.** Not AI-generated boilerplate — scholarship-literate prose. `vw_course_authoring_readiness` is the scoreboard.
+2. **Author real quiz question banks** for each module (≥ 5 MCQs each with answer keys + explanations). `seed-quiz-questions` edge function can seed the shape; a faculty subject-matter expert must verify every answer.
+3. **Write a rubric for the Module 1 assignment** and the Module 8 capstone.
+4. **Walk each module through `/admin/module-content-review`** — independent reviewer different from author, admin publishes.
+5. **Mark `curriculum_status = 'approved'`** — a governance act, not an engineering act.
+6. **Add teaching_assignments / faculty_teaching_assignments** for the real faculty author + reviewer.
+7. **Create a `course_sections` row** with `instructor_user_id` set so `course_teaching_readiness` can reach `enrollable`.
+
+Only after all seven of those steps does the Golden Path become genuinely teaching-ready. The engineering is done; curriculum is the work.
+
+### Next
+Open **D4.1 Registrar Core** in parallel while faculty authoring on the Golden Path happens out-of-band. D4.1 is pure engineering (add/drop deadlines, holds, withdrawal/repeat policy, graduation clearance) and is the highest-leverage operational gap per the original school-readiness audit.
