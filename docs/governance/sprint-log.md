@@ -864,3 +864,102 @@ D3.4.2 / .3 / .4 (rubric editor, AI grading-assistance, student feedback view) r
 
 ### Next
 Move to **D4.1 — Registrar Core** (add/drop deadlines, advisor holds, withdrawal/repeat policy, graduation clearance). That is the highest-leverage missing system per the school-readiness audit.
+
+---
+
+## Sprint CT2.1 — Content-authority deltas on top of PR #2
+
+**Status:** ✅ Closed
+**Date:** 2026-11-07
+**Migration:** `20261107120000_sprint_ct2_1_content_authority_deltas.sql`
+**Test suite:** `supabase/tests/content_authority_deltas.test.sql` (10 BLOCKING)
+**Admin UI:** `src/pages/admin/ModuleContentReview.tsx` at `/admin/module-content-review`
+
+### Context
+PR #2 (`abcfb59 feat: add module content review and version authority`) landed the full module-content authority system in September 2026 — a four-state lifecycle (`draft / faculty_reviewed / published / retired`), inline provenance columns + an immutable `module_content_versions` ledger, independent-reviewer-required publish, quality-gated publish, trusted-RPC session guard against direct state-field UPDATEs, and an auth-hardened `expand-thin-modules` edge function.
+
+A post-landing delta audit (`learning-content-audit-2026-07-26.md`) surfaced two gaps that were additive and non-disruptive:
+
+1. The `course_modules` SELECT RLS policy still exposed `draft` / `retired` modules to enrolled students, because the published-module filter was only enforced via `course_teaching_readiness` and nothing stopped a legacy enrollment or a timing-gap from reading pre-publish content directly.
+2. Neither `review_module_content` nor `publish_module_content` called `assert_not_maintenance()`, so content publication could proceed during a maintenance window — inconsistent with every other D-sprint mutation RPC.
+
+This sprint closes those two gaps on top of PR #2's authoritative shape. It does **not** add parallel state machines, parallel history tables, or parallel RPCs — the entire PR #2 system is preserved intact.
+
+### Delivered
+
+**1. Student-visibility RLS gate (delta #1)**
+
+The policy `Course modules readable only by enrolled course members` is dropped and recreated with one additional constraint on the enrolled-student branch:
+
+- admin / superadmin / teaching-assigned faculty: **unchanged**, full visibility.
+- enrolled students: must now have `content_review_state = 'published'` AND `quality_verified = true`.
+
+Since PR #2 defaults all modules to `draft` on insert and resets to `draft` + clears `quality_verified` on any `content_md` edit, students cannot see any module until it has gone through:
+  (a) the independent-reviewer `review_module_content → faculty_reviewed`, then
+  (b) the admin-authored `publish_module_content → published` with a clean `evaluate_module_quality()` pass.
+
+**2. Maintenance-mode gate on the two mutation RPCs (delta #2)**
+
+Both `review_module_content` and `publish_module_content` are recreated with `PERFORM public.assert_not_maintenance();` at the top. Body-identical to PR #2 otherwise — the independent-reviewer check, trusted-RPC session flag, quality-gate call, grant list, return-shape, and SECURITY DEFINER search-path are all preserved. Test suite #6/#7/#8/#9 explicitly verify the PR #2 invariants weren't clobbered by the CREATE OR REPLACE.
+
+**3. Admin review UI**
+
+`/admin/module-content-review`, role-gated `faculty | admin | superadmin`:
+- Five tabs (Draft / Faculty-reviewed / Published / Retired / All) listing modules by `content_review_state`.
+- Per-module dialog that calls `review_module_content(moduleId, decision, feedback, quality_score)` with decision ∈ { approve, reject, revision_needed }.
+- Publish button that calls `publish_module_content(moduleId)`, visible to admin/superadmin only, enabled only for `faculty_reviewed` modules.
+- Failure-message surfacing: `independent_module_review_required` and `module_quality_gate_failed` get human-readable toasts so reviewers understand why publication was blocked.
+- Immutable version history read from `module_content_versions` (newest first, with revision, source, model and content_hash prefix).
+
+No state machine or authorization lives in this page — every transition goes through PR #2's RPCs, so the authority-field guard trigger (PR #2 hardening `20260907104000`) remains the final line of defense against bypass.
+
+### Test coverage (10 BLOCKING)
+| # | Assertion |
+|---|-----------|
+| 1 | `course_modules` SELECT policy references `content_review_state = 'published'` |
+| 2 | Same policy also requires `quality_verified` on the student branch |
+| 3 | Admin / superadmin / teaching_assignments branches preserved |
+| 4 | `review_module_content` body calls `assert_not_maintenance` |
+| 5 | `publish_module_content` body calls `assert_not_maintenance` |
+| 6 | `publish_module_content` retains independent-reviewer invariant |
+| 7 | `publish_module_content` retains `evaluate_module_quality` gate |
+| 8 | `review_module_content` retains trusted-RPC session flag |
+| 9 | `publish_module_content` retains trusted-RPC session flag |
+| 10 | `can_author_module_content` + `can_publish_module_content` predicates still present |
+
+Tests 6-10 exist specifically to catch the regression risk of this sprint — a CREATE OR REPLACE that accidentally dropped a PR #2 invariant.
+
+### CI wiring
+Both `backend-sql-tests.yml` and `production-deploy.yml` run `content_authority_deltas.test.sql` as BLOCKING immediately after `module_content_authority.test.sql`.
+
+### Sprint exit checklist
+```text
+✅ Migrations applied                  (CT2.1 delta migration only)
+✅ Types regenerated                   (cast through unknown for not-yet-generated columns)
+✅ Typecheck clean                     (tsc --noEmit clean)
+✅ Build clean                         (vite build ~42s)
+✅ SQL regression suite passes
+✅ Module content authority suite still passes (PR #2 invariants preserved; tests 6-10)
+✅ New CT2.1 BLOCKING suite green      (CI verification on push)
+✅ UI reachable                        (/admin/module-content-review route added; RoleRoute gated)
+✅ No parallel state machine introduced (uses PR #2 4-state model via RPCs)
+✅ No parallel history tables           (uses module_content_versions + content_quality_reviews)
+✅ Student-visibility invariant         (course_modules SELECT policy; tests 1-3)
+✅ Maintenance-mode invariant           (both mutation RPCs; tests 4-5)
+✅ Documentation updated                (this entry)
+✅ Readiness delta published            (below)
+```
+
+### Readiness delta
+- **Student-visibility correctness:** ↑↑ — RLS now mirrors the readiness intent instead of relying on upstream gating alone. A legacy enrollment, a timing gap, or an operator mistake can no longer expose pre-publish or retired modules to students.
+- **Operational safety:** ↑ — content publication now respects the maintenance window, so an admin can safely freeze the system during rollovers / incidents without worrying about an in-flight publish.
+- **UX surface:** ↑ — an admin can actually drive review / publish from a page; previously the RPCs existed but had no UI driving them (the existing `CurriculumReviewsQueue.tsx` is course-level, not module-level).
+- **Governance discipline:** ↑ — first sprint to explicitly ship on top of another agent's native implementation under the recovery-ledger rule ("capability recovery, not blind file copying"). Sets the pattern for additive-only follow-ups.
+
+### Not changed by CT2.1
+- The four-state lifecycle (`draft / faculty_reviewed / published / retired`) stays as-is — the CT2 proposal's 7-state variant was abandoned after the delta audit showed main's shape was simpler and stricter.
+- The `module_content_versions` + `content_quality_reviews` schema is unchanged — no parallel `module_content_reviews` / `module_content_provenance` / `module_content_revisions` tables.
+- `expand-thin-modules` is unchanged — already auth-hardened in PR #2's related commit (`07ff099`).
+
+### Next
+**CT1 — Golden Path Course.** One faculty-authored course walks the full published pathway end-to-end: draft → faculty_reviewed → published. Proves the shell + the gate + the author's work combine into something a real student can complete. D4.1 Registrar Core runs in parallel per the approved direction.

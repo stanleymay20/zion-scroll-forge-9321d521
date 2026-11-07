@@ -226,6 +226,9 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/module_quiz_attempt_authority.test.sql
       - name: Run module content authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/module_content_authority.test.sql
+
+      - name: Run content authority deltas suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/content_authority_deltas.test.sql
       - name: Run course curriculum completeness authority suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/course_curriculum_completeness_authority.test.sql
       - name: Run academic spine regression suite (BLOCKING)
