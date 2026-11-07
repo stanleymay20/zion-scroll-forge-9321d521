@@ -47,6 +47,13 @@ ALTER TABLE public.courses
   ADD COLUMN IF NOT EXISTS syllabus text,
   ADD COLUMN IF NOT EXISTS faculty_author_id uuid;
 
+-- Same drift tolerance for course_modules: vw_course_authoring_readiness
+-- references review_state_updated_at (set by PR #2's state-transition
+-- triggers). In production this column is set alongside content_review_state,
+-- but a fresh CI DB rebuilt from migrations may not yet carry it.
+ALTER TABLE public.course_modules
+  ADD COLUMN IF NOT EXISTS review_state_updated_at timestamptz;
+
 -- ---------- Golden Path identifiers (deterministic) ------------------
 -- UUIDs are stable so the test suite + UI can address the scaffold.
 -- Prefix '66666666-c771-...' is reserved for CT1 Golden Path rows.
