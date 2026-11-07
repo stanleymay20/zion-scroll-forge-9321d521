@@ -1118,3 +1118,44 @@ Reconciliation of the registrar critical path from bootstrap-advisory into fail-
 
 ### Post-ship note
 The `has_role / app_role` noise that cost CT1a three cycles was sidestepped here by probing for `has_role` before creating the admin-read policy — the RLS stays open-but-policy-less in environments without that function, which is still safe because the table is only readable via explicit `authenticated` grants on narrow policies.
+
+---
+
+## Sprint D4.1b — Registrar Hardening (2026-11-07)
+
+### What shipped
+Trusted-session authority for the enrollment state-write path, same pattern PR #2 used for module content. Adds the first-class hold + drop/withdraw primitives registrars need. Builds on D4.1a's substrate; zero rewrites of the historical `enroll_student_in_section`.
+
+- **`supabase/migrations/20261107160000_sprint_d4_1b_registrar_hardening.sql`**
+  - Defensive ALTER for `academic_terms.add_drop_ends_on` + `withdraw_ends_on` (added later in the CI graph by SUYAS reconciliation; D4.1b reads them so needs them present at its wiring point).
+  - **`student_holds`** table with `active_idx` partial index (`WHERE lifted_at IS NULL`), RLS enabled, student-self-read policy, admin/registrar-read policy conditional on `has_role` being present.
+  - **`can_register_now(user_id uuid, term_id uuid) RETURNS text[]`** — returns the list of blockers: `user_id_required`, `term_id_required`, `term_not_found`, `term_status_<x>_not_registrable`, `add_drop_window_closed`, `no_open_registration_window`, `no_active_degree_enrollment`, `academic_standing_<suspended|dismissed>_blocks_registration`, `active_holds_present`. Empty = free to register.
+  - **`guard_section_enrollment_authority_fields` trigger** on `section_enrollments`: any direct `UPDATE` changing `status`/`withdrawn_at`/`waitlisted_at`/`promoted_at` raises `section_enrollment_state_write_forbidden` (ERRCODE 42501) unless the transaction carries `scrolluniversity.registrar_authority_rpc='on'`. Same trusted-session pattern as PR #2's `guard_module_content_authority_fields`.
+  - **`drop_section_enrollment(section_id, reason)`** — deadline-aware wrapper: before `add_drop_ends_on` → clean drop (`status='dropped'`); before `withdraw_ends_on` → withdrawal (`status='withdrawn'` + `withdrawn_at=now()`); else `drop_deadline_passed`. Decrements `course_sections.enrolled_count`. Flips the trusted marker for the duration of the write, then writes a `registrar_audit_log` row (`event_kind` ∈ `{dropped, withdrawn}`) with actor, enrollment id, reason, previous+new status.
+  - **`impose_student_hold(student, type, reason)` / `lift_student_hold(hold_id)`** — hold lifecycle RPCs that write `registrar_audit_log` entries (`event_kind` ∈ `{hold_imposed, hold_lifted}`) at every transition.
+
+- **`supabase/tests/registrar_hardening.test.sql` — 8 BLOCKING tests**
+  1. `student_holds` exists with RLS + student-self-read policy.
+  2. `can_register_now` signature + handles NULL inputs.
+  3. Guard trigger installed on `section_enrollments`.
+  4. Direct `UPDATE section_enrollments SET status` outside the trusted marker raises `section_enrollment_state_write_forbidden`; inside the marker, the same write succeeds.
+  5. `drop_section_enrollment` on a term whose add/drop window is open returns `{success:true, new_status:'dropped'}`; the same RPC on a term past both deadlines returns `{success:false, error:'drop_deadline_passed'}`.
+  6. A successful drop writes a `registrar_audit_log` row with `event_kind='dropped'`.
+  7. `impose_student_hold` + `lift_student_hold` round-trip: hold row exists before lift, is marked `lifted_at` after, and two `registrar_audit_log` rows are written (`hold_imposed`, `hold_lifted`).
+  8. `can_register_now` returns `active_holds_present` while a hold is active and drops that issue after `lift_student_hold`.
+
+- **CI wiring**: `Enforce D4.1b registrar hardening (BLOCKING)` runs right after D4.1a in both workflows; `Run D4.1b registrar hardening suite (BLOCKING)` runs right after the D4.1a suite.
+
+- **Local smoke test**: 8/8 pass against a Postgres 16 shape that mirrors CI bootstrap. Caught two issues before CI saw them: psql `:var` doesn't reach inside `$$`-quoted DO blocks (switched the test's shared ids to a `_d41b_ids` temp table), and the `auth.uid()` local stub needed to read `request.jwt.claims.sub` for `set_config('request.jwt.claims', ...)` to simulate an authenticated caller.
+
+### Readiness delta
+- **Enrollment state-write authority:** ↑↑↑ — direct `UPDATE section_enrollments SET status` is now refused at the trigger layer. The only authored state-change path is the RPCs that explicitly take the trusted marker, same guarantee PR #2 gave content review.
+- **Deadline enforcement:** ↑↑ — add/drop and withdrawal deadlines are now authoritatively honored. Students can't retroactively drop; admins can't inadvertently flip state past the deadline without noticing.
+- **Audit coverage:** ↑↑ — every `drop`, `withdraw`, `hold_imposed`, `hold_lifted` writes an auditable row. Registrar audit becomes actually useful.
+- **Holds are first-class:** ↑ — before D4.1b, holds were implicit (an ad-hoc concept in the standing table). Now they're a typed table with lifecycle RPCs, and `can_register_now` consults them.
+
+### Deferred (D4.1c — graduation + attempts)
+1. **Graduation clearance server-side audit.** `DegreeAudit.tsx` + `StudentGraduation.tsx` exist as UI but lack a fail-closed server-side `evaluate_degree_completion(student, degree)` function that enumerates remaining requirements.
+2. **Repeat/attempt policy.** `enroll_student_in_section` doesn't currently check prior attempts on the same course; a student can enroll in a failed course only N times per catalog policy.
+3. **Transfer credit reconciliation RPC.** `TransferRequestsAdmin.tsx` exists; the server-side promotion to posted transcript credit is still ad-hoc.
+4. **Registrar notification hook.** Every audit row should fire a notification to the student (`drop_confirmation`, `hold_imposed_notice`, etc.); defer until `emit_notification` schema lands in CI (currently advisory — `column "body" of relation "notifications" does not exist`).

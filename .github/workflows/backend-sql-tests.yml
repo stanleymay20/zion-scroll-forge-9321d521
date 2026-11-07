@@ -180,6 +180,9 @@ jobs:
       - name: Enforce D4.1a registrar core reconciliation (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107150000_sprint_d4_1a_registrar_core_reconciliation.sql
 
+      - name: Enforce D4.1b registrar hardening (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107160000_sprint_d4_1b_registrar_hardening.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
@@ -209,6 +212,9 @@ jobs:
 
       - name: Run D4.1a registrar core readiness suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/registrar_core_readiness.test.sql
+
+      - name: Run D4.1b registrar hardening suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/registrar_hardening.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true
