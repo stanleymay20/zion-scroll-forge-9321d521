@@ -189,6 +189,9 @@ jobs:
       - name: Enforce P1A notifications reconciliation (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108010000_sprint_p1a_notifications_reconciliation.sql
 
+      - name: Enforce P1B transcript aggregator (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108020000_sprint_p1b_transcript_aggregator.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
@@ -227,6 +230,9 @@ jobs:
 
       - name: Run P1A notifications reconciliation suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/notifications_reconciliation.test.sql
+
+      - name: Run P1B transcript aggregator suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/transcript_aggregator.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true

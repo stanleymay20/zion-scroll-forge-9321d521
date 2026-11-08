@@ -1253,3 +1253,35 @@ Closes the long-standing CI advisory `column "body" of relation "notifications" 
 - **1B** Transcript / GPA aggregator RPC.
 - **1C** Transfer-credit reconciliation RPC.
 - **1D** Catalog-driven policies (max_attempts + required_credits from degree_programs).
+
+---
+
+## Phase 1B — Transcript / GPA Aggregator (2026-11-08)
+
+### What shipped
+Aggregates `student_course_completions` into the two surfaces students and the registrar need to see.
+
+- **`supabase/migrations/20261108020000_sprint_p1b_transcript_aggregator.sql`**
+  - `compute_student_gpa(user) -> numeric` — credit-weighted 4.0-scale GPA over passing attempts. Returns 0 on NULL input or zero completions. Deterministic, STABLE, no writes.
+  - `compute_student_transcript(user) -> jsonb` — canonical transcript blob: `{student, totals: {credits_earned, credits_attempted, gpa, passed, failed}, courses: [...], generated_at}`. One course entry per completion with course_id, title, grade, grade_points, credits_earned, passed, attempt_number, completed_at.
+  - `vw_student_transcript` — one summary row per student with any completions (passed_count, failed_count, credits_earned, credits_attempted, gpa, most_recent_completion). Backs the student dashboard transcript widget.
+
+- **`supabase/tests/transcript_aggregator.test.sql` — 5 BLOCKING tests**
+  1. `compute_student_gpa` exists; NULL input returns 0; zero-row input returns 0.
+  2. `compute_student_transcript(NULL)` returns `{error: 'user_id_required'}`.
+  3. `vw_student_transcript` exists + queryable.
+  4. Three completions seeded (3cr A + 4cr B+ + 3cr F); GPA = (4.0×3 + 3.3×4) / 7 = 3.60; credits_earned (passed only) = 7.
+  5. Transcript blob returns 3 course rows, totals {passed=2, failed=1, credits_earned=7, gpa=3.60}.
+
+- **CI wiring**: `Enforce P1B` right after P1A; `Run P1B suite` right after P1A suite. Both workflows.
+
+- **Local smoke**: 5/5 pass. Deterministic numeric equality on GPA = 3.60 confirms the credit-weighting arithmetic.
+
+### Readiness delta
+- **Student has a transcript to look at:** ↑↑ — `compute_student_transcript` is the one-call surface a dashboard or official-transcript request binds to. No more client-side GPA math.
+- **Registrar has a dashboard row:** ↑ — `vw_student_transcript` + the existing `vw_student_degree_progress` cover the "how is this student doing" surface.
+- **Deterministic + verifiable:** ↑ — same inputs → same outputs. Pairing with a cryptographic signature for official-transcript issuance is a future sprint (needs key material + accreditation posture); the determinism precondition is now met.
+
+### Non-goals (deferred)
+- Signed/sealed transcript issuance. Requires accreditation posture + key management.
+- GPA by term, by semester, honors cutoffs, dean's list — straightforward extensions of `compute_student_gpa` once the catalog has that data.
