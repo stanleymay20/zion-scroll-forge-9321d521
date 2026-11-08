@@ -3,7 +3,7 @@
 -- Run with: psql -v ON_ERROR_STOP=1 -f supabase/tests/transcript_aggregator.test.sql
 --
 -- Covers Phase 1B:
---   1. compute_student_gpa exists + NULL + zero-row semantics.
+--   1. student_cumulative_gpa exists + NULL + zero-row semantics.
 --   2. compute_student_transcript handles NULL input.
 --   3. vw_student_transcript exists and is queryable.
 --   4. E2E: record three completions with distinct grade_points and
@@ -40,7 +40,7 @@ INSERT INTO _p1b_ids VALUES
   ('course3', 'bbbbbbbb-dead-beef-0002-000000000003');
 
 -- =====================================================================
--- TEST 1: compute_student_gpa exists + NULL + zero-row semantics
+-- TEST 1: student_cumulative_gpa exists + NULL + zero-row semantics
 -- =====================================================================
 DO $$
 DECLARE
@@ -50,15 +50,15 @@ DECLARE
 BEGIN
   v_sig := EXISTS (
     SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-     WHERE n.nspname='public' AND p.proname='compute_student_gpa'
+     WHERE n.nspname='public' AND p.proname='student_cumulative_gpa'
   );
   IF NOT v_sig THEN
-    PERFORM pg_temp.record(1,'compute_student_gpa exists', false, '');
+    PERFORM pg_temp.record(1,'student_cumulative_gpa exists', false, '');
     RETURN;
   END IF;
-  v_null_gpa := public.compute_student_gpa(NULL);
-  v_zero_gpa := public.compute_student_gpa('bbbbbbbb-dead-beef-ffff-ffffffffffff'::uuid);
-  PERFORM pg_temp.record(1,'compute_student_gpa handles NULL + no completions',
+  v_null_gpa := public.student_cumulative_gpa(NULL);
+  v_zero_gpa := public.student_cumulative_gpa('bbbbbbbb-dead-beef-ffff-ffffffffffff'::uuid);
+  PERFORM pg_temp.record(1,'student_cumulative_gpa handles NULL + no completions',
                          v_null_gpa = 0 AND v_zero_gpa = 0,
                          format('null_gpa=%s zero_gpa=%s', v_null_gpa, v_zero_gpa));
 END$$;
@@ -140,7 +140,7 @@ DECLARE
   v_student uuid; v_gpa numeric; v_credits numeric;
 BEGIN
   SELECT id INTO v_student FROM _p1b_ids WHERE name='student';
-  v_gpa := public.compute_student_gpa(v_student);
+  v_gpa := public.student_cumulative_gpa(v_student);
   SELECT credits_earned INTO v_credits
     FROM public.vw_student_transcript
    WHERE user_id = v_student;

@@ -5,7 +5,7 @@
 -- per-attempt outcome ledger. Phase 1B aggregates it into the two
 -- surfaces students and the registrar actually need:
 --
---   1. public.compute_student_gpa(user) -> numeric(3,2)
+--   1. public.student_cumulative_gpa(user) -> numeric(3,2)
 --      Weighted 4.0-scale GPA over PASSING attempts. Returns 0 when
 --      no completions. Deterministic; independent of attempt order.
 --
@@ -30,8 +30,13 @@
 -- is a later sprint (requires key material + accreditation posture).
 -- =====================================================================
 
--- ---------- 1. compute_student_gpa ---------------------------------
-CREATE OR REPLACE FUNCTION public.compute_student_gpa(_user uuid)
+-- ---------- 1. student_cumulative_gpa -------------------------------
+-- Named distinctly from the historical public.compute_student_gpa
+-- (20260518074924 1-arg + 20260626123153 2-arg returning jsonb) to
+-- avoid overload ambiguity. The historical functions read
+-- public.grade_records; this one reads the P1B canonical completion
+-- ledger (student_course_completions).
+CREATE OR REPLACE FUNCTION public.student_cumulative_gpa(_user uuid)
 RETURNS numeric
 LANGUAGE sql
 STABLE
@@ -53,11 +58,11 @@ AS $$
     AND credits_earned > 0;
 $$;
 
-REVOKE ALL ON FUNCTION public.compute_student_gpa(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.compute_student_gpa(uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.student_cumulative_gpa(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.student_cumulative_gpa(uuid) TO authenticated, service_role;
 
-COMMENT ON FUNCTION public.compute_student_gpa(uuid) IS
-  'P1B: credit-weighted 4.0-scale GPA over passing attempts. Returns 0 when there are no graded completions.';
+COMMENT ON FUNCTION public.student_cumulative_gpa(uuid) IS
+  'P1B: credit-weighted 4.0-scale cumulative GPA over passing attempts in student_course_completions. Returns 0 when there are no graded completions.';
 
 -- ---------- 2. compute_student_transcript --------------------------
 CREATE OR REPLACE FUNCTION public.compute_student_transcript(_user uuid)
@@ -112,7 +117,7 @@ BEGIN
   FROM public.student_course_completions
   WHERE user_id = _user;
 
-  v_gpa := public.compute_student_gpa(_user);
+  v_gpa := public.student_cumulative_gpa(_user);
 
   RETURN jsonb_build_object(
     'student', jsonb_build_object(
@@ -148,7 +153,7 @@ SELECT
   COALESCE(SUM(scc.credits_earned) FILTER (WHERE scc.passed), 0)
                                                          AS credits_earned,
   COALESCE(SUM(scc.credits_earned), 0)                   AS credits_attempted,
-  public.compute_student_gpa(scc.user_id)                AS gpa,
+  public.student_cumulative_gpa(scc.user_id)             AS gpa,
   MAX(scc.completed_at)                                  AS most_recent_completion
 FROM public.student_course_completions scc
 LEFT JOIN auth.users u ON u.id = scc.user_id
