@@ -198,6 +198,9 @@ jobs:
       - name: Enforce P1D catalog policies (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108040000_sprint_p1d_catalog_policies.sql
 
+      - name: Enforce P2A pilot institution tier (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108050000_sprint_p2a_pilot_institution_tier.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
@@ -245,6 +248,9 @@ jobs:
 
       - name: Run P1D catalog policies suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/catalog_policies.test.sql
+
+      - name: Run P2A pilot institution tier suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/pilot_institution_tier.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true

@@ -1363,3 +1363,38 @@ Four migrations, four BLOCKING test suites, 20 new tests. The registrar critical
 - **2B** Dual-persona seed: a canonical pattern that lets a single operator hold admin+registrar+superadmin roles while a second user holds faculty — preserving the independent-reviewer invariant.
 - **2C** `bootstrap_pilot_institution(institution_name, operator_user_id)` RPC.
 - **2D** Pilot E2E smoke test that walks a course from draft → published → enrolled → completed.
+
+---
+
+## Phase 2A — Pilot Institution Tier (2026-11-08)
+
+### What shipped
+Makes "we are a pilot institution" a first-class, enforceable fact rather than an unwritten assumption.
+
+- **`supabase/migrations/20261108050000_sprint_p2a_pilot_institution_tier.sql`**
+  - `ALTER TABLE public.institutions ADD COLUMN IF NOT EXISTS lifecycle_status text NOT NULL DEFAULT 'pilot'`. Fail-closed default: a freshly-created institution is pilot until explicitly promoted.
+  - CHECK constraint `institutions_lifecycle_status_chk` pins the value to `('pilot','operational','archived')`.
+  - Existing institutions backfilled to `'operational'` so previously-created rows keep behaving.
+  - `public.institution_is_pilot(id) -> boolean`: fail-closed TRUE on unknown / NULL institution.
+  - `public.assert_institution_not_pilot(id, action_text)`: raises `ERRCODE=42501` with message `pilot_institution_blocks_<action>` and DETAIL naming the institution. PERFORM-called from any RPC that mints verifiable credentials, confers degrees, or signs transcripts.
+  - `public.vw_institution_banner(id, name, lifecycle_status, is_pilot)`: canonical UI watermark surface.
+
+- **`supabase/tests/pilot_institution_tier.test.sql` — 5 BLOCKING tests**
+  1. Column + CHECK constraint present; an INSERT with `lifecycle_status='ghost'` is blocked.
+  2. `institution_is_pilot`: pilot=true, operational=false, unknown=true (fail-closed), NULL=true (fail-closed).
+  3. `assert_institution_not_pilot(pilot_inst, 'confer_degree')` raises `pilot_institution_blocks_confer_degree`.
+  4. `assert_institution_not_pilot(operational_inst, 'issue_credential')` returns void cleanly.
+  5. `vw_institution_banner.is_pilot` matches `lifecycle_status`.
+
+- **CI wiring**: `Enforce P2A` right after P1D; `Run P2A suite` right after P1D suite. Both workflows.
+
+- **Local smoke**: 5/5 pass.
+
+### Readiness delta
+- **Pilot posture is enforceable, not just documented:** ↑↑ — any future `confer_degree`, `issue_credential`, `sign_transcript` RPC can `PERFORM public.assert_institution_not_pilot(inst_id, 'action_name')` and get a fail-closed guard for free. Nothing gated today is guaranteed to pretend to be an accredited institution.
+- **UI watermark has a canonical source:** ↑ — `vw_institution_banner.is_pilot` is the one field frontend reads to decide "show the pilot stripe on every page".
+- **Fail-closed on unknown:** ↑ — a query against a nonexistent institution returns `is_pilot = true`. No silent escapes.
+
+### Non-goals (deferred)
+- Actually gating existing conferral/issuance call-sites. That's a separate pass once those sites are inventoried; the primitive is the prerequisite.
+- A promotion workflow (pilot → operational). Requires accreditation evidence, board sign-off, legal review.
