@@ -162,6 +162,15 @@ BEGIN
     (v_student, 'd41c-student@test.local')
   ON CONFLICT (id) DO NOTHING;
 
+  -- Bypass user triggers for the entire fixture seed. degree_programs
+  -- has an enforce_program_depth_gate trigger that calls
+  -- public.log_quality_action() — a function that is advisory in CI
+  -- (defined later than D4.1c in the migration graph). Bypassing
+  -- user triggers here also sidesteps similar guards on the other
+  -- fixture tables; nothing in the D4.1c tests exercises those
+  -- triggers directly.
+  PERFORM set_config('session_replication_role', 'replica', true);
+
   INSERT INTO public.courses (id, title)
   VALUES
     (v_course1, 'D4.1c required course 1'),
@@ -188,6 +197,8 @@ BEGIN
     (user_id, degree_id, status)
   VALUES (v_student, v_degree, 'active')
   ON CONFLICT DO NOTHING;
+
+  PERFORM set_config('session_replication_role', 'origin', true);
 END$$;
 
 -- =====================================================================
