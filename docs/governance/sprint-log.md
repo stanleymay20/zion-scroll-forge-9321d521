@@ -1172,3 +1172,48 @@ Seven successive CI-driven corrections before Backend SQL Test Suite run 252 + P
 7. **3e3cd04** — DISABLE/ENABLE TRIGGER now uses the correct trigger name `section_enrollment_requires_teaching_ready_course` instead of the function name `enforce_section_course_teaching_readiness` (Postgres silently accepts "trigger not found" under `undefined_object` so the previous commit was a no-op).
 
 **Pattern worth preserving for the next similar sprint:** before shipping any migration touching a historical shared table like `section_enrollments`, `course_sections`, or `course_modules`, inspect the real column/trigger inventory from the historical migrations rather than trusting the local-bootstrap shape. The seven D4.1b fixes track exactly where the local smoke diverged from CI reality.
+
+---
+
+## Sprint D4.1c — Graduation Clearance + Repeat/Attempt Policy (2026-11-08)
+
+### What shipped
+Closes the D4.1 registrar track with a canonical completion ledger and the predicates that read it. Additive-only; no touches to `enrollments` or `section_enrollments`.
+
+- **`supabase/migrations/20261108000000_sprint_d4_1c_graduation_clearance.sql`**
+  - **`student_course_completions`** — canonical per-attempt outcome ledger. Columns: `user_id`, `course_id`, `grade`, `grade_points`, `credits_earned`, `passed`, `attempt_number`, `completed_at`, `recorded_by`. Partial index on active-passing completions. RLS enabled. Student-self-read policy + a conditional registrar/faculty-read policy (gated on `public.has_role` existing, same defensive pattern as D4.1a/b).
+  - **`can_attempt_course(user, course, max_attempts=3) RETURNS text[]`** — returns blockers for a new enrollment attempt. Issue codes: `user_id_required`, `course_id_required`, `already_completed_passing`, `max_attempts_reached`. Empty = allowed. The existing `enroll_student_in_section` RPC is unchanged; D4.1c-aware callers consult this predicate separately.
+  - **`evaluate_degree_completion(user, degree) RETURNS text[]`** — enumerates remaining requirements blocking graduation. Issue codes: `user_id_required`, `degree_id_required`, `degree_not_found`, `no_active_enrollment_in_degree`, `missing_required_course:<course_id>`, `insufficient_credits_earned`, `active_holds_block_graduation`. Reads `degree_program_courses`, `student_course_completions`, `student_holds` (D4.1b). Tolerates environments where `degree_program_courses` is absent (just skips the missing-course check). Empty = cleared to graduate.
+  - **`vw_student_degree_progress`** — per-student-degree-enrollment scorecard: `required_courses`, `completed_required_courses`, `credits_earned`, `issues` (from `evaluate_degree_completion`). Reusable across every student + degree.
+
+- **`supabase/tests/graduation_clearance.test.sql` — 6 BLOCKING tests**
+  1. `student_course_completions` exists + RLS + student-self-read policy.
+  2. `can_attempt_course` signature + NULL-input handling.
+  3. `evaluate_degree_completion` signature + NULL + unknown-degree handling.
+  4. `vw_student_degree_progress` exists + queryable.
+  5. E2E: seed a degree with a required course, student enrolled → `evaluate_degree_completion` reports `missing_required_course:<id>`; record a passing completion → that specific issue drops out of the list.
+  6. `can_attempt_course`: fresh course yields no blockers; after a passing attempt surfaces `already_completed_passing`; after three failing attempts surfaces `max_attempts_reached`.
+
+- **CI wiring**: `Enforce D4.1c graduation clearance (BLOCKING)` migration step right after D4.1b in both workflows; `Run D4.1c graduation clearance suite (BLOCKING)` suite step right after D4.1b suite in both.
+
+- **Local smoke test**: 6/6 pass against the Postgres 16 CI-shape bootstrap. Avoided D4.1b's seven-fix cycle by inspecting historical shapes up front (confirmed `enrollments` has no reliable `completed_at` / `grade` columns — hence the new canonical ledger — and verified `degree_programs` / `degree_program_courses` column names and constraints before writing fixtures).
+
+### Readiness delta
+- **Graduation can be audited server-side:** ↑↑ — `DegreeAudit.tsx` and `StudentGraduation.tsx` now have a fail-closed predicate they can call. The UI no longer has to reimplement graduation logic client-side.
+- **Repeat-attempt policy is first-class:** ↑↑ — `can_attempt_course` makes "how many times has this student taken this course" a one-call predicate. Previously only expressible as an ad-hoc client-side query against `enrollments`.
+- **Canonical completion ledger:** ↑ — `student_course_completions` is the single source of truth for whether a course attempt is a pass, a fail, or unresolved. Future transcript, GPA and transfer-credit work builds on this one table.
+- **Holds integrate into graduation:** ↑ — D4.1b's `student_holds` is now consulted at the graduation gate. A pending hold blocks a clearance exactly the same way it blocks a registration.
+
+### D4.1 track close-out status
+After D4.1a + D4.1b + D4.1c, the registrar critical path is:
+- Substrate reconciled BLOCKING (D4.1a).
+- Enrollment state writes authored only through trusted-session RPCs (D4.1b).
+- Deadline-aware drop/withdraw with audit rows (D4.1b).
+- Holds + registration-time predicate (D4.1b).
+- Graduation clearance + repeat-attempt predicate + canonical completion ledger (D4.1c).
+
+### Deferred (future sprints, not D4.1)
+1. **Transfer credit reconciliation RPC.** `program_transfer_requests` is a historical shape; the server-side `post_transfer_credit(student, from_program, to_program)` promotion that writes to `student_course_completions` is not yet written.
+2. **Registrar notification hook.** Blocked on the `notifications` table reconciliation (CI logs `column "body" of relation "notifications" does not exist` as advisory). When that lands, every `student_course_completions` insert and every `evaluate_degree_completion` → cleared transition should emit a notification.
+3. **Transcript / GPA RPC.** `student_course_completions` has the data; the aggregating RPC + verifiable-transcript surface is a separate sprint.
+4. **Catalog-driven `max_attempts` + `required_credits`.** `can_attempt_course` defaults `max_attempts=3`; `evaluate_degree_completion` treats 60 credits as the baseline. A future sprint reads these from `degree_programs` or a catalog table instead of using hardcoded defaults.

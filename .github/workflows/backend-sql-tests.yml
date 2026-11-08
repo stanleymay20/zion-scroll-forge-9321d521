@@ -183,6 +183,9 @@ jobs:
       - name: Enforce D4.1b registrar hardening (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261107160000_sprint_d4_1b_registrar_hardening.sql
 
+      - name: Enforce D4.1c graduation clearance (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108000000_sprint_d4_1c_graduation_clearance.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
@@ -215,6 +218,9 @@ jobs:
 
       - name: Run D4.1b registrar hardening suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/registrar_hardening.test.sql
+
+      - name: Run D4.1c graduation clearance suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/graduation_clearance.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true
