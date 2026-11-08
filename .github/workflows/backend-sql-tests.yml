@@ -264,6 +264,9 @@ jobs:
       - name: Run P2C bootstrap pilot institution suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap_pilot_institution.test.sql
 
+      - name: Run P2D pilot E2E smoke suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/pilot_e2e_smoke.test.sql
+
       - name: Run governance suite (advisory)
         continue-on-error: true
         run: |

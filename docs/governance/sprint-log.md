@@ -1466,3 +1466,40 @@ Atomic one-call pilot bootstrap wrapping P2A + P2B.
 
 ### Next
 - **2D** Pilot E2E smoke test that walks a course from draft → published → enrolled → completed, proving every gate works end-to-end against a real bootstrapped pilot institution.
+
+---
+
+## Phase 2D — Pilot E2E Smoke Test (2026-11-08)
+
+### What shipped
+Composes every Phase 1 + Phase 2 primitive end-to-end in a pilot-institution context. The "a pilot operator can actually operate" proof.
+
+- **`supabase/tests/pilot_e2e_smoke.test.sql` — 8 BLOCKING steps**
+  1. `bootstrap_pilot_institution` (P2C) → pilot institution + active persona pair in one call.
+  2. Seed a course + degree_program with catalog policies (max_attempts=2, required_credits=6, P1D) + required-course mapping + active student degree enrollment.
+  3. `evaluate_degree_completion` surfaces `missing_required_course:<id>` + `insufficient_credits_earned` before any completion.
+  4. Record a passing 6-credit A completion in the canonical ledger (D4.1c).
+  5. `student_cumulative_gpa` returns 4.0; `vw_student_transcript.credits_earned = 6`; `compute_student_transcript` blob has 1 course + `passed=1`.
+  6. `evaluate_degree_completion` drops both the missing-course issue AND `insufficient_credits_earned` (required_credits=6 met).
+  7. `can_attempt_course` surfaces `already_completed_passing` for the completed course; after seeding two failing attempts on a second course, it surfaces `max_attempts_reached` (catalog `max_attempts=2`).
+  8. `impose_student_hold` writes a `registrar_audit_log` row; the P1A `trg_notify_registrar_audit` emits a `notifications` row keyed `registrar:hold_imposed:<audit_id>`.
+
+- **CI wiring**: `Run P2D suite` right after P2C suite in both workflows.
+
+- **Local smoke**: 8/8 pass against the full migration chain (D4.1a → P2C).
+
+### Readiness delta
+- **Substrate composes:** ↑↑↑ — every primitive we've shipped since D4.1a has now been exercised together in a single test. Not just unit-passing; they produce the correct composite answers (GPA 4.0, credits 6, graduation blockers that resolve as expected).
+- **Pilot operational proof:** ↑↑↑ — the pilot operator path is end-to-end green in CI. A fresh CI DB can bootstrap a pilot institution and run a student through the entire ledger loop without manual intervention.
+- **What P2D doesn't prove (deliberate):** the enrollment-flow trigger chain (teaching-readiness, state guard) is not exercised here because the fixture course doesn't have real content. That proof is Phase 4 (post-content). P2D proves the LEDGER + REPORTING primitives; Phase 4 will prove the GATE primitives against real-content fixtures.
+
+### Phase 2 closed — what's now in trunk
+- **2A** Pilot institution tier (lifecycle_status + is_pilot guard).
+- **2B** Dual-persona seed (pilot_personas + register_pilot_personas).
+- **2C** `bootstrap_pilot_institution` atomic RPC.
+- **2D** Pilot E2E smoke composing P1A/P1B/P1D + D4.1b holds + P2A/P2B/P2C.
+
+Four migrations, four BLOCKING suites. The system's "substrate for a pilot institution" is now a provable, CI-enforced guarantee rather than documentation.
+
+### Next (Phase 3 — Golden Path content authoring)
+Per operator direction: AI-drafted content, human-reviewed. 8 modules of ≥8000 chars each with the 6 flow markers, a quiz bank per module, rubrics for Module 1 assignments. Drafts written to `.md` files for operator review, then walked through `/admin/module-content-review` by the dual-persona pair. No direct DB writes of content during drafting.
