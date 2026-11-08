@@ -1398,3 +1398,39 @@ Makes "we are a pilot institution" a first-class, enforceable fact rather than a
 ### Non-goals (deferred)
 - Actually gating existing conferral/issuance call-sites. That's a separate pass once those sites are inventoried; the primitive is the prerequisite.
 - A promotion workflow (pilot → operational). Requires accreditation evidence, board sign-off, legal review.
+
+---
+
+## Phase 2B — Dual-Persona Seed Pattern (2026-11-08)
+
+### What shipped
+Lets a single human operator run a pilot institution without bypassing the independent-reviewer invariant.
+
+- **`supabase/migrations/20261108060000_sprint_p2b_dual_persona.sql`**
+  - `public.pilot_personas` table: one row per pilot institution pairing a distinct `operator_user_id` with a distinct `reviewer_user_id`. CHECK enforces `operator ≠ reviewer`. Partial unique index on `(institution_id) WHERE retired_at IS NULL` enforces one active pair per institution.
+  - RLS: `operator_user_id = auth.uid() OR reviewer_user_id = auth.uid()` for self-read; conditional admin/registrar/superadmin read when `has_role` exists.
+  - `public.register_pilot_personas(institution, operator, reviewer, attestation) -> jsonb`: validates authentication, non-NULL inputs, operator ≠ reviewer, institution exists + is pilot, both user_ids exist. ON CONFLICT on the partial unique index → `active_pilot_personas_already_registered`. Writes an `ops_log` audit row when that table exists.
+  - `public.vw_pilot_personas`: institution name + both emails + `is_active` boolean.
+
+- **`supabase/tests/dual_persona.test.sql` — 4 BLOCKING tests**
+  1. Table + RLS + active-row partial unique index present.
+  2. Refuses `operator=reviewer`, unknown institution, non-pilot institution, unknown operator user, NULL operator.
+  3. Happy path registers an active pair; view shows `is_active=true`.
+  4. Re-register same institution returns `active_pilot_personas_already_registered`.
+
+- **CI wiring**: `Enforce P2B` right after P2A; `Run P2B suite` right after P2A suite. Both workflows.
+
+- **Local smoke**: 4/4 pass.
+
+### Readiness delta
+- **Single-operator pilots are legal:** ↑↑ — the one-human reality of ScrollUniversity now has a sanctioned registration path. The operator attests dual-persona integrity; the system records it with a timestamp.
+- **Independent-reviewer invariant preserved, not weakened:** ↑↑ — CT2.1 publication still requires a reviewer `user_id` distinct from the author's `user_id`. P2B does not relax that; it tells the system which second account the operator uses to fulfil it.
+- **Audit trail:** ↑ — every pair registration is recorded in `pilot_personas` + (when available) `ops_log`, with the registering actor, attestation text, and timestamp.
+
+### Non-goals (deferred to later sprints)
+- Consuming `pilot_personas` from existing RPCs (content review, credential review). Phase 2B ships the primitive; wiring is per-RPC.
+- Rotating the reviewer persona. Possible via `retired_at` + a new INSERT, but the RPC for that is deferred.
+
+### Next
+- **2C** `bootstrap_pilot_institution(name, operator_user_id)` — convenience RPC that creates a pilot institution + provisions the reviewer persona user + registers the personas atomically.
+- **2D** Pilot E2E smoke test.
