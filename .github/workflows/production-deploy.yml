@@ -231,6 +231,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108020000_sprint_p1b_transcript_aggregator.sql
       - name: Enforce P1C transfer credit (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108030000_sprint_p1c_transfer_credit.sql
+      - name: Enforce P1D catalog policies (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108040000_sprint_p1d_catalog_policies.sql
 
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
@@ -264,6 +266,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/transcript_aggregator.test.sql
       - name: Run P1C transfer credit suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/transfer_credit.test.sql
+      - name: Run P1D catalog policies suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/catalog_policies.test.sql
       - name: Run academic spine regression suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/academic_spine.test.sql
       - name: Seed representative cohort fixtures

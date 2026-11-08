@@ -1322,3 +1322,44 @@ Promotes approved transfer-credit requests into posted transcript credit with fu
 
 ### Next (Phase 1 continuation)
 - **1D** Catalog-driven policies (max_attempts + required_credits from degree_programs).
+
+---
+
+## Phase 1D — Catalog-driven Policies (2026-11-08)
+
+### What shipped
+Moves `max_attempts` and `required_credits` from engineering defaults into the `degree_programs` catalog.
+
+- **`supabase/migrations/20261108040000_sprint_p1d_catalog_policies.sql`**
+  - `ALTER TABLE public.degree_programs` adds `max_attempts int` + `required_credits numeric(4,1)`, backfills existing rows with the historical defaults 3 / 60, sets `DEFAULT` to 3 / 60 so new rows inherit them.
+  - `can_attempt_course(_user, _course_id, _max_attempts int DEFAULT NULL)` — signature kept compatible with D4.1c, default changed from `3` to `NULL`. Resolution order: explicit `_max_attempts` arg → student's active-degree `max_attempts` → 3.
+  - `evaluate_degree_completion(_user, _degree_id)` — reads `degree_programs.required_credits` instead of hardcoding 60. Falls back to 60 when the row's value is NULL.
+
+- **`supabase/tests/catalog_policies.test.sql` — 5 BLOCKING tests**
+  1. `degree_programs` carries `max_attempts` + `required_credits`.
+  2. Catalog `max_attempts=2` blocks a 3rd attempt (no explicit arg).
+  3. Explicit `_max_attempts=5` overrides the catalog `max_attempts=2`.
+  4. `evaluate_degree_completion` honors `required_credits=90` (student with 65 credits → `insufficient_credits_earned`).
+  5. New `degree_programs` row with neither column set → defaults land as 3 / 60.
+
+- **CI wiring**: `Enforce P1D` right after P1C; `Run P1D suite` right after P1C suite. Both workflows.
+
+- **Local smoke**: 5/5 pass. Backward-compat verified: existing D4.1c-era degrees without the columns get the historical 3 / 60 behavior via DEFAULT backfill.
+
+### Readiness delta
+- **Policies are catalog-authored, not code-authored:** ↑↑ — a registrar can change a degree's `max_attempts` or `required_credits` with a single `UPDATE public.degree_programs`, and the next call to `can_attempt_course` / `evaluate_degree_completion` honors the new value. No migration, no deploy.
+- **Backward compatibility preserved:** ↑ — explicit `_max_attempts` callers (there are none in production yet, but the signature survives) still win. Degrees whose columns are NULL still get 3 / 60.
+
+### Phase 1 closed — what's now in trunk
+- **1A** Notifications reconciliation + registrar notification hook.
+- **1B** Transcript / GPA aggregator (`compute_student_gpa`, `compute_student_transcript`, `vw_student_transcript`).
+- **1C** Transfer-credit reconciliation RPC (`post_transfer_credit`) with full provenance + idempotency.
+- **1D** Catalog-driven policies (`max_attempts`, `required_credits`) on `degree_programs`.
+
+Four migrations, four BLOCKING test suites, 20 new tests. The registrar critical path end-to-end — enroll, drop, withdraw, hold, complete, transcript, transfer credit, graduation clearance — is now fully substrate-complete, catalog-aware, and auditable.
+
+### Next (Phase 2 — Pilot operations bootstrap)
+- **2A** Pilot institution tier: `institutions.lifecycle_status = 'pilot'` with a server-side guard preventing credential issuance / degree conferral from pilot institutions.
+- **2B** Dual-persona seed: a canonical pattern that lets a single operator hold admin+registrar+superadmin roles while a second user holds faculty — preserving the independent-reviewer invariant.
+- **2C** `bootstrap_pilot_institution(institution_name, operator_user_id)` RPC.
+- **2D** Pilot E2E smoke test that walks a course from draft → published → enrolled → completed.
