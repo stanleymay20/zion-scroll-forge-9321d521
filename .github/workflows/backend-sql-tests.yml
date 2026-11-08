@@ -204,6 +204,9 @@ jobs:
       - name: Enforce P2B dual-persona seed (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108060000_sprint_p2b_dual_persona.sql
 
+      - name: Enforce P2C bootstrap pilot institution (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108070000_sprint_p2c_bootstrap_pilot_institution.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
@@ -257,6 +260,9 @@ jobs:
 
       - name: Run P2B dual-persona seed suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/dual_persona.test.sql
+
+      - name: Run P2C bootstrap pilot institution suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap_pilot_institution.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true

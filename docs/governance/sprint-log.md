@@ -1434,3 +1434,35 @@ Lets a single human operator run a pilot institution without bypassing the indep
 ### Next
 - **2C** `bootstrap_pilot_institution(name, operator_user_id)` — convenience RPC that creates a pilot institution + provisions the reviewer persona user + registers the personas atomically.
 - **2D** Pilot E2E smoke test.
+
+---
+
+## Phase 2C — bootstrap_pilot_institution RPC (2026-11-08)
+
+### What shipped
+Atomic one-call pilot bootstrap wrapping P2A + P2B.
+
+- **`supabase/migrations/20261108070000_sprint_p2c_bootstrap_pilot_institution.sql`**
+  - `bootstrap_pilot_institution(_name, _operator, _reviewer, _attestation) -> jsonb`
+  - Validates authentication, non-blank name, non-NULL + distinct operator/reviewer, both user_ids exist.
+  - Creates the `public.institutions` row with `lifecycle_status='pilot'` (inherited from the P2A default; no explicit set needed, but passed explicitly for clarity).
+  - Calls `public.register_pilot_personas` internally; on failure, RAISEs so the enclosing (sub-)transaction rolls back both the institution row and any persona work.
+  - Writes an `ops_log` row (`pilot_institution_bootstrapped`) when that table is present.
+  - Returns `{success, institution_id, persona_id}` on success.
+
+- **`supabase/tests/bootstrap_pilot_institution.test.sql` — 4 BLOCKING tests**
+  1. Refuses unauth / blank name / operator=reviewer / NULL operator.
+  2. Happy path returns `success` + `institution_id` + `persona_id`.
+  3. Resulting institution appears in `vw_institution_banner` as `is_pilot=true`.
+  4. Resulting persona appears in `vw_pilot_personas` as `is_active=true`.
+
+- **CI wiring**: `Enforce P2C` after P2B; `Run P2C suite` after P2B suite in both workflows.
+
+- **Local smoke**: 4/4 pass.
+
+### Readiness delta
+- **One-command bootstrap:** ↑↑ — a pilot institution + its dual-persona pair now lands atomically in one RPC call. No multi-step setup.
+- **Transactional safety:** ↑ — persona-registration failure rolls back the institution row. No orphan institutions from partial bootstraps.
+
+### Next
+- **2D** Pilot E2E smoke test that walks a course from draft → published → enrolled → completed, proving every gate works end-to-end against a real bootstrapped pilot institution.
