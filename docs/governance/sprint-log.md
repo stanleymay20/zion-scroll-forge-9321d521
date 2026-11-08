@@ -1159,3 +1159,16 @@ Trusted-session authority for the enrollment state-write path, same pattern PR #
 2. **Repeat/attempt policy.** `enroll_student_in_section` doesn't currently check prior attempts on the same course; a student can enroll in a failed course only N times per catalog policy.
 3. **Transfer credit reconciliation RPC.** `TransferRequestsAdmin.tsx` exists; the server-side promotion to posted transcript credit is still ad-hoc.
 4. **Registrar notification hook.** Every audit row should fire a notification to the student (`drop_confirmation`, `hold_imposed_notice`, etc.); defer until `emit_notification` schema lands in CI (currently advisory — `column "body" of relation "notifications" does not exist`).
+
+### Post-ship fixes (D4.1b landed green on commit 3e3cd04)
+Seven successive CI-driven corrections before Backend SQL Test Suite run 252 + Production Deployment run 350 both went green. Each surfaced a different flavor of CI-shape drift from the local smoke bootstrap, which didn't replay the full historical migration stack:
+
+1. **fbbcfd4** — `DROP FUNCTION IF EXISTS drop_section_enrollment(uuid,text)` + `(uuid)` before the `CREATE OR REPLACE`. Historical migration 20260520051627 defined this with parameter name `_enrollment_id`; my new parameter name `_section_id` triggered Postgres's "cannot change name of input parameter" rejection.
+2. **5d98736** — fixture `INSERT INTO course_sections` adds `term_label` (NOT NULL from the historical shape, not reconciled by my D4.1a).
+3. **f99fa81** — fixture adds `course_code` (NOT NULL from the same historical shape).
+4. **a413035** — fixture seed wraps `section_enrollments` INSERTs in `session_replication_role='replica'` to bypass the `enforce_section_course_teaching_readiness` BEFORE INSERT trigger that refuses enrollments into a course without CLOs/modules/assessments.
+5. **a4582eb** — `drop_section_enrollment`'s `UPDATE` and test 4's trusted-session `UPDATE` both cast `::public.section_enrollment_status` when writing `status`; without the cast Postgres refuses the enum-typed column assignment from a text variable (INSERT VALUES literals are unknown-typed and get an implicit cast; UPDATE from a typed variable does not).
+6. **3a93fc4** — test 4 wraps its two UPDATEs in `ALTER TABLE section_enrollments DISABLE TRIGGER` so the teaching-readiness check doesn't confound the state-guard test (the teaching-readiness trigger fires on `UPDATE OF section_id, status` too, not just INSERT). Also captures `SQLERRM` in the detail line for future diagnostic clarity.
+7. **3e3cd04** — DISABLE/ENABLE TRIGGER now uses the correct trigger name `section_enrollment_requires_teaching_ready_course` instead of the function name `enforce_section_course_teaching_readiness` (Postgres silently accepts "trigger not found" under `undefined_object` so the previous commit was a no-op).
+
+**Pattern worth preserving for the next similar sprint:** before shipping any migration touching a historical shared table like `section_enrollments`, `course_sections`, or `course_modules`, inspect the real column/trigger inventory from the historical migrations rather than trusting the local-bootstrap shape. The seven D4.1b fixes track exactly where the local smoke diverged from CI reality.
