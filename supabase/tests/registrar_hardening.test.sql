@@ -205,6 +205,8 @@ DO $$
 DECLARE
   v_blocked boolean := false;
   v_allowed boolean := false;
+  v_blocked_err text := '';
+  v_allowed_err text := '';
   v_enroll uuid;
 BEGIN
   SELECT id INTO v_enroll FROM _d41b_ids WHERE name='enroll_open';
@@ -214,14 +216,22 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Disable OTHER user triggers on section_enrollments so this test
+  -- isolates my D4.1b state guard. enforce_section_course_teaching_readiness
+  -- fires on UPDATE too and would reject the write because the bare-bones
+  -- fixture course isn't teaching-ready — unrelated to the state guard.
+  BEGIN
+    EXECUTE 'ALTER TABLE public.section_enrollments DISABLE TRIGGER enforce_section_course_teaching_readiness';
+  EXCEPTION WHEN undefined_object THEN NULL;
+  END;
+
   BEGIN
     UPDATE public.section_enrollments
        SET status = 'dropped'::public.section_enrollment_status
      WHERE id = v_enroll;
-  EXCEPTION WHEN insufficient_privilege THEN
+  EXCEPTION WHEN OTHERS THEN
     v_blocked := SQLERRM LIKE '%section_enrollment_state_write_forbidden%';
-  WHEN OTHERS THEN
-    v_blocked := SQLERRM LIKE '%section_enrollment_state_write_forbidden%';
+    v_blocked_err := SQLERRM;
   END;
 
   PERFORM set_config('scrolluniversity.registrar_authority_rpc', 'on', true);
@@ -232,12 +242,19 @@ BEGIN
     v_allowed := true;
   EXCEPTION WHEN OTHERS THEN
     v_allowed := false;
+    v_allowed_err := SQLERRM;
   END;
   PERFORM set_config('scrolluniversity.registrar_authority_rpc', 'off', true);
 
+  BEGIN
+    EXECUTE 'ALTER TABLE public.section_enrollments ENABLE TRIGGER enforce_section_course_teaching_readiness';
+  EXCEPTION WHEN undefined_object THEN NULL;
+  END;
+
   PERFORM pg_temp.record(4,'state guard blocks direct UPDATE + allows trusted-session UPDATE',
                          v_blocked AND v_allowed,
-                         format('blocked=%s allowed=%s', v_blocked, v_allowed));
+                         format('blocked=%s allowed=%s blocked_err=%s allowed_err=%s',
+                                v_blocked, v_allowed, v_blocked_err, v_allowed_err));
 END$$;
 
 -- =====================================================================
