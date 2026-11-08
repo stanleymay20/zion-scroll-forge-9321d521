@@ -186,6 +186,9 @@ jobs:
       - name: Enforce D4.1c graduation clearance (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108000000_sprint_d4_1c_graduation_clearance.sql
 
+      - name: Enforce P1A notifications reconciliation (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108010000_sprint_p1a_notifications_reconciliation.sql
+
       - name: Run signup provisioning suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/signup_provisioning.test.sql
 
@@ -221,6 +224,9 @@ jobs:
 
       - name: Run D4.1c graduation clearance suite (BLOCKING)
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/graduation_clearance.test.sql
+
+      - name: Run P1A notifications reconciliation suite (BLOCKING)
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/notifications_reconciliation.test.sql
 
       - name: Run governance suite (advisory)
         continue-on-error: true

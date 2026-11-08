@@ -1217,3 +1217,39 @@ After D4.1a + D4.1b + D4.1c, the registrar critical path is:
 2. **Registrar notification hook.** Blocked on the `notifications` table reconciliation (CI logs `column "body" of relation "notifications" does not exist` as advisory). When that lands, every `student_course_completions` insert and every `evaluate_degree_completion` → cleared transition should emit a notification.
 3. **Transcript / GPA RPC.** `student_course_completions` has the data; the aggregating RPC + verifiable-transcript surface is a separate sprint.
 4. **Catalog-driven `max_attempts` + `required_credits`.** `can_attempt_course` defaults `max_attempts=3`; `evaluate_degree_completion` treats 60 credits as the baseline. A future sprint reads these from `degree_programs` or a catalog table instead of using hardcoded defaults.
+
+---
+
+## Phase 1A — Notifications Reconciliation + Registrar Notification Hook (2026-11-08)
+
+### What shipped
+Closes the long-standing CI advisory `column "body" of relation "notifications" does not exist` and wires registrar audit events to student-facing notifications.
+
+- **`supabase/migrations/20261108010000_sprint_p1a_notifications_reconciliation.sql`**
+  - Defensive `ALTER TABLE public.notifications` adding canonical columns `body`, `metadata`, `event_key`, `related_id`, `related_type`, `is_read`. Historical shapes (20241219 community migration, which NOT-NULLs `message` and CHECKs `type` into a social-feed enum) are left queryable while the canonical columns are added on top.
+  - Backfills `body` from the legacy `message` column when present; drops the `NOT NULL` on `message` so new inserts don't need it.
+  - Drops any residual `CHECK` constraint on `notifications.type` whose definition references `type` — the social-feed enum was blocking registrar event kinds (`dropped`, `withdrawn`, `hold_imposed`, `hold_lifted`, `course_completed`, `degree_cleared`).
+  - `emit_notification(_user_id, _title, _body, _type, _related_type, _related_id, _metadata, _event_key)` — canonical 8-arg `SECURITY DEFINER` function. Idempotent via the `event_key` column.
+  - `notify_registrar_audit()` trigger function + `trg_notify_registrar_audit` AFTER INSERT on `public.registrar_audit_log`. Maps each `event_kind` to a human-readable title + body and emits a notification to `student_user_id`. Audit rows without a student skip the emit.
+  - Indexes: `(user_id, created_at DESC) WHERE NOT is_read` for unread fetch; `(event_key) WHERE event_key IS NOT NULL` for dedupe lookups.
+
+- **`supabase/tests/notifications_reconciliation.test.sql` — 5 BLOCKING tests**
+  1. Canonical columns present.
+  2. No restrictive `CHECK` on `notifications.type` remains.
+  3. `emit_notification` 8-arg signature callable + inserts a row.
+  4. `trg_notify_registrar_audit` trigger installed on `registrar_audit_log`.
+  5. E2E: insert a `hold_imposed` audit row with a `student_user_id`; assert a notification appears keyed to `registrar:hold_imposed:<audit_id>`.
+
+- **CI wiring**: `Enforce P1A notifications reconciliation (BLOCKING)` migration step right after D4.1c; `Run P1A notifications reconciliation suite (BLOCKING)` right after D4.1c suite. Both workflows.
+
+- **Local smoke test**: 5/5 pass against a Postgres 16 bootstrap that pre-creates the restrictive historical `notifications` shape (`message NOT NULL`, `type` CHECK enum) — confirming the defensive ALTER + CHECK drop actually fix what CI sees.
+
+### Readiness delta
+- **Advisory noise gone:** ↑↑ — the recurring `column "body" of relation notifications does not exist` error that has appeared in every CI run since the authority chain landed is resolved.
+- **Students get told what happens to them:** ↑↑ — every registrar-visible event now emits a notification. Drops, withdrawals, hold imposition/lifting, completions, graduation clearance.
+- **Notification idempotency:** ↑ — `event_key = 'registrar:<event_kind>:<audit_id>'` makes replays safe. Future re-fires (e.g. a retried audit INSERT after a trigger crash) won't duplicate.
+
+### Next (Phase 1 continuation)
+- **1B** Transcript / GPA aggregator RPC.
+- **1C** Transfer-credit reconciliation RPC.
+- **1D** Catalog-driven policies (max_attempts + required_credits from degree_programs).
