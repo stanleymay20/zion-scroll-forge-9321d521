@@ -217,11 +217,14 @@ BEGIN
   END IF;
 
   -- Disable OTHER user triggers on section_enrollments so this test
-  -- isolates my D4.1b state guard. enforce_section_course_teaching_readiness
-  -- fires on UPDATE too and would reject the write because the bare-bones
-  -- fixture course isn't teaching-ready — unrelated to the state guard.
+  -- isolates my D4.1b state guard. The teaching-readiness trigger
+  -- (function enforce_section_course_teaching_readiness, trigger
+  -- section_enrollment_requires_teaching_ready_course from
+  -- 20260907101000) fires on UPDATE too and would reject the write
+  -- because the bare-bones fixture course isn't teaching-ready —
+  -- unrelated to the state guard.
   BEGIN
-    EXECUTE 'ALTER TABLE public.section_enrollments DISABLE TRIGGER enforce_section_course_teaching_readiness';
+    EXECUTE 'ALTER TABLE public.section_enrollments DISABLE TRIGGER section_enrollment_requires_teaching_ready_course';
   EXCEPTION WHEN undefined_object THEN NULL;
   END;
 
@@ -247,7 +250,7 @@ BEGIN
   PERFORM set_config('scrolluniversity.registrar_authority_rpc', 'off', true);
 
   BEGIN
-    EXECUTE 'ALTER TABLE public.section_enrollments ENABLE TRIGGER enforce_section_course_teaching_readiness';
+    EXECUTE 'ALTER TABLE public.section_enrollments ENABLE TRIGGER section_enrollment_requires_teaching_ready_course';
   EXCEPTION WHEN undefined_object THEN NULL;
   END;
 
