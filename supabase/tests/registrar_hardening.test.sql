@@ -181,8 +181,11 @@ BEGIN
     (v_section_past, v_course, v_term_past, 'D41B-PAST', 'open', true, 25, 1, 3, 'd41b-past', 'D41B')
   ON CONFLICT (id) DO NOTHING;
 
-  -- Seed section_enrollments via the trusted marker (bypasses the guard
-  -- so the fixture rows land in 'enrolled' state).
+  -- Seed section_enrollments. Bypass user triggers for the duration —
+  -- both my own state guard AND enforce_section_course_teaching_readiness,
+  -- which the bare-bones fixture course cannot satisfy. set_config with
+  -- is_local=true is the plpgsql-safe equivalent of SET LOCAL.
+  PERFORM set_config('session_replication_role', 'replica', true);
   PERFORM set_config('scrolluniversity.registrar_authority_rpc', 'on', true);
   INSERT INTO public.section_enrollments
     (id, section_id, student_user_id, status, term_id, credit_hours)
@@ -191,6 +194,7 @@ BEGIN
     (v_enroll_past, v_section_past, v_student, 'enrolled', v_term_past, 3)
   ON CONFLICT (id) DO NOTHING;
   PERFORM set_config('scrolluniversity.registrar_authority_rpc', 'off', true);
+  PERFORM set_config('session_replication_role', 'origin', true);
 END$$;
 
 -- =====================================================================
