@@ -1285,3 +1285,40 @@ Aggregates `student_course_completions` into the two surfaces students and the r
 ### Non-goals (deferred)
 - Signed/sealed transcript issuance. Requires accreditation posture + key management.
 - GPA by term, by semester, honors cutoffs, dean's list — straightforward extensions of `compute_student_gpa` once the catalog has that data.
+
+---
+
+## Phase 1C — Transfer-Credit Reconciliation RPC (2026-11-08)
+
+### What shipped
+Promotes approved transfer-credit requests into posted transcript credit with full provenance. Closes the long-standing ad-hoc gap between `program_transfer_requests.status='approved'` and actual `student_course_completions` entries.
+
+- **`supabase/migrations/20261108030000_sprint_p1c_transfer_credit.sql`**
+  - Defensive `ALTER TABLE public.student_course_completions` adding provenance columns: `source` (default `'native'`), `source_institution`, `transfer_request_id`, `transfer_note`.
+  - Unique partial index `(user_id, course_id, transfer_request_id) WHERE transfer_request_id IS NOT NULL` — makes re-posts of the same approved transfer idempotent.
+  - BTREE partial index `(source) WHERE source <> 'native'` for fast registrar-side filtering.
+  - **`post_transfer_credit(student, from_program, to_program, courses, source_institution, transfer_request_id, reviewer_note) -> jsonb`**:
+    - Authorization: `has_role(admin|superadmin|registrar)` when `has_role` exists; falls back to the trusted-session marker in environments without it.
+    - Validates the supplied `transfer_request_id` belongs to the student.
+    - Iterates the `courses` jsonb array `[{course_id, grade, grade_points, credits_earned, completed_at}, ...]` and inserts one `student_course_completions` row per course with `source='transfer'`, `passed=true`, actor recorded.
+    - `ON CONFLICT ... DO NOTHING` on the unique provenance index → re-posts are no-ops.
+    - Writes a `registrar_audit_log` row with `event_kind='transfer_credit_posted'` and a payload listing `courses_posted` / `courses_requested` / `transfer_request_id` / `source_institution` / `reviewer_note`.
+
+- **`supabase/tests/transfer_credit.test.sql` — 5 BLOCKING tests**
+  1. Provenance columns present on `student_course_completions`.
+  2. RPC refuses unauthenticated / empty courses / non-registrar callers.
+  3. Registrar posts 2 courses → 2 rows land with `source='transfer'`; `vw_student_transcript` reflects the 7 earned credits.
+  4. Re-post with same `transfer_request_id` is idempotent (0 new rows, `posted_count=0`).
+  5. `registrar_audit_log` has a `transfer_credit_posted` row for the student.
+
+- **CI wiring**: `Enforce P1C` right after P1B; `Run P1C suite` right after P1B suite. Both workflows.
+
+- **Local smoke**: 5/5 pass. Required a NULL-safe update to the local `auth.uid()` stub so "unauthenticated" simulations don't crash on empty jwt claims — the real Supabase `auth.uid()` handles this gracefully already.
+
+### Readiness delta
+- **Approved transfers actually count:** ↑↑ — the `TransferRequestsAdmin.tsx` UI now has a one-call RPC that posts the credit the moment a reviewer approves. Before Phase 1C, approval was a status change only.
+- **Transcript includes transfer credit:** ↑ — `compute_student_transcript` (Phase 1B) automatically sees transfer rows and includes them in the courses array and credits_earned total. No duplicate code path for transfer vs native.
+- **Idempotent + auditable:** ↑ — the `(user_id, course_id, transfer_request_id)` unique index guarantees a re-post never doubles credit; every posting (and every no-op re-post) writes an audit row.
+
+### Next (Phase 1 continuation)
+- **1D** Catalog-driven policies (max_attempts + required_credits from degree_programs).
