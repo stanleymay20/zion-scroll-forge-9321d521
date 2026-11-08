@@ -171,14 +171,14 @@ BEGIN
   VALUES (v_course, 'D4.1b course')
   ON CONFLICT (id) DO NOTHING;
 
-  -- term_label is NOT NULL in CI's course_sections shape; derive from
-  -- the term code so historical rows aren't broken.
+  -- term_label + course_code are NOT NULL in CI's course_sections shape;
+  -- derive them from the term + course so historical rows aren't broken.
   INSERT INTO public.course_sections
     (id, course_id, term_id, section_code, section_status, active,
-     seat_capacity, enrolled_count, credit_hours, term_label)
+     seat_capacity, enrolled_count, credit_hours, term_label, course_code)
   VALUES
-    (v_section_open, v_course, v_term_open, 'D41B-OPEN', 'open', true, 25, 1, 3, 'd41b-open'),
-    (v_section_past, v_course, v_term_past, 'D41B-PAST', 'open', true, 25, 1, 3, 'd41b-past')
+    (v_section_open, v_course, v_term_open, 'D41B-OPEN', 'open', true, 25, 1, 3, 'd41b-open', 'D41B'),
+    (v_section_past, v_course, v_term_past, 'D41B-PAST', 'open', true, 25, 1, 3, 'd41b-past', 'D41B')
   ON CONFLICT (id) DO NOTHING;
 
   -- Seed section_enrollments via the trusted marker (bypasses the guard
