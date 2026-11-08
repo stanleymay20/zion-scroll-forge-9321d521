@@ -215,7 +215,9 @@ BEGIN
   END IF;
 
   BEGIN
-    UPDATE public.section_enrollments SET status = 'dropped' WHERE id = v_enroll;
+    UPDATE public.section_enrollments
+       SET status = 'dropped'::public.section_enrollment_status
+     WHERE id = v_enroll;
   EXCEPTION WHEN insufficient_privilege THEN
     v_blocked := SQLERRM LIKE '%section_enrollment_state_write_forbidden%';
   WHEN OTHERS THEN
@@ -224,7 +226,9 @@ BEGIN
 
   PERFORM set_config('scrolluniversity.registrar_authority_rpc', 'on', true);
   BEGIN
-    UPDATE public.section_enrollments SET status = 'enrolled' WHERE id = v_enroll;
+    UPDATE public.section_enrollments
+       SET status = 'enrolled'::public.section_enrollment_status
+     WHERE id = v_enroll;
     v_allowed := true;
   EXCEPTION WHEN OTHERS THEN
     v_allowed := false;

@@ -293,8 +293,10 @@ BEGIN
 
   PERFORM set_config('scrolluniversity.registrar_authority_rpc', 'on', true);
 
+  -- section_enrollments.status is public.section_enrollment_status (enum);
+  -- cast the text _new_status before writing.
   UPDATE public.section_enrollments
-     SET status = _new_status,
+     SET status = _new_status::public.section_enrollment_status,
          withdrawn_at = CASE WHEN _new_status = 'withdrawn' THEN now() ELSE withdrawn_at END
    WHERE id = _enrollment.id;
 
