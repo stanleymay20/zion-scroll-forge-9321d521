@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Loader2, Mic, MicOff, Video, VideoOff, Users } from 'lucide-react';
 import { useClassroomSession } from '@/hooks/useClassroomSession';
+import { LiveClassroomInteractions } from './LiveClassroomInteractions';
 
 export type LiveClassroomRole = 'student' | 'faculty' | 'observer';
 
@@ -61,6 +62,11 @@ export function LiveClassroom({
   const roomRef = useRef<Room | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const peerAudioContainerRef = useRef<HTMLDivElement | null>(null);
+  const peerAudioElementsRef = useRef(new Map<RemoteTrack, HTMLMediaElement>());
+  const [connectedRoom, setConnectedRoom] = useState<Room | null>(null);
+  const [micEnabled, setMicEnabled] = useState(false);
+  const [micBusy, setMicBusy] = useState(false);
   const [status, setStatus] = useState<ConnectionStatus>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [participants, setParticipants] = useState<RemoteParticipant[]>([]);
@@ -75,6 +81,13 @@ export function LiveClassroom({
         console.log('[LiveClassroom] session not live — disconnecting');
         roomRef.current.disconnect();
         roomRef.current = null;
+        peerAudioElementsRef.current.forEach((element, track) => {
+          track.detach(element);
+          element.remove();
+        });
+        peerAudioElementsRef.current.clear();
+        setConnectedRoom(null);
+        setMicEnabled(false);
         setHasVideo(false);
         setHasAudio(false);
         setParticipants([]);
@@ -135,12 +148,25 @@ export function LiveClassroom({
           if (isLecturerIdentity(participant.identity)) {
             attachTrack(track);
             recomputeStatus(room);
+          } else if (track.kind === Track.Kind.Audio && peerAudioContainerRef.current) {
+            // Let faculty and fellow students hear a student's opt-in microphone.
+            const element = track.attach();
+            element.autoplay = true;
+            peerAudioContainerRef.current.appendChild(element);
+            peerAudioElementsRef.current.set(track, element);
           }
         })
         .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
-          track.detach();
-          if (track.kind === Track.Kind.Video) setHasVideo(false);
-          if (track.kind === Track.Kind.Audio) setHasAudio(false);
+          const peerAudioElement = peerAudioElementsRef.current.get(track);
+          if (peerAudioElement) {
+            track.detach(peerAudioElement);
+            peerAudioElement.remove();
+            peerAudioElementsRef.current.delete(track);
+          } else {
+            track.detach();
+            if (track.kind === Track.Kind.Video) setHasVideo(false);
+            if (track.kind === Track.Kind.Audio) setHasAudio(false);
+          }
           if (roomRef.current) recomputeStatus(roomRef.current);
         })
         .on(RoomEvent.ParticipantConnected, (p) => {
@@ -155,10 +181,16 @@ export function LiveClassroom({
         })
         .on(RoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
           console.log('[LiveClassroom] connection state', state);
-          if (state === ConnectionState.Disconnected) setStatus('disconnected');
+          if (state === ConnectionState.Disconnected) {
+            setStatus('disconnected');
+            setConnectedRoom(null);
+            setMicEnabled(false);
+          }
         });
 
       await room.connect(data.url, data.token);
+      setConnectedRoom(room);
+      setMicEnabled(false); // No one is recorded or heard until they explicitly opt in.
       console.log('[LiveClassroom] room connected', { localId: room.localParticipant.identity });
       setParticipants(Array.from(room.remoteParticipants.values()));
       recomputeStatus(room);
@@ -174,6 +206,10 @@ export function LiveClassroom({
       }, 25000);
     } catch (err) {
       console.error('[LiveClassroom] connect failed', err);
+      roomRef.current?.disconnect();
+      roomRef.current = null;
+      setConnectedRoom(null);
+      setMicEnabled(false);
       const message = err instanceof Error ? err.message : 'Failed to join classroom';
       setErrorMsg(message);
       setStatus('error');
@@ -186,6 +222,13 @@ export function LiveClassroom({
       await roomRef.current.disconnect();
       roomRef.current = null;
     }
+    peerAudioElementsRef.current.forEach((element, track) => {
+      track.detach(element);
+      element.remove();
+    });
+    peerAudioElementsRef.current.clear();
+    setConnectedRoom(null);
+    setMicEnabled(false);
     setHasVideo(false);
     setHasAudio(false);
     setParticipants([]);
@@ -197,6 +240,22 @@ export function LiveClassroom({
     roomRef.current?.disconnect();
     roomRef.current = null;
   }, []);
+
+  const toggleMicrophone = useCallback(async () => {
+    const room = roomRef.current;
+    if (!room || !connectedRoom || role === 'observer' || micBusy) return;
+    setMicBusy(true);
+    try {
+      const nextEnabled = !micEnabled;
+      await room.localParticipant.setMicrophoneEnabled(nextEnabled);
+      setMicEnabled(nextEnabled);
+    } catch (err) {
+      console.error('[LiveClassroom] microphone failed', err);
+      toast.error('Could not access your microphone. Check browser permissions.');
+    } finally {
+      setMicBusy(false);
+    }
+  }, [connectedRoom, role, micBusy, micEnabled]);
 
   const isTrulyLive = status === 'connected' && hasVideo;
 
@@ -263,6 +322,7 @@ export function LiveClassroom({
           muted={role === 'faculty'}
         />
         <audio ref={audioRef} autoPlay />
+        <div ref={peerAudioContainerRef} className="sr-only" aria-hidden="true" />
 
         {!isTrulyLive && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-foreground/80 text-background p-6 text-center">
@@ -320,7 +380,19 @@ export function LiveClassroom({
         )}
       </div>
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-2 flex-wrap">
+        {connectedRoom && role !== 'observer' && (
+          <Button
+            type="button"
+            variant={micEnabled ? 'destructive' : 'outline'}
+            aria-pressed={micEnabled}
+            disabled={micBusy}
+            onClick={toggleMicrophone}
+          >
+            {micEnabled ? <Mic className="h-4 w-4 mr-2" /> : <MicOff className="h-4 w-4 mr-2" />}
+            {micEnabled ? 'Turn microphone off' : 'Turn microphone on'}
+          </Button>
+        )}
         {(status === 'idle' || status === 'disconnected' || status === 'error') &&
           session?.status === 'live' && (
             <Button onClick={connect} className="bg-burgundy text-ivory hover:bg-burgundy/90">
@@ -339,6 +411,9 @@ export function LiveClassroom({
           </Button>
         )}
       </div>
+      {connectedRoom && session?.status === 'live' && (
+        <LiveClassroomInteractions room={connectedRoom} role={role} />
+      )}
     </Card>
   );
 }
