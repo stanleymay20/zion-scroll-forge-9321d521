@@ -110,12 +110,17 @@ Deno.serve(async (req) => {
       ttl: 60 * 60, // 1h
     });
 
-    const canPublish = role === 'faculty';
+    // Students can speak when they intentionally turn their mic on, but cannot
+    // publish a camera or screen-share track. TrackSource.MICROPHONE is enum 2
+    // in LiveKit's protobuf; the SDK converts this to "microphone" in the JWT.
+    // Observers remain subscribe-only for media and classroom events.
+    const canPublish = role !== 'observer';
     at.addGrant({
       room: roomName,
       roomJoin: true,
       canPublish,
-      canPublishData: true,
+      ...(role === 'student' ? { canPublishSources: [2] } : {}),
+      canPublishData: role !== 'observer',
       canSubscribe: true,
     });
 
